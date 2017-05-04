@@ -66,12 +66,14 @@ func init() {
 
 var (
 	ccTestdata string
-	cpp        = flag.Bool("cpp", false, "")
-	filter     = flag.String("re", "", "")
-	noexec     = flag.Bool("noexec", false, "")
-	oLog       = flag.Bool("log", false, "")
-	trace      = flag.Bool("trc", false, "")
-	yydebug    = flag.Int("yydebug", 0, "")
+
+	cpp     = flag.Bool("cpp", false, "")
+	filter  = flag.String("re", "", "")
+	ndebug  = flag.Bool("ndebug", false, "")
+	noexec  = flag.Bool("noexec", false, "")
+	oLog    = flag.Bool("log", false, "")
+	trace   = flag.Bool("trc", false, "")
+	yydebug = flag.Int("yydebug", 0, "")
 )
 
 func init() {
@@ -132,13 +134,18 @@ func parse(src []string, opts ...cc.Opt) (_ *cc.TranslationUnit, err error) {
 		return nil, err
 	}
 
+	var ndbg string
+	if *ndebug {
+		ndbg = "#define NDEBUG 1"
+	}
 	ast, err := cc.Parse(fmt.Sprintf(`
+%s
 #define __arch__ %s
 #define __os__ %s
 #include <builtin.h>
 
 #define NO_TRAMPOLINES 1
-`, runtime.GOARCH, runtime.GOOS),
+`, ndbg, runtime.GOARCH, runtime.GOOS),
 		src,
 		model,
 		opts...,
