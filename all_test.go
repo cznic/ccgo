@@ -275,24 +275,23 @@ func main() {
 		fmt.Fprintf(&log, "stderr:\n%s\n", b)
 	}
 
-	//TODO expect := match[:len(match)-len(filepath.Ext(match))] + ".expect"
-	//TODO if _, err := os.Stat(expect); err != nil {
-	//TODO 	if !os.IsNotExist(err) {
-	//TODO 		return log, 0, err
-	//TODO 	}
+	expect := match[:len(match)-len(filepath.Ext(match))] + ".expect"
+	if _, err := os.Stat(expect); err != nil {
+		if !os.IsNotExist(err) {
+			return log, 0, err
+		}
 
-	//TODO 	return log, 0, nil
-	//TODO }
+		return log, 0, nil
+	}
 
-	//TODO buf, err := ioutil.ReadFile(expect)
-	//TODO if err != nil {
-	//TODO 	return log, 0, err
-	//TODO }
+	buf, err := ioutil.ReadFile(expect)
+	if err != nil {
+		return log, 0, err
+	}
 
-	//TODO if g, e := stdout.Bytes(), buf; !bytes.Equal(g, e) {
-	//TODO 	return log, 0, fmt.Errorf("==== %v\n==== got\n%s==== exp\n%s", match, g, e)
-	//TODO }
-	//TODO return log, 0, nil
+	if g, e := stdout.Bytes(), buf; !bytes.Equal(g, e) {
+		return log, 0, fmt.Errorf("==== %v\n==== got\n%s==== exp\n%s", match, g, e)
+	}
 	return log, 0, nil
 }
 
