@@ -26,6 +26,7 @@ import (
 	"github.com/cznic/ccir"
 	"github.com/cznic/internal/buffer"
 	"github.com/cznic/ir"
+	"github.com/cznic/irgo"
 	"github.com/cznic/strutil"
 	"github.com/cznic/xc"
 )
@@ -60,6 +61,7 @@ func use(...interface{}) {}
 func init() {
 	use(caller, dbg, TODO) //TODOOK
 	flag.BoolVar(&Testing, "testing", false, "")
+	flag.BoolVar(&irgo.Testing, "irgoTesting", false, "")
 }
 
 // ============================================================================
