@@ -202,7 +202,7 @@ import (
 )
 
 func main() {
-	X_start(0, 0) //TODO188 pass C version of os.Args
+	X_start(0, nil) //TODO188 pass C version of os.Args
 }
 
 %s`, out.Bytes())
