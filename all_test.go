@@ -196,13 +196,32 @@ func expect1(wd, match string, hook func(string, string) []string, opts ...cc.Op
 package main
 
 import (
+	"os"
 	"unsafe"
 
 	"github.com/cznic/crt"
 )
 
+const uintptrSize = 1 << (^uintptr(0)>>32&1 + ^uintptr(0)>>16&1 + ^uintptr(0)>>8&1 + 3) / 8
+
+var args[1<<16]byte
+
 func main() {
-	X_start(0, nil) //TODO188 pass C version of os.Args
+	os.Args[0] = "./test"
+	var a []int
+	i := 0
+	for _, v := range os.Args {
+		v += "\x00"
+		a = append(a, i)
+		copy(args[i:], v)
+		i = (i+len(v)+16)&^15
+	}
+	argv := (**int8)(unsafe.Pointer(&args[i]))
+	for _, v := range a {
+		*(*uintptr)(unsafe.Pointer(&args[i])) = uintptr(unsafe.Pointer(&args[v]))
+		i += uintptrSize
+	}
+	X_start(int32(len(os.Args)), argv)
 }
 
 %s`, out.Bytes())
