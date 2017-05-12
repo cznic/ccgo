@@ -200,13 +200,24 @@ import (
 	"unsafe"
 
 	"github.com/cznic/crt"
+	"github.com/edsrzf/mmap-go"
+
 )
 
-const uintptrSize = 1 << (^uintptr(0)>>32&1 + ^uintptr(0)>>16&1 + ^uintptr(0)>>8&1 + 3) / 8
+const (
+	uintptrSize = 1 << (^uintptr(0)>>32&1 + ^uintptr(0)>>16&1 + ^uintptr(0)>>8&1 + 3) / 8
+	heapSize = 32<<20
+)
 
 var args[1<<16]byte
 
 func main() {
+	heap, err := mmap.MapRegion(nil, heapSize, mmap.RDWR, mmap.ANON, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	crt.RegisterHeap(uintptr(unsafe.Pointer(&heap[0])), heapSize)
 	os.Args[0] = "./test"
 	var a []int
 	i := 0
