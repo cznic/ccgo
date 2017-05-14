@@ -409,12 +409,264 @@ func TestTCC(t *testing.T) {
 				return []string{match}
 			}
 		},
-		//TODO- cc.EnableAnonymousStructFields(),
-		//TODO- cc.EnableDefineOmitCommaBeforeDDD(),
-		//TODO- cc.ErrLimit(-1),
 		cc.AllowCompatibleTypedefRedefinitions(),
 		cc.EnableImplicitFuncDef(),
+		cc.ErrLimit(-1),
 		cc.KeepComments(),
+		cc.SysIncludePaths([]string{ccir.LibcIncludePath}),
+	)
+}
+
+func TestGCCExec(t *testing.T) {
+	blacklist := map[string]struct{}{
+		// VLA struct field.
+		"20020412-1.c": {},
+		"20040308-1.c": {},
+		"align-nest.c": {},
+		"pr41935.c":    {},
+
+		// Nested function.
+		"20010209-1.c":   {},
+		"20010605-1.c":   {},
+		"20030501-1.c":   {},
+		"20040520-1.c":   {},
+		"20061220-1.c":   {},
+		"20090219-1.c":   {},
+		"920612-2.c":     {},
+		"921017-1.c":     {},
+		"nest-align-1.c": {},
+		"nest-stdar-1.c": {},
+		"nestfunc-7.c":   {},
+		"pr22061-3.c":    {},
+		"pr22061-4.c":    {},
+		"pr71494.c":      {},
+
+		// __real__, complex integers and and friends.
+		"20010605-2.c": {},
+		"20020411-1.c": {},
+		"20030910-1.c": {},
+		"20041124-1.c": {},
+		"20041201-1.c": {},
+		"20050121-1.c": {},
+		"complex-1.c":  {},
+		"complex-6.c":  {},
+		"pr38151.c":    {},
+		"pr38969.c":    {},
+		"pr56837.c":    {},
+
+		// Depends on __attribute__((aligned(N)))
+		"20010904-1.c": {},
+		"20010904-2.c": {},
+		"align-3.c":    {},
+		"pr23467.c":    {},
+
+		// Depends on __attribute__ ((vector_size (N)))
+		"20050316-1.c":   {},
+		"20050316-2.c":   {},
+		"20050316-3.c":   {},
+		"20050604-1.c":   {},
+		"20050607-1.c":   {},
+		"pr23135.c":      {},
+		"pr53645-2.c":    {},
+		"pr53645.c":      {},
+		"pr60960.c":      {},
+		"pr65427.c":      {},
+		"pr71626-1.c":    {},
+		"pr71626-2.c":    {},
+		"scal-to-vec1.c": {},
+		"scal-to-vec2.c": {},
+		"scal-to-vec3.c": {},
+		"simd-1.c":       {},
+		"simd-2.c":       {},
+		"simd-4.c":       {},
+		"simd-5.c":       {},
+		"simd-6.c":       {},
+
+		// https://goo.gl/XDxJEL
+		"20021127-1.c": {},
+
+		// asm
+		"20001009-2.c": {},
+		"20020107-1.c": {},
+		"20030222-1.c": {},
+		"20071211-1.c": {},
+		"20071220-1.c": {},
+		"20071220-2.c": {},
+		"960312-1.c":   {},
+		"960830-1.c":   {},
+		"990130-1.c":   {},
+		"990413-2.c":   {},
+		"pr38533.c":    {},
+		"pr40022.c":    {},
+		"pr40657.c":    {},
+		"pr41239.c":    {},
+		"pr43385.c":    {},
+		"pr43560.c":    {},
+		"pr45695.c":    {},
+		"pr46309.c":    {},
+		"pr49279.c":    {},
+		"pr49390.c":    {},
+		"pr51877.c":    {},
+		"pr51933.c":    {},
+		"pr52286.c":    {},
+		"pr56205.c":    {},
+		"pr56866.c":    {},
+		"pr56982.c":    {},
+		"pr57344-1.c":  {},
+		"pr57344-2.c":  {},
+		"pr57344-3.c":  {},
+		"pr57344-4.c":  {},
+		"pr63641.c":    {},
+		"pr65053-1.c":  {},
+		"pr65053-2.c":  {},
+		"pr65648.c":    {},
+		"pr65956.c":    {},
+		"pr68328.c":    {},
+		"pr69320-2.c":  {},
+		"stkalign.c":   {},
+
+		// __label__
+		"920415-1.c": {},
+		"920721-4.c": {},
+		"930406-1.c": {},
+		"980526-1.c": {},
+		"pr51447.c":  {},
+
+		// attribute alias
+		"alias-2.c": {},
+		"alias-3.c": {},
+		"alias-4.c": {},
+
+		// _Alignas
+		"pr68532.c": {},
+
+		// Profiling
+		"eeprof-1.c": {},
+
+		// 6.5.16/4: The order of evaluation of the operands is unspecified.
+		"pr58943.c": {},
+	}
+	todolist := map[string]struct{}{
+		// long double constant out of range for double.
+		"960405-1.c": {},
+
+		// case range
+		"pr34154.c": {},
+
+		// VLA. Need to resolve https://github.com/cznic/cc/issues/91 first.
+		"20040411-1.c":    {},
+		"20040423-1.c":    {},
+		"20040811-1.c":    {},
+		"20041218-2.c":    {},
+		"20070919-1.c":    {},
+		"920929-1.c":      {},
+		"970217-1.c":      {},
+		"pr22061-1.c":     {},
+		"pr43220.c":       {},
+		"vla-dealloc-1.c": {},
+
+		// Initializer
+		"20050613-1.c":        {}, // struct B b = { .a.j = 5 };
+		"20050929-1.c":        {}, // struct C e = { &(struct B) { &(struct A) { 1, 2 }, &(struct A) { 3, 4 } }, &(struct A) { 5, 6 } };
+		"20071029-1.c":        {}, // t = (T) { { ++i, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
+		"921019-1.c":          {}, // void *foo[]={(void *)&("X"[0])};
+		"991228-1.c":          {}, // cc.Parse: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/991228-1.c:1:51: invalid designator for type double
+		"compndlit-1.c":       {}, // x = (struct S) {b:0, a:0, c:({ struct S o = x; o.a == 1 ? 10 : 20;})};
+		"const-addr-expr-1.c": {}, // int *Upgd_minor_ID = (int *) &((Upgrade_items + 1)->uaattrid);
+		"pr22098-1.c":         {}, // b = (uintptr_t)(p = &(int []){0, 1, 2}[++a]);
+		"pr22098-2.c":         {}, // b = (uintptr_t)(p = &(int []){0, 1, 2}[1]);
+		"pr22098-3.c":         {}, // b = (uintptr_t)(p = &(int []){0, f(), 2}[1]);
+		"pr33631.c":           {}, // struct { int c; pthread_mutex_t m; } r = { .m = 0 };
+		"pr70460.c":           {}, // static int b[] = { &&lab1 - &&lab0, &&lab2 - &&lab0 };
+
+		// signal.h
+		"20101011-1.c": {},
+
+		// mmap.h
+		"loop-2f.c": {},
+		"loop-2g.c": {},
+
+		// &&label expr
+		"comp-goto-1.c": {}, // # [100]: Verify (A): mismatched operand type, got int32, expected uint32; simulator_kernel:0x64: 	lsh             	uint32	; ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/comp-goto-1.c:83:40
+
+		// builtins
+		"pr47237.c":       {}, // __builtin_apply, __builtin_apply_args
+		"pr64006.c":       {}, // __builtin_mul_overflow
+		"pr68381.c":       {}, // __builtin_mul_overflow
+		"pr71554.c":       {}, // __builtin_mul_overflow
+		"va-arg-pack-1.c": {}, // __builtin_va_arg_pack
+
+		// long double
+		"pr39228.c": {},
+
+		// un-flatten (wips wrt cc.0506a942f3efa9b7a0a4b98dbe45bf7e8d06a542)
+		"20030714-1.c": {}, // cc.Parse: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20030714-1.c:102:11: assignment from incompatible type ('unsigned' = '<undefined>')
+		"anon-1.c":     {}, // cc.Parse: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/anon-1.c:22:7: struct{int; ;} has no member named b
+
+		// ccgo only --------------------------------------------------
+		"20000113-1.c": {}, // irgo.go:748: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20000113-1.c:9:17: *ir.Dup
+		"20000227-1.c": {}, // ./main.go:107: cannot use str(0) (type *int8) as type [3]uint8 in assignment
+		"20000314-1.c": {}, // New: irgo.go:802: TODO ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20000314-1.c:14:3: *ir.Call
+		"20000314-3.c": {}, // ./main.go:103: cannot use str(0) (type *int8) as type [5]int8 in assignment
+		"20000403-1.c": {}, // ./main.go:72: cannot use *(&Xaa) (type [1]uint64) as type uint64 in argument to Xseqgt
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testdata, err := filepath.Rel(wd, ccTestdata)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var re *regexp.Regexp
+	if s := *filter; s != "" {
+		re = regexp.MustCompile(s)
+	}
+
+	dir := filepath.Join(testdata, filepath.FromSlash("gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/"))
+	expect(
+		t,
+		dir,
+		func(match string) bool {
+			base := filepath.Base(match)
+			_, skip := blacklist[base]
+			if _, skip2 := todolist[base]; skip2 {
+				skip = true
+			}
+			if re != nil {
+				skip = !re.MatchString(base)
+			}
+			return skip
+		},
+		func(wd, match string) []string {
+			return []string{match}
+		},
+		cc.AllowCompatibleTypedefRedefinitions(),
+		cc.EnableAlignOf(),
+		cc.EnableAlternateKeywords(),
+		cc.EnableAnonymousStructFields(),
+		cc.EnableAsm(),
+		cc.EnableBuiltinClassifyType(),
+		cc.EnableBuiltinConstantP(),
+		cc.EnableComputedGotos(),
+		cc.EnableDefineOmitCommaBeforeDDD(),
+		cc.EnableEmptyDeclarations(),
+		cc.EnableEmptyStructs(),
+		cc.EnableImaginarySuffix(),
+		cc.EnableImplicitFuncDef(),
+		cc.EnableImplicitIntType(),
+		cc.EnableLegacyDesignators(),
+		cc.EnableNonConstStaticInitExpressions(),
+		cc.EnableOmitConditionalOperand(),
+		cc.EnableOmitFuncArgTypes(),
+		cc.EnableOmitFuncRetType(),
+		cc.EnableParenthesizedCompoundStatemen(),
+		cc.EnableTypeOf(),
+		cc.EnableUnsignedEnums(),
+		cc.EnableWideBitFieldTypes(),
+		cc.ErrLimit(-1),
 		cc.SysIncludePaths([]string{ccir.LibcIncludePath}),
 	)
 }
