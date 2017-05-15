@@ -31,11 +31,11 @@ func TODO(msg string, more ...interface{}) string { //TODOOK
 	panic(fmt.Errorf("%s:%d: %v", path.Base(fn), fl, fmt.Sprintf(msg, more...)))
 }
 
-// New writes Go code generated from ast to out. No package clause is
-// generated. The result is not formatted. The qualifier function is called for
-// implementation defined functions.  It must return the package qualifier, if
-// any, that should be used to call the implementation defined function.
-func New(ast *cc.TranslationUnit, out io.Writer, qualifier func(*ir.FunctionDefinition) string) (err error) {
+// New writes Go code generated from ast to out. No package or import clause is
+// generated. The qualifier function is called for implementation defined
+// functions.  It must return the package qualifier, if any, that should be
+// used to call the implementation defined function.
+func New(ast []*cc.TranslationUnit, out io.Writer, qualifier func(*ir.FunctionDefinition) string) (err error) {
 	if !Testing {
 		defer func() {
 			switch x := recover().(type) {
@@ -47,12 +47,18 @@ func New(ast *cc.TranslationUnit, out io.Writer, qualifier func(*ir.FunctionDefi
 		}()
 	}
 
-	obj, err := ccir.New(ast)
-	if err != nil {
-		return err
+	var build [][]ir.Object
+	for _, v := range ast {
+		obj, err := ccir.New(v)
+		if err != nil {
+			return err
+		}
+
+		build = append(build, obj)
 	}
 
-	if obj, err = ir.LinkMain(obj); err != nil {
+	obj, err := ir.LinkMain(build...)
+	if err != nil {
 		return err
 	}
 
