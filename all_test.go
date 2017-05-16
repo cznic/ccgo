@@ -1066,3 +1066,28 @@ i = 42`); !bytes.Equal(g, e) {
 		t.Fatalf("\ngot\n%s\nexp\n%s", g, e)
 	}
 }
+
+func TestOther(t *testing.T) {
+	var re *regexp.Regexp
+	if s := *filter; s != "" {
+		re = regexp.MustCompile(s)
+	}
+
+	expect(
+		t,
+		"testdata",
+		func(match string) bool {
+			if re != nil && !re.MatchString(filepath.Base(match)) {
+				return true
+			}
+
+			return false
+		},
+		func(wd, match string) []string {
+			return []string{match}
+		},
+		cc.EnableImplicitFuncDef(),
+		cc.ErrLimit(-1),
+		cc.SysIncludePaths([]string{ccir.LibcIncludePath}),
+	)
+}
