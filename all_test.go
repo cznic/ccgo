@@ -73,6 +73,7 @@ const (
 package main
 
 import (
+	"math"
 	"os"
 	"unsafe"
 
@@ -86,7 +87,10 @@ const (
 	heapSize = 32<<20
 )
 
-var args[1<<16]byte
+var (
+	args[1<<16]byte
+	inf = math.Inf(1)
+)
 
 func main() {
 	heap, err := mmap.MapRegion(nil, heapSize, mmap.RDWR, mmap.ANON, 0)
