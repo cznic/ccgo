@@ -98,7 +98,7 @@ func main() {
 		panic(err)
 	}
 
-	crt.RegisterHeap(uintptr(unsafe.Pointer(&heap[0])), heapSize)
+	crt.RegisterHeap(unsafe.Pointer(&heap[0]), heapSize)
 	os.Args[0] = "./test"
 	var a []int
 	i := 0
