@@ -51,17 +51,17 @@ int main(int argc, char **argv)
 	sqlite3 *db;
 	void *heap = malloc(heapSize);
 	if (heap == 0) {
-		fprintf(stderr, "cannot allocate memory", argv[0]);
+		fprintf(stderr, "cannot allocate memory\n", argv[0]);
 		return 1;
 	}
 
 	if (sqlite3_config(SQLITE_CONFIG_HEAP, heap, heapSize, minAlloc)) {
-		fprintf(stderr, "cannot configure heap", argv[0]);
+		fprintf(stderr, "cannot configure heap\n", argv[0]);
 		return 1;
 	}
 
 	if (sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL)) {
-		fprintf(stderr, "cannot configure error log callback", argv[0]);
+		fprintf(stderr, "cannot configure error log callback\n", argv[0]);
 		return 1;
 	}
 
@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Usage: %s DATABASE SQL-STATEMENT\n", argv[0]);
 		return 1;
 	}
+
 	rc = sqlite3_open(argv[1], &db);
 	if (rc) {
 		fprintf(stderr, "Can't open database: %s\n",
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
 		sqlite3_close(db);
 		return 1;
 	}
+
 	rc = sqlite3_exec(db, argv[2], callback, 0, &zErrMsg);
 	if (rc != SQLITE_OK) {
 		fprintf(stderr, "SQL error: %s\n", zErrMsg);
