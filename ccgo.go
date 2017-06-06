@@ -14,7 +14,6 @@ import (
 
 	"github.com/cznic/cc"
 	"github.com/cznic/ccir"
-	"github.com/cznic/crt"
 	"github.com/cznic/ir"
 	"github.com/cznic/irgo"
 	"github.com/cznic/xc"
@@ -109,16 +108,9 @@ func New(ast []*cc.TranslationUnit, out io.Writer) (err error) {
 		return err
 	}
 
-	for k, v := range map[ir.TypeID]string{
-		ir.TypeID(dict.SID(crt.TFILE)):                "crt.XFILE",
-		ir.TypeID(dict.SID(crt.Tpthread_attr_t)):      "crt.Xpthread_attr_t",
-		ir.TypeID(dict.SID(crt.Tpthread_mutex_t)):     "crt.Xpthread_mutex_t",
-		ir.TypeID(dict.SID(crt.Tpthread_mutexattr_t)): "crt.Xpthread_mutexattr_t",
-		ir.TypeID(dict.SID(crt.Tstruct_stat64)):       "crt.Xstruct_stat64",
-		ir.TypeID(dict.SID(crt.Tstruct_timeval)):      "crt.Xstruct_timeval",
-		ir.TypeID(dict.SID(crt.Ttm)):                  "crt.Xtm",
-	} {
+	for k, v := range typeMap {
 		tm[k] = v
 	}
+
 	return irgo.New(out, obj, tm)
 }
