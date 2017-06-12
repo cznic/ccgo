@@ -44,22 +44,9 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName)
 	return 0;
 }
 
-#define heapSize (32<<20)
-#define minAlloc (2<<5)
 int main(int argc, char **argv)
 {
 	sqlite3 *db;
-	void *heap = malloc(heapSize);
-	if (heap == 0) {
-		fprintf(stderr, "cannot allocate memory\n", argv[0]);
-		return 1;
-	}
-
-	if (sqlite3_config(SQLITE_CONFIG_HEAP, heap, heapSize, minAlloc)) {
-		fprintf(stderr, "cannot configure heap\n", argv[0]);
-		return 1;
-	}
-
 	if (sqlite3_config(SQLITE_CONFIG_LOG, errorLogCallback, NULL)) {
 		fprintf(stderr, "cannot configure error log callback\n", argv[0]);
 		return 1;

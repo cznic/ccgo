@@ -84,18 +84,10 @@ import (
 	"unsafe"
 
 	"github.com/cznic/crt"
-	"github.com/edsrzf/mmap-go"
-
-)
-
-const (
-	heapReserve = 1<<20
-	heapSize = 32<<20
-	uintptrSize = 1 << (^uintptr(0)>>32&1 + ^uintptr(0)>>16&1 + ^uintptr(0)>>8&1 + 3) / 8
 )
 
 var (
-	args[1<<16]byte
+	argv []*int8
 	inf = math.Inf(1)
 )
 
@@ -106,27 +98,11 @@ func ftrace(s string, args ...interface{}) {
 }
 
 func main() {
-	heap, err := mmap.MapRegion(nil, heapSize+heapReserve, mmap.RDWR, mmap.ANON, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	crt.RegisterHeap(unsafe.Pointer(&heap[0]), heapSize+heapReserve)
 	os.Args[0] = "./test"
-	var a []int
-	i := 0
 	for _, v := range os.Args {
-		v += "\x00"
-		a = append(a, i)
-		copy(args[i:], v)
-		i = (i+len(v)+16)&^15
+		argv = append(argv, (*int8)(crt.CString(v)))
 	}
-	argv := (**int8)(unsafe.Pointer(&args[i]))
-	for _, v := range a {
-		*(*uintptr)(unsafe.Pointer(&args[i])) = uintptr(unsafe.Pointer(&args[v]))
-		i += uintptrSize
-	}
-	X_start(%s.NewTLS(), int32(len(os.Args)), argv)
+	X_start(%s.NewTLS(), int32(len(os.Args)), &argv[0])
 }
 
 %s`
@@ -1145,9 +1121,13 @@ func TestSQLite(t *testing.T) {
 
 	src, err := build(
 		t,
-		`#define SQLITE_DEBUG 1
+		`
+		#define HAVE_MALLOC_H 1
+		#define HAVE_MALLOC_USABLE_SIZE 1
+		#define SQLITE_DEBUG 1
 		#define SQLITE_ENABLE_API_ARMOR 1
-		#define SQLITE_ENABLE_MEMSYS5 1`,
+		#define SQLITE_WITHOUT_MSIZE 1
+		`,
 		[][]string{
 			{"testdata/sqlite/test.c"},
 			{filepath.Join(pth, "sqlite3.c")},
