@@ -102,6 +102,7 @@ func main() {
 	for _, v := range os.Args {
 		argv = append(argv, (*int8)(crt.CString(v)))
 	}
+	argv = append(argv, nil)
 	X_start(%s.NewTLS(), int32(len(os.Args)), &argv[0])
 }
 
