@@ -40,21 +40,36 @@ func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm ir.NameID) {
 		return
 	}
 
+	s := dict.S(int(nm))
 	t := tc.MustType(id)
-	n := 0
-	for t.Kind() == ir.Pointer {
-		if id == idVoidPtr {
-			return
-		}
+	for {
+		done := true
+		switch t.Kind() {
+		case ir.Array:
+			t = t.(*ir.ArrayType).Item
+			for s[0] != ']' {
+				s = s[1:]
+			}
+			s = s[1:]
+			done = false
+		case ir.Pointer:
+			if t.ID() == idVoidPtr {
+				return
+			}
 
-		t = t.(*ir.PointerType).Element
-		id = t.ID()
-		n++
+			t = t.(*ir.PointerType).Element
+			s = s[1:]
+			done = false
+		}
+		if done {
+			break
+		}
 	}
+	id = t.ID()
 	switch t.Kind() {
 	case ir.Struct, ir.Union:
 		if _, ok := tm[id]; !ok {
-			tm[id] = string(dict.S(int(nm)))[n:]
+			tm[id] = string(s)
 		}
 	}
 }
