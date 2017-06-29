@@ -123,6 +123,12 @@ func New(ast []*cc.TranslationUnit, out io.Writer) (err error) {
 		return err
 	}
 
+	for _, v := range obj {
+		if err := v.Verify(); err != nil {
+			return err
+		}
+	}
+
 	for k, v := range typeMap {
 		tm[k] = v
 	}

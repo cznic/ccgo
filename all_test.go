@@ -86,10 +86,7 @@ import (
 	"github.com/cznic/crt"
 )
 
-var (
-	argv []*int8
-	inf = math.Inf(1)
-)
+var argv []*int8
 
 func ftrace(s string, args ...interface{}) {
 	_, fn, fl, _ := runtime.Caller(1)
