@@ -16,6 +16,7 @@ import (
 	"github.com/cznic/ccir"
 	"github.com/cznic/ir"
 	"github.com/cznic/irgo"
+	"github.com/cznic/virtual"
 	"github.com/cznic/xc"
 )
 
@@ -35,7 +36,7 @@ func TODO(msg string, more ...interface{}) string { //TODOOK
 	panic(fmt.Errorf("%s:%d: %v", path.Base(fn), fl, fmt.Sprintf(msg, more...)))
 }
 
-func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm ir.NameID) {
+func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm, pkg ir.NameID) {
 	if nm == 0 {
 		return
 	}
@@ -69,14 +70,45 @@ func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm ir.NameID) {
 	switch t.Kind() {
 	case ir.Struct, ir.Union:
 		if _, ok := tm[id]; !ok {
-			tm[id] = string(s)
+			b := s
+			if pkg != 0 {
+				b = nil
+				b = append(b, dict.S(int(pkg))...)
+				b = append(b, '.')
+				b = append(b, s...)
+			}
+			tm[id] = string(b)
 		}
+	}
+}
+
+type options struct {
+	ast        []*cc.TranslationUnit
+	qualifiers []string
+}
+
+// Option is a configuration/setup function that can be passed to the New
+// function.
+type Option func(*options) error
+
+// Packages annotate the translation units with a package qualifier. Items
+// annotated with a package qualifier are not rendered and references to
+// external definitions in such translation units are prefixed with the
+// respective qualifier.
+func Packages(qualifiers []string) Option {
+	return func(o *options) error {
+		if g, e := len(qualifiers), len(o.ast); g > e {
+			return fmt.Errorf("too many package qualifiers: %v > %v", g, e)
+		}
+
+		o.qualifiers = qualifiers
+		return nil
 	}
 }
 
 // New writes Go code generated from ast to out. No package or import clause is
 // generated.
-func New(ast []*cc.TranslationUnit, out io.Writer) (err error) {
+func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 	if !Testing {
 		defer func() {
 			switch x := recover().(type) {
@@ -88,28 +120,43 @@ func New(ast []*cc.TranslationUnit, out io.Writer) (err error) {
 		}()
 	}
 
+	o := &options{ast: ast}
+	for _, v := range opts {
+		if err := v(o); err != nil {
+			return err
+		}
+	}
+
 	tc := ir.TypeCache{}
 	tm := map[ir.TypeID]string{}
 	var build [][]ir.Object
-	for _, v := range ast {
+	for i, v := range ast {
 		obj, err := ccir.New(v)
 		if err != nil {
 			return err
 		}
 
+		var pkg, tpkg ir.NameID
+		if i < len(o.qualifiers) {
+			pkg = ir.NameID(dict.SID(o.qualifiers[i]))
+		}
 		for _, v := range obj {
 			if err := v.Verify(); err != nil {
 				return err
 			}
 
+			if b := v.Base(); !virtual.IsBuiltin(b.NameID) {
+				b.Package = pkg
+				tpkg = pkg
+			}
 			switch x := v.(type) {
 			case *ir.DataDefinition:
-				typ(tc, tm, x.TypeID, x.TypeName)
+				typ(tc, tm, x.TypeID, x.TypeName, tpkg)
 			case *ir.FunctionDefinition:
 				for _, v := range x.Body {
 					switch y := v.(type) {
 					case *ir.VariableDeclaration:
-						typ(tc, tm, y.TypeID, y.TypeName)
+						typ(tc, tm, y.TypeID, y.TypeName, tpkg)
 					}
 				}
 			}
