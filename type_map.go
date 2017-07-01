@@ -14,6 +14,7 @@ import (
 var typeMap map[ir.TypeID]string = map[ir.TypeID]string{
 	ir.TypeID(dict.SID(crt.TFILE)):                "crt.XFILE",
 	ir.TypeID(dict.SID(crt.Tpthread_attr_t)):      "crt.Xpthread_attr_t",
+	ir.TypeID(dict.SID(crt.Tpthread_cond_t)):      "crt.Xpthread_cond_t",
 	ir.TypeID(dict.SID(crt.Tpthread_mutex_t)):     "crt.Xpthread_mutex_t",
 	ir.TypeID(dict.SID(crt.Tpthread_mutexattr_t)): "crt.Xpthread_mutexattr_t",
 	ir.TypeID(dict.SID(crt.Tstruct_stat64)):       "crt.Xstruct_stat64",

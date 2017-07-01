@@ -1110,7 +1110,7 @@ exit(0) cycle = 26012`); !bytes.Equal(g, e) {
 }
 
 func TestSQLite(t *testing.T) {
-	const repo = "sqlite.org/sqlite-amalgamation-3180000/"
+	const repo = "sqlite.org/sqlite-amalgamation-3190300/"
 	pth := findRepo(t, repo)
 	if pth == "" {
 		t.Logf("repository not found, skipping: %v", repo)
