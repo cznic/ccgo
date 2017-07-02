@@ -726,6 +726,7 @@ func TestGCCExec(t *testing.T) {
 		"pr34176.c":            {}, // ./main.go:111: constant -1 overflows uint64
 		"pr37573.c":            {}, // ./main.go:119: constant -1 overflows uint32
 		"pr43784.c":            {}, // ./main.go:116: cannot use &_v (type *struct { X [0]struct { X0 struct { X0 struct { X0 [256]uint8 }; X1 int32 }; X1 struct { X0 int32; X1 struct { X0 [256]uint8 } } }; U [260]byte }) as type *struct { X0 [256]uint8 } in assignment
+		"pr44555.c":            {}, // Needs a strict-semantic option to pass.
 		"pr53160.c":            {}, // ./main.go:86: Xb evaluated but not used
 		"pr57130.c":            {}, // 89:111: expected '==', found '='
 		"pr57281.c":            {}, // ./main.go:86: Xf evaluated but not used
