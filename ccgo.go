@@ -85,6 +85,7 @@ func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm, pkg ir.Name
 type options struct {
 	ast        []*cc.TranslationUnit
 	qualifiers []string
+	library    bool
 }
 
 // Option is a configuration/setup function that can be passed to the New
@@ -102,6 +103,15 @@ func Packages(qualifiers []string) Option {
 		}
 
 		o.qualifiers = qualifiers
+		return nil
+	}
+}
+
+// Library selects the library linking mode, ie. the linkew will include all
+// objects having external linkage.
+func Library() Option {
+	return func(o *options) error {
+		o.library = true
 		return nil
 	}
 }
@@ -165,9 +175,16 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 		build = append(build, obj)
 	}
 
-	obj, err := ir.LinkMain(build...)
-	if err != nil {
-		return err
+	var obj []ir.Object
+	switch {
+	case o.library:
+		if obj, err = ir.LinkLib(build...); err != nil {
+			return err
+		}
+	default:
+		if obj, err = ir.LinkMain(build...); err != nil {
+			return err
+		}
 	}
 
 	for _, v := range obj {

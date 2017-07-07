@@ -674,12 +674,14 @@ func TestGCCExec(t *testing.T) {
 		"pr28865.c":       {}, // irgo.go:1400: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr28865.c:3:9: struct{int32,*int8}, *ir.CompositeValue({1, "123456789012345678901234567890"+0})
 		"pr30185.c":       {}, // etc.go:600: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr30185.c:21:18: *ir.FieldValue
 		"pr33382.c":       {}, // irgo.go:1499: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr33382.c:6:12: TODO1247 int32:Int32
+		"pr38051.c":       {},
 		"pr42248.c":       {}, // etc.go:600: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr42248.c:23:15: *ir.ConstC128
 		"pr42691.c":       {}, // irgo.go:1400: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr42691.c:36:16: [4]uint16, *ir.CompositeValue({0, 0, 0, 32752})
 		"pr44164.c":       {}, // New: runtime error: index out of range
 		"pr49644.c":       {}, // irgo.go:1601: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr49644.c:8:34: *ir.Complex128Value
 		"pr53084.c":       {}, // irgo.go:1596: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr53084.c:15:21
 		"pr55750.c":       {}, // irgo.go:853: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr55750.c:14:3
+		"pr58209.c":       {},
 		"pr68249.c":       {}, // etc.go:420: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr68249.c:11:11: TODO stack(2): 6:			; ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/pr68249.c:11:11
 		"stdarg-2.c":      {}, // irgo.go:1145: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/stdarg-2.c:94:17: *ir.Field *struct{}
 		"va-arg-13.c":     {}, // irgo.go:1145: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/va-arg-13.c:24:18: *ir.Field *struct{}
@@ -1045,65 +1047,6 @@ hello.c: exiting with exit code 0 and 0.00MB of mallocated memory
 ./selfie: 260 global variables, 290 procedures, 450 string literals
 ./selfie: 1960 calls, 722 assignments, 57 while, 571 if, 241 return
 ./selfie: 121676 bytes generated with 28783 instructions and 6544 bytes of data`); !bytes.Equal(g, e) {
-		t.Fatalf("\ngot\n%s\nexp\n%s", g, e)
-	}
-
-	t.Logf("%s\n%s\n%v", args, out, d)
-}
-
-func TestC4(t *testing.T) {
-	const repo = "github.com/cznic/ccir/testdata/github.com/rswier/c4"
-	pth := findRepo(t, repo)
-	if pth == "" {
-		t.Logf("repository not found, skipping: %v", repo)
-		return
-	}
-
-	src, err := build(t, "", [][]string{{filepath.Join(pth, "c4.c")}})
-	if *oLog {
-		t.Logf("\n%s", src)
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	args := []string{"./c4"}
-	out, _, d := run(t, src, args, nil, true)
-	if g, e := out, []byte(`usage: c4 [-s] [-d] file ...
-exit status 255`); !bytes.Equal(g, e) {
-		t.Fatalf("\ngot\n%s\nexp\n%s", g, e)
-	}
-
-	t.Logf("%s\n%s\n%v", args, out, d)
-
-	hello, err := ioutil.ReadFile(filepath.Join(pth, "hello.c"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	args = []string{"./c4", "hello.c"}
-	out, _, d = run(t, src, args, []file{{"hello.c", hello}}, false)
-	if g, e := out, []byte(`hello, world
-exit(0) cycle = 9`); !bytes.Equal(g, e) {
-		t.Fatalf("\ngot\n%s\nexp\n%s", g, e)
-	}
-
-	t.Logf("%s\n%s\n%v", args, out, d)
-
-	args = []string{"./c4", "-s", "hello.c"}
-	out, _, d = run(t, src, args, []file{{"hello.c", hello}}, false)
-	t.Logf("%s\n%s\n%v", args, out, d)
-
-	c4, err := ioutil.ReadFile(filepath.Join(pth, "c4.c"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	args = []string{"./c4", "c4.c", "hello.c"}
-	out, _, d = run(t, src, args, []file{{"c4.c", c4}, {"hello.c", hello}}, false)
-	if g, e := out, []byte(`hello, world
-exit(0) cycle = 9
-exit(0) cycle = 26012`); !bytes.Equal(g, e) {
 		t.Fatalf("\ngot\n%s\nexp\n%s", g, e)
 	}
 
