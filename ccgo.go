@@ -36,7 +36,7 @@ func TODO(msg string, more ...interface{}) string { //TODOOK
 	panic(fmt.Errorf("%s:%d: %v", path.Base(fn), fl, fmt.Sprintf(msg, more...)))
 }
 
-func typ(tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm, pkg ir.NameID) {
+func typ(tc ir.TypeCache, tm map[ir.TypeID]string, fm map[ir.TypeID][]ir.NameID, id ir.TypeID, nm, pkg ir.NameID) {
 	if nm == 0 {
 		return
 	}
@@ -139,9 +139,10 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 
 	tc := ir.TypeCache{}
 	tm := map[ir.TypeID]string{}
+	fm := map[ir.TypeID][]ir.NameID{}
 	var build [][]ir.Object
 	for i, v := range ast {
-		obj, err := ccir.New(v)
+		obj, err := ccir.New(v, ccir.TypeCache(tc))
 		if err != nil {
 			return err
 		}
@@ -161,12 +162,12 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 			}
 			switch x := v.(type) {
 			case *ir.DataDefinition:
-				typ(tc, tm, x.TypeID, x.TypeName, tpkg)
+				typ(tc, tm, fm, x.TypeID, x.TypeName, tpkg)
 			case *ir.FunctionDefinition:
 				for _, v := range x.Body {
 					switch y := v.(type) {
 					case *ir.VariableDeclaration:
-						typ(tc, tm, y.TypeID, y.TypeName, tpkg)
+						typ(tc, tm, fm, y.TypeID, y.TypeName, tpkg)
 					}
 				}
 			}
@@ -197,5 +198,5 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 		tm[k] = v
 	}
 
-	return irgo.New(out, obj, tm)
+	return irgo.New(out, obj, tm, irgo.TypeCache(tc))
 }
