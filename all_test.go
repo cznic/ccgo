@@ -201,7 +201,7 @@ func parse(src []string, opts ...cc.Opt) (_ *cc.TranslationUnit, err error) {
 	return ast, nil
 }
 
-func expect1(wd, match string, hook func(string, string) []string, opts ...cc.Opt) (log buffer.Bytes, exitStatus int, err error) {
+func expect1(wd, match string, hook func(string, string) []string, ccgoOpts []Option, opts ...cc.Opt) (log buffer.Bytes, exitStatus int, err error) {
 	var lpos token.Position
 	if *cpp {
 		opts = append(opts, cc.Cpp(func(toks []xc.Token) {
@@ -233,7 +233,7 @@ func expect1(wd, match string, hook func(string, string) []string, opts ...cc.Op
 		src.Close()
 	}()
 
-	if err := New([]*cc.TranslationUnit{ast}, &out); err != nil {
+	if err := New([]*cc.TranslationUnit{ast}, &out, ccgoOpts...); err != nil {
 		return log, -1, fmt.Errorf("New: %v", err)
 	}
 
@@ -329,7 +329,7 @@ func expect1(wd, match string, hook func(string, string) []string, opts ...cc.Op
 	return log, 0, nil
 }
 
-func expect(t *testing.T, dir string, skip func(string) bool, hook func(string, string) []string, opts ...cc.Opt) {
+func expect(t *testing.T, dir string, skip func(string) bool, hook func(string, string) []string, ccgoOpts []Option, opts ...cc.Opt) {
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -352,7 +352,17 @@ func expect(t *testing.T, dir string, skip func(string) bool, hook func(string, 
 		}
 		seq++
 		doLog := *oLog
-		log, exitStatus, err := expect1(wd, match, hook, opts...)
+		b, err := ioutil.ReadFile(match)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		co := ccgoOpts
+		co = co[:len(co):len(co)]
+		if bytes.Contains(b, []byte("#include")) {
+			co = append(co, LibcTypes())
+		}
+		log, exitStatus, err := expect1(wd, match, hook, co, opts...)
 		switch {
 		case exitStatus <= 0 && err == nil:
 			okSeq++
@@ -411,6 +421,7 @@ func TestTCC(t *testing.T) {
 				return []string{match}
 			}
 		},
+		nil,
 		cc.AllowCompatibleTypedefRedefinitions(),
 		cc.EnableEmptyStructs(),
 		cc.EnableImplicitFuncDef(),
@@ -781,6 +792,7 @@ func TestGCCExec(t *testing.T) {
 		func(wd, match string) []string {
 			return []string{match}
 		},
+		nil,
 		cc.AllowCompatibleTypedefRedefinitions(),
 		cc.EnableAlignOf(),
 		cc.EnableAlternateKeywords(),
@@ -856,7 +868,7 @@ func build(t *testing.T, predef string, tus [][]string, opts ...cc.Opt) ([]byte,
 		src.Close()
 	}()
 
-	if err := New(build, &out); err != nil {
+	if err := New(build, &out, LibcTypes()); err != nil {
 		return nil, fmt.Errorf("New: %v", err)
 	}
 
@@ -1178,6 +1190,7 @@ func TestOther(t *testing.T) {
 		func(wd, match string) []string {
 			return []string{match}
 		},
+		nil,
 		cc.EnableEmptyStructs(),
 		cc.EnableImplicitFuncDef(),
 		cc.ErrLimit(-1),

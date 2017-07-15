@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 
 	"github.com/cznic/cc"
 	"github.com/cznic/ccir"
@@ -36,7 +37,7 @@ func TODO(msg string, more ...interface{}) string { //TODOOK
 	panic(fmt.Errorf("%s:%d: %v", path.Base(fn), fl, fmt.Sprintf(msg, more...)))
 }
 
-func typ(tc ir.TypeCache, tm map[ir.TypeID]string, fm map[ir.TypeID][]ir.NameID, id ir.TypeID, nm, pkg ir.NameID) {
+func typ(o ir.Object, tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm, pkg ir.NameID) {
 	if nm == 0 {
 		return
 	}
@@ -69,7 +70,8 @@ func typ(tc ir.TypeCache, tm map[ir.TypeID]string, fm map[ir.TypeID][]ir.NameID,
 	id = t.ID()
 	switch t.Kind() {
 	case ir.Struct, ir.Union:
-		if _, ok := tm[id]; !ok {
+		snm, ok := tm[id]
+		if !ok {
 			b := s
 			if pkg != 0 {
 				b = nil
@@ -78,14 +80,24 @@ func typ(tc ir.TypeCache, tm map[ir.TypeID]string, fm map[ir.TypeID][]ir.NameID,
 				b = append(b, s...)
 			}
 			tm[id] = string(b)
+			break
+		}
+
+		i := strings.IndexByte(snm, '.')
+		if pkg == 0 && i > 0 {
+			nm0 := snm[i+1:]
+			if nm1 := string(s); nm1 != nm0 {
+				tm[id] = nm1
+			}
 		}
 	}
 }
 
 type options struct {
 	ast        []*cc.TranslationUnit
-	qualifiers []string
+	libcTypes  map[ir.TypeID]string
 	library    bool
+	qualifiers []string
 }
 
 // Option is a configuration/setup function that can be passed to the New
@@ -116,6 +128,14 @@ func Library() Option {
 	}
 }
 
+// LibcTypes makes code refering to libc types import them from the CRT package.
+func LibcTypes() Option {
+	return func(o *options) error {
+		o.libcTypes = typeMap
+		return nil
+	}
+}
+
 // New writes Go code generated from ast to out. No package or import clause is
 // generated.
 func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
@@ -139,7 +159,6 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 
 	tc := ir.TypeCache{}
 	tm := map[ir.TypeID]string{}
-	fm := map[ir.TypeID][]ir.NameID{}
 	var build [][]ir.Object
 	for i, v := range ast {
 		obj, err := ccir.New(v, ccir.TypeCache(tc))
@@ -162,12 +181,12 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 			}
 			switch x := v.(type) {
 			case *ir.DataDefinition:
-				typ(tc, tm, fm, x.TypeID, x.TypeName, tpkg)
+				typ(x, tc, tm, x.TypeID, x.TypeName, tpkg)
 			case *ir.FunctionDefinition:
 				for _, v := range x.Body {
 					switch y := v.(type) {
 					case *ir.VariableDeclaration:
-						typ(tc, tm, fm, y.TypeID, y.TypeName, tpkg)
+						typ(x, tc, tm, y.TypeID, y.TypeName, tpkg)
 					}
 				}
 			}
@@ -194,7 +213,7 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 		}
 	}
 
-	for k, v := range typeMap {
+	for k, v := range o.libcTypes {
 		tm[k] = v
 	}
 
