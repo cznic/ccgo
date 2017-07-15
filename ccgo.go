@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strings"
 
 	"github.com/cznic/cc"
 	"github.com/cznic/ccir"
@@ -70,8 +69,7 @@ func typ(o ir.Object, tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm
 	id = t.ID()
 	switch t.Kind() {
 	case ir.Struct, ir.Union:
-		snm, ok := tm[id]
-		if !ok {
+		if _, ok := tm[id]; !ok {
 			b := s
 			if pkg != 0 {
 				b = nil
@@ -80,15 +78,6 @@ func typ(o ir.Object, tc ir.TypeCache, tm map[ir.TypeID]string, id ir.TypeID, nm
 				b = append(b, s...)
 			}
 			tm[id] = string(b)
-			break
-		}
-
-		i := strings.IndexByte(snm, '.')
-		if pkg == 0 && i > 0 {
-			nm0 := snm[i+1:]
-			if nm1 := string(s); nm1 != nm0 {
-				tm[id] = nm1
-			}
 		}
 	}
 }
@@ -159,6 +148,9 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 
 	tc := ir.TypeCache{}
 	tm := map[ir.TypeID]string{}
+	for k, v := range o.libcTypes {
+		tm[k] = v
+	}
 	var build [][]ir.Object
 	for i, v := range ast {
 		obj, err := ccir.New(v, ccir.TypeCache(tc))
@@ -211,10 +203,6 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 		if err := v.Verify(); err != nil {
 			return err
 		}
-	}
-
-	for k, v := range o.libcTypes {
-		tm[k] = v
 	}
 
 	return irgo.New(out, obj, tm, irgo.TypeCache(tc))
