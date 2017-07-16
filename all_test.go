@@ -560,6 +560,7 @@ func TestGCCExec(t *testing.T) {
 		// 6.5.16/4: The order of evaluation of the operands is unspecified.
 		"pr58943.c": {},
 	}
+
 	todolist := map[string]struct{}{
 		// long double constant out of range for double.
 		"960405-1.c": {},
@@ -590,15 +591,10 @@ func TestGCCExec(t *testing.T) {
 		"pr22098-1.c":         {}, // b = (uintptr_t)(p = &(int []){0, 1, 2}[++a]);
 		"pr22098-2.c":         {}, // b = (uintptr_t)(p = &(int []){0, 1, 2}[1]);
 		"pr22098-3.c":         {}, // b = (uintptr_t)(p = &(int []){0, f(), 2}[1]);
-		"pr33631.c":           {}, // struct { int c; pthread_mutex_t m; } r = { .m = 0 };
 		"pr70460.c":           {}, // static int b[] = { &&lab1 - &&lab0, &&lab2 - &&lab0 };
 
 		// signal.h
 		"20101011-1.c": {},
-
-		// mmap.h
-		"loop-2f.c": {},
-		"loop-2g.c": {},
 
 		// &&label expr
 		"comp-goto-1.c": {}, // # [100]: Verify (A): mismatched operand type, got int32, expected uint32; simulator_kernel:0x64: 	lsh             	uint32	; ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/comp-goto-1.c:83:40
@@ -638,8 +634,6 @@ func TestGCCExec(t *testing.T) {
 		// __builtin_return_address
 		"pr17377.c":    {},
 		"20010122-1.c": {},
-		"20030323-1.c": {},
-		"20030811-1.c": {},
 
 		// setjmp/longjmp
 		"pr60003.c": {},
@@ -652,7 +646,6 @@ func TestGCCExec(t *testing.T) {
 		"20040223-1.c":      {},
 		"20040308-1.c":      {},
 		"20070824-1.c":      {},
-		"920721-2.c":        {},
 		"921017-1.c":        {},
 		"941202-1.c":        {},
 		"align-nest.c":      {},
@@ -665,7 +658,6 @@ func TestGCCExec(t *testing.T) {
 		// irgo TODOs
 		"20010924-1.c":    {}, // irgo.go:1485: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20010924-1.c:33:3: TODO1247 int8:Int8
 		"20020810-1.c":    {}, // irgo.go:1546: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20020810-1.c:17:10: Struct
-		"20030109-1.c":    {}, // irgo.go:1485: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20030109-1.c:12:10: TODO1247 int32:Int32
 		"20040307-1.c":    {}, // irgo.go:853: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20040307-1.c:16:11
 		"20040331-1.c":    {}, // irgo.go:853: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20040331-1.c:10:10
 		"20040629-1.c":    {}, // irgo.go:853: ../cc/testdata/gcc-6.3.0/gcc/testsuite/gcc.c-torture/execute/20040629-1.c:124:1
@@ -701,27 +693,26 @@ func TestGCCExec(t *testing.T) {
 		"zero-struct-1.c": {}, // New: runtime error: index out of range
 
 		// Incorrect conversion
-		"20010123-1.c":         {}, // 91:109: expected '==', found '='
-		"20010518-2.c":         {}, // 90:123: expected '==', found '='
-		"20020215-1.c":         {}, // 86:126: expected '==', found '='
-		"20030224-2.c":         {}, // 87:125: expected '==', found '='
-		"20031215-1.c":         {}, // ./main.go:118: cannot use str(0) (type *int8) as type [3]int8 in field value
-		"20041212-1.c":         {}, // ./main.go:78: cannot convert Xf (type func(*crt.TLS) unsafe.Pointer) to type unsafe.Pointer
-		"20050502-2.c":         {}, // ./main.go:82: cannot use (*int8)(unsafe.Pointer(&_x)) (type *int8) as type unsafe.Pointer in argument to crt.Xmemcmp
-		"20051012-1.c":         {}, // ./main.go:79: too many arguments in call to Xfoo
-		"20060929-1.c":         {}, // ./main.go:125: *postInc_1018(postInc_20561(&_p, 8), 4) evaluated but not used
-		"20071202-1.c":         {}, // 108:140: expected '==', found '='
-		"20080122-1.c":         {}, // ./main.go:82: cannot use str(0) (type *int8) as type [32]uint8 in assignment
-		"20080424-1.c":         {}, // ./main.go:106: invalid operation: (*[3]int32)(unsafe.Pointer(_x)) == (*[3][3]int32)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&Xg))) + 36 * uintptr(_barØ00iØ001 + i32(8)))) (mismatched types *[3]int32 and *[3][3]int32)
-		"20080519-1.c":         {}, // ./main.go:137: cannot use (*[2]uint64)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&Xreg_class_contents))) + 16 * uintptr(_last.X1))) (type *[2]uint64) as type *uint64 in assignment
-		"20120919-1.c":         {}, // ./main.go:144: cannot use &Xvd (type *[2]float64) as type *float64 in assignment
-		"920501-1.c":           {}, // ./main.go:79: too many arguments in call to Xx
-		"921202-1.c":           {}, // ./main.go:94: too many arguments in call to Xmpn_random2
-		"921208-2.c":           {}, // ./main.go:95: too many arguments in call to Xg
+		"20010123-1.c": {}, // 91:109: expected '==', found '='
+		"20010518-2.c": {}, // 90:123: expected '==', found '='
+		"20020215-1.c": {}, // 86:126: expected '==', found '='
+		"20030224-2.c": {}, // 87:125: expected '==', found '='
+		"20031215-1.c": {}, // ./main.go:118: cannot use str(0) (type *int8) as type [3]int8 in field value
+		"20041212-1.c": {}, // ./main.go:78: cannot convert Xf (type func(*crt.TLS) unsafe.Pointer) to type unsafe.Pointer
+		"20050502-2.c": {}, // ./main.go:82: cannot use (*int8)(unsafe.Pointer(&_x)) (type *int8) as type unsafe.Pointer in argument to crt.Xmemcmp
+		"20051012-1.c": {}, // ./main.go:79: too many arguments in call to Xfoo
+
+		"20060929-1.c": {}, // ./main.go:125: *postInc_1018(postInc_20561(&_p, 8), 4) evaluated but not used
+		"20071202-1.c": {}, // 108:140: expected '==', found '='
+		"20080122-1.c": {}, // ./main.go:82: cannot use str(0) (type *int8) as type [32]uint8 in assignment
+		"20120919-1.c": {}, // ./main.go:144: cannot use &Xvd (type *[2]float64) as type *float64 in assignment
+		"920501-1.c":   {}, // ./main.go:79: too many arguments in call to Xx
+		"921202-1.c":   {}, // ./main.go:94: too many arguments in call to Xmpn_random2
+		"921208-2.c":   {}, // ./main.go:95: too many arguments in call to Xg
+
 		"930608-1.c":           {}, // ./main.go:85: cannot convert Xa (type [1]func(*crt.TLS, float64) float64) to type unsafe.Pointer
 		"930719-1.c":           {}, // ./main.go:112: invalid indirect of nil
 		"941014-1.c":           {}, // ./main.go:82: cannot convert Xf (type func(*crt.TLS, int32, int32) int32) to type unsafe.Pointer
-		"960117-1.c":           {}, // ./main.go:91: cannot use (*[33]int8)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&_id_space))) + 33 * uintptr(_idc))) (type *[33]int8) as type *int8 in assignment
 		"960416-1.c":           {}, // ./main.go:106: cannot convert u64(4294967296) (type uint64) to type struct { X [0]struct { X0 uint64; X1 struct { X0 uint64; X1 uint64 } }; U [16]byte }
 		"980223.c":             {}, // ./main.go:126: cannot use &Xcons1 (type *[2]struct { X0 *int8; X1 int64 }) as type *int8 in field value
 		"991201-1.c":           {}, // ./main.go:110: cannot use &Xa_con (type *struct { X0 uint64; X1 [48]uint8 }) as type struct { X0 unsafe.Pointer } in array or slice literal
@@ -736,28 +727,24 @@ func TestGCCExec(t *testing.T) {
 		"builtin-prefetch-6.c": {}, // ./main.go:122: *(**int32)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&Xbad_addr))) + 8 * uintptr(_i))) evaluated but not used
 		"longlong.c":           {}, // ./main.go:124: cannot use &Xb (type *[32]uint64) as type *uint64 in assignment
 		"lto-tbaa-1.c":         {}, // ./main.go:112: cannot use &Xb2 (type *struct { X0 *int32 }) as type **int32 in assignment
-		"pr34176.c":            {}, // ./main.go:111: constant -1 overflows uint64
-		"pr37573.c":            {}, // ./main.go:119: constant -1 overflows uint32
 		"pr43784.c":            {}, // ./main.go:116: cannot use &_v (type *struct { X [0]struct { X0 struct { X0 struct { X0 [256]uint8 }; X1 int32 }; X1 struct { X0 int32; X1 struct { X0 [256]uint8 } } }; U [260]byte }) as type *struct { X0 [256]uint8 } in assignment
-		"pr44555.c":            {}, // Needs a strict-semantic option to pass.
-		"pr53160.c":            {}, // ./main.go:86: Xb evaluated but not used
-		"pr57130.c":            {}, // 89:111: expected '==', found '='
-		"pr57281.c":            {}, // ./main.go:86: Xf evaluated but not used
-		"pr57568.c":            {}, // ./main.go:98: cannot convert uintptr(unsafe.Pointer(&Xa)) + 128 (type uintptr) to type *int32
-		"pr58277-2.c":          {}, // ./main.go:222: Xd evaluated but not used
-		"pr66556.c":            {}, // ./main.go:152: *(*int8)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&Xe))) + 1 * uintptr(i32(0)))) evaluated but not used
-		"pr67037.c":            {}, // ./main.go:119: too many arguments in call to Xextfunc
-		"pr69691.c":            {}, // ./main.go:125: undefined: crt.X__builtin_strchr
-		"restrict-1.c":         {}, // 102:130: expected '==', found '='
-		"struct-ret-1.c":       {}, // ./main.go:132: cannot use str(64) (type *int8) as type [33]int8 in field value
-		"va-arg-4.c":           {}, // ./main.go:120: cannot use str(16) (type *int8) as type [32]int8 in field value
-		"zero-struct-2.c":      {}, // 84:108: expected '==', found '='
+
+		"pr44555.c":       {}, // Needs a strict-semantic option to pass.
+		"pr53160.c":       {}, // ./main.go:86: Xb evaluated but not used
+		"pr57130.c":       {}, // 89:111: expected '==', found '='
+		"pr57281.c":       {}, // ./main.go:86: Xf evaluated but not used
+		"pr57568.c":       {}, // ./main.go:98: cannot convert uintptr(unsafe.Pointer(&Xa)) + 128 (type uintptr) to type *int32
+		"pr58277-2.c":     {}, // ./main.go:222: Xd evaluated but not used
+		"pr66556.c":       {}, // ./main.go:152: *(*int8)(unsafe.Pointer(uintptr(unsafe.Pointer(unsafe.Pointer(&Xe))) + 1 * uintptr(i32(0)))) evaluated but not used
+		"pr67037.c":       {}, // ./main.go:119: too many arguments in call to Xextfunc
+		"pr69691.c":       {}, // ./main.go:125: undefined: crt.X__builtin_strchr
+		"restrict-1.c":    {}, // 102:130: expected '==', found '='
+		"struct-ret-1.c":  {}, // ./main.go:132: cannot use str(64) (type *int8) as type [33]int8 in field value
+		"va-arg-4.c":      {}, // ./main.go:120: cannot use str(16) (type *int8) as type [32]int8 in field value
+		"zero-struct-2.c": {}, // 84:108: expected '==', found '='
 
 		// Compiles to Go but fails
 		"stdarg-3.c": {}, // y = va_arg (ap, int); but passed value is a struct (???)
-
-		// GC bug
-		//TODO remove bypass: "pr63659.c": {}, // https://github.com/golang/go/issues/20530
 	}
 	wd, err := os.Getwd()
 	if err != nil {
