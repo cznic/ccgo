@@ -163,6 +163,15 @@ func New(ast []*cc.TranslationUnit, out io.Writer, opts ...Option) (err error) {
 			pkg = ir.NameID(dict.SID(o.qualifiers[i]))
 		}
 		for _, v := range obj {
+			// switch x := v.(type) { //TODO-
+			// case *ir.DataDefinition:
+			// 	fmt.Printf("# [%v]: %T %v %v\n", i, x, x.ObjectBase, x.Value)
+			// case *ir.FunctionDefinition:
+			// 	fmt.Printf("# [%v]: %T %v %v\n", i, x, x.ObjectBase, x.Arguments)
+			// 	for i, v := range x.Body {
+			// 		fmt.Printf("%#05x\t%v\n", i, v)
+			// 	}
+			// }
 			if err := v.Verify(); err != nil {
 				return err
 			}
