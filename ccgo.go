@@ -3,6 +3,13 @@
 // license that can be found in the LICENSE file.
 
 // Package ccgo translates cc ASTs to Go source code. (Work In Progress)
+//
+// Changelog
+//
+// 2018-04-10: This code no longer passes tests and soon it will not even build
+// due to the upcoming changes in cznic/crt. For that reason the current crt
+// master branch package is now included in this repository for the improbable
+// case someone wants to make the code work again.
 package ccgo
 
 import (

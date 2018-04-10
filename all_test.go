@@ -83,7 +83,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/cznic/crt"
+	"github.com/cznic/ccgo/crt"
 )
 
 var argv []*int8

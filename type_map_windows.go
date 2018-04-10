@@ -5,7 +5,7 @@
 package ccgo
 
 import (
-	"github.com/cznic/crt"
+	"github.com/cznic/ccgo/crt"
 	"github.com/cznic/ir"
 )
 
