@@ -6,6 +6,10 @@
 //
 // Changelog
 //
+// 2018-07-01 This package is no longer maintained. Please see the v2 version at
+//
+//	https://github.com/cznic/ccgo/v2
+//
 // 2018-04-10: This code no longer passes tests and soon it will not even build
 // due to the upcoming changes in cznic/crt. For that reason the current crt
 // master branch package is now included in this repository for the improbable

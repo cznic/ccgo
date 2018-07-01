@@ -2,15 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Need go1.1O+ b/c of https://github.com/golang/go/issues/23812
-
-// +build go1.10
-
 // Package ccgo translates c99 ASTs to Go source code. (Work In Progress)
-//
-// This package is a modification of [1] supporting only SQLite.
-//
-// [1] https://github.com/cznic/ccgo
 package ccgo
 
 import (
@@ -24,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cznic/sqlite2go/internal/c99"
+	"github.com/cznic/cc/v2"
 )
 
 var (
@@ -58,7 +50,7 @@ func main() {
 // Command outputs a Go program generated from in to w.
 //
 // No package or import clause is generated.
-func Command(w io.Writer, in []*c99.TranslationUnit) (err error) {
+func Command(w io.Writer, in []*cc.TranslationUnit) (err error) {
 	returned := false
 
 	defer func() {
@@ -75,7 +67,7 @@ func Command(w io.Writer, in []*c99.TranslationUnit) (err error) {
 // Package outputs a Go package generated from in to w.
 //
 // No package or import clause is generated.
-func Package(w io.Writer, in []*c99.TranslationUnit) error {
+func Package(w io.Writer, in []*cc.TranslationUnit) error {
 	return newGen(w, in).gen(false)
 }
 
@@ -84,32 +76,32 @@ type gen struct {
 	ds                     []byte
 	enqueued               map[interface{}]struct{}
 	errs                   scanner.ErrorList
-	externs                map[int]*c99.Declarator
+	externs                map[int]*cc.Declarator
 	filenames              map[string]struct{}
 	fset                   *token.FileSet
 	helpers                map[string]int
-	in                     []*c99.TranslationUnit
-	incompleteExternArrays map[int]*c99.Declarator
+	in                     []*cc.TranslationUnit
+	incompleteExternArrays map[int]*cc.Declarator
 	initializedExterns     map[int]struct{}
-	model                  c99.Model
+	model                  cc.Model
 	needBool2int           int
 	nextLabel              int
 	num                    int
-	nums                   map[*c99.Declarator]int
+	nums                   map[*cc.Declarator]int
 	opaqueStructTags       map[int]struct{}
 	out                    io.Writer
 	out0                   bytes.Buffer
-	producedDeclarators    map[*c99.Declarator]struct{}
+	producedDeclarators    map[*cc.Declarator]struct{}
 	producedEnumTags       map[int]struct{}
 	producedExterns        map[int]struct{}
 	producedStructTags     map[int]struct{}
 	queue                  list.List
-	staticDeclarators      map[int]*c99.Declarator
+	staticDeclarators      map[int]*cc.Declarator
 	strings                map[int]int64
 	tCache                 map[tCacheKey]string
 	text                   []int
 	ts                     int64
-	units                  map[*c99.Declarator]int
+	units                  map[*cc.Declarator]int
 
 	escAllTLDs bool
 	mainFn     bool
@@ -119,26 +111,26 @@ type gen struct {
 	needPreInc bool
 }
 
-func newGen(out io.Writer, in []*c99.TranslationUnit) *gen {
+func newGen(out io.Writer, in []*cc.TranslationUnit) *gen {
 	return &gen{
 		enqueued:  map[interface{}]struct{}{},
-		externs:   map[int]*c99.Declarator{},
+		externs:   map[int]*cc.Declarator{},
 		filenames: map[string]struct{}{},
 		helpers:   map[string]int{},
 		in:        in,
-		incompleteExternArrays: map[int]*c99.Declarator{},
+		incompleteExternArrays: map[int]*cc.Declarator{},
 		initializedExterns:     map[int]struct{}{},
-		nums:                   map[*c99.Declarator]int{},
+		nums:                   map[*cc.Declarator]int{},
 		opaqueStructTags:       map[int]struct{}{},
 		out:                    out,
-		producedDeclarators:    map[*c99.Declarator]struct{}{},
+		producedDeclarators:    map[*cc.Declarator]struct{}{},
 		producedEnumTags:       map[int]struct{}{},
 		producedExterns:        map[int]struct{}{},
 		producedStructTags:     map[int]struct{}{},
-		staticDeclarators:      map[int]*c99.Declarator{},
+		staticDeclarators:      map[int]*cc.Declarator{},
 		strings:                map[int]int64{},
 		tCache:                 map[tCacheKey]string{},
-		units:                  map[*c99.Declarator]int{},
+		units:                  map[*cc.Declarator]int{},
 	}
 }
 
@@ -149,8 +141,8 @@ func (g *gen) enqueue(n interface{}) {
 
 	g.enqueued[n] = struct{}{}
 	switch x := n.(type) {
-	case *c99.Declarator:
-		if x.Linkage == c99.LinkageNone {
+	case *cc.Declarator:
+		if x.Linkage == cc.LinkageNone {
 			return
 		}
 
@@ -167,7 +159,7 @@ func (g *gen) enqueue(n interface{}) {
 	g.queue.PushBack(n)
 }
 
-func (g *gen) enqueueNumbered(n *c99.Declarator) {
+func (g *gen) enqueueNumbered(n *cc.Declarator) {
 	if _, ok := g.nums[n]; ok {
 		return
 	}
@@ -290,9 +282,9 @@ const %s = uintptr(0)
 }
 
 // dbg only
-func (g *gen) position0(n c99.Node) token.Position { return g.in[0].FileSet.PositionFor(n.Pos(), true) }
+func (g *gen) position0(n cc.Node) token.Position { return g.in[0].FileSet.PositionFor(n.Pos(), true) }
 
-func (g *gen) position(n *c99.Declarator) token.Position {
+func (g *gen) position(n *cc.Declarator) token.Position {
 	return g.in[g.units[n]].FileSet.PositionFor(n.Pos(), true)
 }
 
@@ -309,21 +301,21 @@ func (g *gen) collectSymbols() error {
 	for unit, t := range g.in {
 		for nm, n := range t.FileScope.Idents {
 			switch x := n.(type) {
-			case *c99.Declarator:
+			case *cc.Declarator:
 				g.units[x] = unit
-				if x.Type.Kind() == c99.Function && x.FunctionDefinition == nil {
+				if x.Type.Kind() == cc.Function && x.FunctionDefinition == nil {
 					continue
 				}
 
 				switch x.Linkage {
-				case c99.LinkageExternal:
+				case cc.LinkageExternal:
 					if nm == idMain {
-						x.Type = &c99.FunctionType{
-							Params: []c99.Type{
-								c99.Int,
-								&c99.PointerType{Item: &c99.PointerType{Item: c99.Char}},
+						x.Type = &cc.FunctionType{
+							Params: []cc.Type{
+								cc.Int,
+								&cc.PointerType{Item: &cc.PointerType{Item: cc.Char}},
 							},
-							Result: c99.Int,
+							Result: cc.Int,
 						}
 					}
 					if ex, ok := g.externs[nm]; ok {
@@ -331,7 +323,7 @@ func (g *gen) collectSymbols() error {
 							break // ok
 						}
 
-						if ex.Type.Kind() == c99.Function {
+						if ex.Type.Kind() == cc.Function {
 							todo("")
 						}
 
@@ -350,9 +342,9 @@ func (g *gen) collectSymbols() error {
 					}
 
 					g.externs[nm] = x
-				case c99.LinkageInternal:
+				case cc.LinkageInternal:
 					// ok
-				case c99.LinkageNone:
+				case cc.LinkageNone:
 					if x.DeclarationSpecifier.IsTypedef() {
 						// nop ATM
 						break
@@ -362,7 +354,7 @@ func (g *gen) collectSymbols() error {
 				default:
 					todo("")
 				}
-			case *c99.EnumerationConstant:
+			case *cc.EnumerationConstant:
 				// nop
 			default:
 				todo("%T", x)
@@ -372,7 +364,7 @@ func (g *gen) collectSymbols() error {
 	return nil
 }
 
-func (g gen) escaped(n *c99.Declarator) bool {
+func (g gen) escaped(n *cc.Declarator) bool {
 	if isVaList(n.Type) {
 		return false
 	}
@@ -381,14 +373,14 @@ func (g gen) escaped(n *c99.Declarator) bool {
 		return true
 	}
 
-	switch c99.UnderlyingType(n.Type).(type) {
-	case *c99.ArrayType:
+	switch cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
 		return !n.IsFunctionParameter
 	case
-		*c99.StructType,
-		*c99.TaggedStructType,
-		*c99.TaggedUnionType,
-		*c99.UnionType:
+		*cc.StructType,
+		*cc.TaggedStructType,
+		*cc.TaggedUnionType,
+		*cc.UnionType:
 
 		return n.IsTLD() || n.DeclarationSpecifier.IsStatic()
 	default:
@@ -408,7 +400,7 @@ func (g *gen) allocString(s int) int64 {
 	return r
 }
 
-func (g *gen) shiftMod(t c99.Type) int {
+func (g *gen) shiftMod(t cc.Type) int {
 	if g.model.Sizeof(t) > 4 {
 		return 64
 	}

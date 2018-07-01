@@ -2,6 +2,8 @@
 
 Package ccgo translates c99 ASTs to Go. (Work In Progress)
 
-This package is a modification of [0] supporting only SQLite.
+Installation
 
-[0] https://github.com/cznic/ccgo
+    $ go get github.com/cznic/ccgo/v2
+
+Documentation: [godoc.org/github.com/cznic/ccgo/v2](http://godoc.org/github.com/cznic/ccgo/v2)

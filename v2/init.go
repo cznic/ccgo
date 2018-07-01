@@ -7,17 +7,17 @@ package ccgo
 import (
 	"unsafe"
 
+	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
-	"github.com/cznic/sqlite2go/internal/c99"
 	"github.com/cznic/xc"
 )
 
-func (g *gen) isZeroInitializer(n *c99.Initializer) bool {
+func (g *gen) isZeroInitializer(n *cc.Initializer) bool {
 	if n == nil {
 		return true
 	}
 
-	if n.Case == c99.InitializerExpr { // Expr
+	if n.Case == cc.InitializerExpr { // Expr
 		return n.Expr.IsZero()
 	}
 
@@ -30,18 +30,18 @@ func (g *gen) isZeroInitializer(n *c99.Initializer) bool {
 	return true
 }
 
-func (g *gen) isConstInitializer(t c99.Type, n *c99.Initializer) bool {
+func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 	switch n.Case {
-	case c99.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 		switch x := underlyingType(t, true).(type) {
-		case *c99.ArrayType:
+		case *cc.ArrayType:
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
 				if !g.isConstInitializer(x.Item, l.Initializer) {
 					return false
 				}
 			}
 			return true
-		case *c99.StructType:
+		case *cc.StructType:
 			layout := g.model.Layout(x)
 			fld := 0
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
@@ -64,7 +64,7 @@ func (g *gen) isConstInitializer(t c99.Type, n *c99.Initializer) bool {
 				fld++
 			}
 			return true
-		case *c99.UnionType:
+		case *cc.UnionType:
 			layout := g.model.Layout(x)
 			fld := 0
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
@@ -90,19 +90,19 @@ func (g *gen) isConstInitializer(t c99.Type, n *c99.Initializer) bool {
 		default:
 			todo("%v: %T %v", g.position0(n), x, t)
 		}
-	case c99.InitializerExpr: // Expr
+	case cc.InitializerExpr: // Expr
 		op := n.Expr.Operand
 		if op.Value == nil || !g.voidCanIgnore(n.Expr) {
 			return false
 		}
 
 		switch x := underlyingType(t, true).(type) {
-		case *c99.ArrayType:
+		case *cc.ArrayType:
 			switch y := n.Expr.Operand.Value.(type) {
 			case *ir.StringValue:
 				if x.Size.Value != nil {
 					switch x.Item.Kind() {
-					case c99.Char, c99.SChar, c99.UChar:
+					case cc.Char, cc.SChar, cc.UChar:
 						return true
 					default:
 						return false
@@ -113,12 +113,12 @@ func (g *gen) isConstInitializer(t c99.Type, n *c99.Initializer) bool {
 			default:
 				todo("%v: %T %v %v", g.position0(n), y, t, op)
 			}
-		case *c99.EnumType:
+		case *cc.EnumType:
 			return true
-		case *c99.PointerType:
+		case *cc.PointerType:
 			_, ok := op.Value.(*ir.Int64Value)
 			return ok
-		case c99.TypeKind:
+		case cc.TypeKind:
 			if x.IsArithmeticType() {
 				return true
 			}
@@ -131,14 +131,14 @@ func (g *gen) isConstInitializer(t c99.Type, n *c99.Initializer) bool {
 	panic("unreachable")
 }
 
-func (g *gen) allocBSS(t c99.Type) int64 {
+func (g *gen) allocBSS(t cc.Type) int64 {
 	g.bss = roundup(g.bss, int64(g.model.Alignof(t)))
 	r := g.bss
 	g.bss += g.model.Sizeof(t)
 	return r
 }
 
-func (g *gen) allocDS(t c99.Type, n *c99.Initializer) int64 {
+func (g *gen) allocDS(t cc.Type, n *cc.Initializer) int64 {
 	up := roundup(int64(len(g.ds)), int64(g.model.Alignof(t)))
 	if n := up - int64(len(g.ds)); n != 0 {
 		g.ds = append(g.ds, make([]byte, n)...)
@@ -153,9 +153,9 @@ func (g *gen) allocDS(t c99.Type, n *c99.Initializer) int64 {
 	return int64(r)
 }
 
-func (g *gen) initializer(d *c99.Declarator) { // non TLD
+func (g *gen) initializer(d *cc.Declarator) { // non TLD
 	n := d.Initializer
-	if n.Case == c99.InitializerExpr { // Expr
+	if n.Case == cc.InitializerExpr { // Expr
 		switch {
 		case g.escaped(d):
 			g.w("\n*(*%s)(unsafe.Pointer(%s))", g.typ(d.Type), g.mangleDeclarator(d))
@@ -182,9 +182,9 @@ func (g *gen) initializer(d *c99.Declarator) { // non TLD
 	switch {
 	case g.initializerHasBitFields(d.Type, d.Initializer):
 		switch n.Case {
-		case c99.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+		case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 			switch x := underlyingType(d.Type, true).(type) {
-			case *c99.StructType:
+			case *cc.StructType:
 				layout := g.model.Layout(x)
 				fld := 0
 				fields := x.Fields
@@ -202,25 +202,25 @@ func (g *gen) initializer(d *c99.Declarator) { // non TLD
 					}
 
 					switch n := l.Initializer; n.Case {
-					case c99.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+					case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 						todo("", g.position0(n))
-					case c99.InitializerExpr: // Expr
+					case cc.InitializerExpr: // Expr
 						fp := x.Field(fields[fld].Name)
-						e := &c99.Expr{
-							Case: c99.ExprAssign,
-							Expr: &c99.Expr{
-								Case: c99.ExprSelect,
-								Expr: &c99.Expr{
-									Case:       c99.ExprIdent,
+						e := &cc.Expr{
+							Case: cc.ExprAssign,
+							Expr: &cc.Expr{
+								Case: cc.ExprSelect,
+								Expr: &cc.Expr{
+									Case:       cc.ExprIdent,
 									Declarator: d,
 									Scope:      d.Scope,
 									Token:      xc.Token{Val: d.Name()},
 								},
-								Operand: c99.Operand{Type: fp.Type, FieldProperties: fp},
+								Operand: cc.Operand{Type: fp.Type, FieldProperties: fp},
 								Token2:  xc.Token{Val: fields[fld].Name},
 							},
 							Expr2:   n.Expr,
-							Operand: c99.Operand{Type: fp.Declarator.Type},
+							Operand: cc.Operand{Type: fp.Declarator.Type},
 						}
 						g.w("\n")
 						g.void(e)
@@ -231,7 +231,7 @@ func (g *gen) initializer(d *c99.Declarator) { // non TLD
 			default:
 				todo("%v: %T", g.position0(n), x)
 			}
-		case c99.InitializerExpr: // Expr
+		case cc.InitializerExpr: // Expr
 			todo("", g.position0(n))
 		}
 	default:
@@ -246,11 +246,11 @@ func (g *gen) initializer(d *c99.Declarator) { // non TLD
 	}
 }
 
-func (g *gen) initializerHasBitFields(t c99.Type, n *c99.Initializer) bool {
+func (g *gen) initializerHasBitFields(t cc.Type, n *cc.Initializer) bool {
 	switch n.Case {
-	case c99.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 		switch x := underlyingType(t, true).(type) {
-		case *c99.ArrayType:
+		case *cc.ArrayType:
 			index := 0
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
 				if l.Designation != nil {
@@ -263,7 +263,7 @@ func (g *gen) initializerHasBitFields(t c99.Type, n *c99.Initializer) bool {
 				index++
 			}
 			return false
-		case *c99.StructType:
+		case *cc.StructType:
 			layout := g.model.Layout(x)
 			fld := 0
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
@@ -293,15 +293,15 @@ func (g *gen) initializerHasBitFields(t c99.Type, n *c99.Initializer) bool {
 		default:
 			todo("%v: %T", g.position0(n), x)
 		}
-	case c99.InitializerExpr: // Expr
+	case cc.InitializerExpr: // Expr
 		switch x := underlyingType(t, true).(type) {
 		case
-			*c99.EnumType,
-			*c99.PointerType,
-			*c99.StructType:
+			*cc.EnumType,
+			*cc.PointerType,
+			*cc.StructType:
 
 			return false
-		case c99.TypeKind:
+		case cc.TypeKind:
 			if x.IsScalarType() {
 				return false
 			}
@@ -314,18 +314,18 @@ func (g *gen) initializerHasBitFields(t c99.Type, n *c99.Initializer) bool {
 	panic("unreachable")
 }
 
-func (g *gen) literal(t c99.Type, n *c99.Initializer) {
-	switch x := c99.UnderlyingType(t).(type) {
-	case *c99.ArrayType:
+func (g *gen) literal(t cc.Type, n *cc.Initializer) {
+	switch x := cc.UnderlyingType(t).(type) {
+	case *cc.ArrayType:
 		if n.Expr != nil {
 			switch x.Item.Kind() {
 			case
-				c99.Char,
-				c99.UChar:
+				cc.Char,
+				cc.UChar:
 
 				g.w("*(*%s)(unsafe.Pointer(", g.typ(t))
 				switch n.Expr.Case {
-				case c99.ExprString:
+				case cc.ExprString:
 					s := dict.S(int(n.Expr.Operand.Value.(*ir.StringValue).StringID))
 					switch {
 					case x.Size.Value == nil:
@@ -366,14 +366,14 @@ func (g *gen) literal(t c99.Type, n *c99.Initializer) {
 			}
 		}
 		g.w("}")
-	case *c99.PointerType:
-		if n.Expr.IsZero() || n.Expr.Operand.Value == c99.Null {
+	case *cc.PointerType:
+		if n.Expr.IsZero() || n.Expr.Operand.Value == cc.Null {
 			g.w("0")
 			return
 		}
 
 		g.value(n.Expr, false)
-	case *c99.StructType:
+	case *cc.StructType:
 		if n.Expr != nil {
 			g.value(n.Expr, false)
 			return
@@ -412,20 +412,20 @@ func (g *gen) literal(t c99.Type, n *c99.Initializer) {
 			}
 		}
 		g.w("}")
-	case *c99.EnumType:
+	case *cc.EnumType:
 		switch n.Case {
-		case c99.InitializerExpr:
+		case cc.InitializerExpr:
 			g.value(n.Expr, false)
 		default:
 			todo("", g.position0(n), n.Case)
 		}
-	case c99.TypeKind:
+	case cc.TypeKind:
 		if x.IsArithmeticType() {
 			g.convert(n.Expr, t)
 			return
 		}
 		todo("", g.position0(n), x)
-	case *c99.UnionType:
+	case *cc.UnionType:
 		// *(*struct{ X int32 })(unsafe.Pointer(&struct{int32}{int32(1)})),
 		if n.Expr != nil {
 			todo("", g.position0(n), x)
@@ -479,22 +479,22 @@ func (g *gen) literal(t c99.Type, n *c99.Initializer) {
 	}
 }
 
-func (g *gen) initializerListNL(n *c99.InitializerList) {
+func (g *gen) initializerListNL(n *cc.InitializerList) {
 	if n.Len > 1 {
 		g.w("\n")
 	}
 }
 
-func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
-	switch x := c99.UnderlyingType(t).(type) {
-	case *c99.ArrayType:
+func (g *gen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
+	switch x := cc.UnderlyingType(t).(type) {
+	case *cc.ArrayType:
 		if n.Expr != nil {
 			switch y := n.Expr.Operand.Value.(type) {
 			case *ir.StringValue:
 				switch z := x.Item.Kind(); z {
 				case
-					c99.Char,
-					c99.UChar:
+					cc.Char,
+					cc.UChar:
 
 					copy(b, dict.S(int(y.StringID)))
 				default:
@@ -517,7 +517,7 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 			g.renderInitializer(b[lo:hi:hi], x.Item, l.Initializer)
 			index++
 		}
-	case *c99.PointerType:
+	case *cc.PointerType:
 		switch {
 		case n.Expr.IsNonZero():
 			*(*uintptr)(unsafe.Pointer(&b[0])) = uintptr(n.Expr.Operand.Value.(*ir.Int64Value).Value)
@@ -526,7 +526,7 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 		default:
 			todo("", g.position0(n), n.Expr.Operand)
 		}
-	case *c99.StructType:
+	case *cc.StructType:
 		if n.Expr != nil {
 			todo("", g.position0(n))
 		}
@@ -581,7 +581,7 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 			}
 			fld++
 		}
-	case c99.TypeKind:
+	case cc.TypeKind:
 		if x.IsIntegerType() {
 			var v int64
 			switch y := n.Expr.Operand.Value.(type) {
@@ -608,7 +608,7 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 		}
 
 		switch x {
-		case c99.Float:
+		case cc.Float:
 			switch x := n.Expr.Operand.Value.(type) {
 			case *ir.Float32Value:
 				*(*float32)(unsafe.Pointer(&b[0])) = x.Value
@@ -616,8 +616,8 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 				*(*float32)(unsafe.Pointer(&b[0])) = float32(x.Value)
 			}
 		case
-			c99.Double,
-			c99.LongDouble:
+			cc.Double,
+			cc.LongDouble:
 
 			switch x := n.Expr.Operand.Value.(type) {
 			case *ir.Float64Value:
@@ -628,7 +628,7 @@ func (g *gen) renderInitializer(b []byte, t c99.Type, n *c99.Initializer) {
 		default:
 			todo("", g.position0(n), x)
 		}
-	case *c99.UnionType:
+	case *cc.UnionType:
 		if n.Expr != nil {
 			todo("", g.position0(n))
 		}

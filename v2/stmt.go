@@ -5,18 +5,18 @@
 package ccgo
 
 import (
-	"github.com/cznic/sqlite2go/internal/c99"
+	"github.com/cznic/cc/v2"
 )
 
-func (g *gen) compoundStmt(n *c99.CompoundStmt, vars []*c99.Declarator, cases map[*c99.LabeledStmt]int, sentinel bool, brk, cont *int, params, escParams []*c99.Declarator, deadcode bool) {
+func (g *gen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map[*cc.LabeledStmt]int, sentinel bool, brk, cont *int, params, escParams []*cc.Declarator, deadcode bool) {
 	if vars != nil {
 		g.w(" {")
 	}
-	vars = append([]*c99.Declarator(nil), vars...)
+	vars = append([]*cc.Declarator(nil), vars...)
 	w := 0
 	for _, v := range vars {
 		if v != allocaDeclarator {
-			if v.Referenced == 0 && v.Initializer != nil && v.Linkage == c99.LinkageNone && v.DeclarationSpecifier.IsStatic() && v.Name() == idFuncName {
+			if v.Referenced == 0 && v.Initializer != nil && v.Linkage == cc.LinkageNone && v.DeclarationSpecifier.IsStatic() && v.Name() == idFuncName {
 				continue
 			}
 
@@ -92,7 +92,7 @@ func (g *gen) compoundStmt(n *c99.CompoundStmt, vars []*c99.Declarator, cases ma
 				offv = offv[1:]
 			default:
 				switch {
-				case v.Type.Kind() == c99.Ptr:
+				case v.Type.Kind() == cc.Ptr:
 					g.w("\n\t%s %s\t// %s", g.mangleDeclarator(v), g.typ(v.Type), g.typeComment(v.Type))
 				default:
 					g.w("\n\t%s %s", g.mangleDeclarator(v), g.typ(v.Type))
@@ -132,7 +132,7 @@ for _, v := range allocs {
 	}
 }
 
-func (g *gen) blockItemListOpt(n *c99.BlockItemListOpt, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) blockItemListOpt(n *cc.BlockItemListOpt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	if n == nil {
 		return
 	}
@@ -140,48 +140,48 @@ func (g *gen) blockItemListOpt(n *c99.BlockItemListOpt, cases map[*c99.LabeledSt
 	g.blockItemList(n.BlockItemList, cases, brk, cont, deadcode)
 }
 
-func (g *gen) blockItemList(n *c99.BlockItemList, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) blockItemList(n *cc.BlockItemList, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	for ; n != nil; n = n.BlockItemList {
 		g.blockItem(n.BlockItem, cases, brk, cont, deadcode)
 	}
 }
 
-func (g *gen) blockItem(n *c99.BlockItem, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	switch n.Case {
-	case c99.BlockItemDecl: // Declaration
+	case cc.BlockItemDecl: // Declaration
 		g.declaration(n.Declaration, deadcode)
-	case c99.BlockItemStmt: // Stmt
+	case cc.BlockItemStmt: // Stmt
 		g.stmt(n.Stmt, cases, brk, cont, deadcode)
 	default:
 		todo("", g.position0(n), n.Case)
 	}
 }
 
-func (g *gen) stmt(n *c99.Stmt, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) stmt(n *cc.Stmt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	switch n.Case {
-	case c99.StmtExpr: // ExprStmt
+	case cc.StmtExpr: // ExprStmt
 		g.exprStmt(n.ExprStmt, deadcode)
-	case c99.StmtJump: // JumpStmt
+	case cc.StmtJump: // JumpStmt
 		g.jumpStmt(n.JumpStmt, brk, cont, deadcode)
-	case c99.StmtIter: // IterationStmt
+	case cc.StmtIter: // IterationStmt
 		g.iterationStmt(n.IterationStmt, cases, brk, cont, deadcode)
-	case c99.StmtBlock: // CompoundStmt
+	case cc.StmtBlock: // CompoundStmt
 		g.compoundStmt(n.CompoundStmt, nil, cases, false, brk, cont, nil, nil, *deadcode)
-	case c99.StmtSelect: // SelectionStmt
+	case cc.StmtSelect: // SelectionStmt
 		g.selectionStmt(n.SelectionStmt, cases, brk, cont, deadcode)
-	case c99.StmtLabeled: // LabeledStmt
+	case cc.StmtLabeled: // LabeledStmt
 		g.labeledStmt(n.LabeledStmt, cases, brk, cont, deadcode)
 	default:
 		todo("", g.position0(n), n.Case)
 	}
 }
 
-func (g *gen) labeledStmt(n *c99.LabeledStmt, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) labeledStmt(n *cc.LabeledStmt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	f := false
 	switch n.Case {
 	case
-		c99.LabeledStmtSwitchCase, // "case" ConstExpr ':' Stmt
-		c99.LabeledStmtDefault:    // "default" ':' Stmt
+		cc.LabeledStmtSwitchCase, // "case" ConstExpr ':' Stmt
+		cc.LabeledStmtDefault:    // "default" ':' Stmt
 
 		l, ok := cases[n]
 		if !ok {
@@ -190,7 +190,7 @@ func (g *gen) labeledStmt(n *c99.LabeledStmt, cases map[*c99.LabeledStmt]int, br
 		g.w("\n_%d:", l)
 		*deadcode = false
 		g.stmt(n.Stmt, cases, brk, cont, &f)
-	case c99.LabeledStmtLabel: // IDENTIFIER ':' Stmt
+	case cc.LabeledStmtLabel: // IDENTIFIER ':' Stmt
 		g.w("\ngoto %[1]s;%[1]s:\n", mangleIdent(n.Token.Val, false))
 		g.stmt(n.Stmt, cases, brk, cont, &f)
 	default:
@@ -199,9 +199,9 @@ func (g *gen) labeledStmt(n *c99.LabeledStmt, cases map[*c99.LabeledStmt]int, br
 	*deadcode = false
 }
 
-func (g *gen) selectionStmt(n *c99.SelectionStmt, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) selectionStmt(n *cc.SelectionStmt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	switch n.Case {
-	case c99.SelectionStmtSwitch: // "switch" '(' ExprList ')' Stmt
+	case cc.SelectionStmtSwitch: // "switch" '(' ExprList ')' Stmt
 		if n.ExprList.Operand.Value != nil && g.voidCanIgnoreExprList(n.ExprList) {
 			//TODO optimize
 		}
@@ -214,8 +214,8 @@ func (g *gen) selectionStmt(n *c99.SelectionStmt, cases map[*c99.LabeledStmt]int
 		}
 		g.w("{")
 		after := -g.local()
-		cases := map[*c99.LabeledStmt]int{}
-		var deflt *c99.LabeledStmt
+		cases := map[*cc.LabeledStmt]int{}
+		var deflt *cc.LabeledStmt
 		for _, v := range n.Cases {
 			l := g.local()
 			cases[v] = l
@@ -239,7 +239,7 @@ func (g *gen) selectionStmt(n *c99.SelectionStmt, cases map[*c99.LabeledStmt]int
 			g.w("\n_%d:", after)
 			*deadcode = false
 		}
-	case c99.SelectionStmtIf: // "if" '(' ExprList ')' Stmt
+	case cc.SelectionStmtIf: // "if" '(' ExprList ')' Stmt
 		g.w("\n")
 		if n.ExprList.IsZero() {
 			a := g.local()
@@ -269,7 +269,7 @@ func (g *gen) selectionStmt(n *c99.SelectionStmt, cases map[*c99.LabeledStmt]int
 		g.stmt(n.Stmt, cases, brk, cont, deadcode)
 		g.w("\n_%d:", a)
 		*deadcode = false
-	case c99.SelectionStmtIfElse: // "if" '(' ExprList ')' Stmt "else" Stmt
+	case cc.SelectionStmtIfElse: // "if" '(' ExprList ')' Stmt "else" Stmt
 		g.w("\n")
 		if n.ExprList.IsZero() {
 			a := g.local()
@@ -323,9 +323,9 @@ func (g *gen) selectionStmt(n *c99.SelectionStmt, cases map[*c99.LabeledStmt]int
 	}
 }
 
-func (g *gen) iterationStmt(n *c99.IterationStmt, cases map[*c99.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+func (g *gen) iterationStmt(n *cc.IterationStmt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	switch n.Case {
-	case c99.IterationStmtDo: // "do" Stmt "while" '(' ExprList ')' ';'
+	case cc.IterationStmtDo: // "do" Stmt "while" '(' ExprList ')' ';'
 		// A:
 		// stmt
 		// B: <- continue
@@ -349,7 +349,7 @@ func (g *gen) iterationStmt(n *c99.IterationStmt, cases map[*c99.LabeledStmt]int
 			g.w("\ngoto _%d\n\n_%d:", c, c)
 			*deadcode = false
 		}
-	case c99.IterationStmtFor: // "for" '(' ExprListOpt ';' ExprListOpt ';' ExprListOpt ')' Stmt
+	case cc.IterationStmtFor: // "for" '(' ExprListOpt ';' ExprListOpt ';' ExprListOpt ')' Stmt
 		// ExprListOpt
 		// A:
 		// if ExprListOpt2 == 0 { goto C }
@@ -385,7 +385,7 @@ func (g *gen) iterationStmt(n *c99.IterationStmt, cases map[*c99.LabeledStmt]int
 			g.w("\n_%d:", c)
 			*deadcode = false
 		}
-	case c99.IterationStmtWhile: // "while" '(' ExprList ')' Stmt
+	case cc.IterationStmtWhile: // "while" '(' ExprList ')' Stmt
 		if n.ExprList.IsNonZero() {
 			// A:
 			// exprList
@@ -430,25 +430,25 @@ func (g *gen) local() int {
 	return r
 }
 
-func (g *gen) jumpStmt(n *c99.JumpStmt, brk, cont *int, deadcode *bool) {
+func (g *gen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool) {
 	if g.mainFn {
-		n.ReturnOperand.Type = c99.Int
+		n.ReturnOperand.Type = cc.Int
 	}
 	switch n.Case {
-	case c99.JumpStmtReturn: // "return" ExprListOpt ';'
+	case cc.JumpStmtReturn: // "return" ExprListOpt ';'
 		switch o := n.ExprListOpt; {
 		case o != nil:
 			switch rt := n.ReturnOperand.Type; {
 			case rt == nil:
 				switch {
-				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == c99.ExprCond:
+				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == cc.ExprCond:
 					todo("", g.position0(n))
 				default:
 					g.exprList(o.ExprList, true)
 				}
 			default:
 				switch {
-				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == c99.ExprCond:
+				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == cc.ExprCond:
 					n := o.ExprList.Expr // Expr '?' ExprList ':' Expr
 					switch {
 					case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
@@ -474,14 +474,14 @@ func (g *gen) jumpStmt(n *c99.JumpStmt, brk, cont *int, deadcode *bool) {
 		}
 		g.w("\n")
 		*deadcode = true
-	case c99.JumpStmtBreak: // "break" ';'
+	case cc.JumpStmtBreak: // "break" ';'
 		if *brk < 0 {
 			*brk = -*brk // Signal used.
 		}
 		g.w("\ngoto _%d\n", *brk)
-	case c99.JumpStmtGoto: // "goto" IDENTIFIER ';'
+	case cc.JumpStmtGoto: // "goto" IDENTIFIER ';'
 		g.w("\ngoto %s\n", mangleIdent(n.Token2.Val, false))
-	case c99.JumpStmtContinue: // "continue" ';'
+	case cc.JumpStmtContinue: // "continue" ';'
 		if *cont < 0 {
 			*cont = -*cont // Signal used.
 		}
@@ -491,7 +491,7 @@ func (g *gen) jumpStmt(n *c99.JumpStmt, brk, cont *int, deadcode *bool) {
 	}
 }
 
-func (g *gen) exprStmt(n *c99.ExprStmt, deadcode *bool) {
+func (g *gen) exprStmt(n *cc.ExprStmt, deadcode *bool) {
 	if *deadcode {
 		return
 	}

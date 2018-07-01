@@ -1,0 +1,214 @@
+configure: loading site script /usr/share/site/x86_64-unknown-linux-gnu
+checking whether to use symlinks for manpages... no
+checking whether to compress the manpages... no
+checking whether to add a package name suffix for the manpages... no
+checking for gcc... 99c
+checking for C compiler default output file name... a.out
+checking whether the C compiler works... yes
+checking whether we are cross compiling... no
+checking for suffix of executables... 
+checking for suffix of object files... o
+checking whether we are using the GNU C compiler... no
+checking whether 99c accepts -g... yes
+checking for 99c option to accept ANSI C... none needed
+checking for inline... inline
+checking how to run the C preprocessor... /lib/cpp
+checking for egrep... grep -E
+checking for ANSI C header files... no
+checking for sys/types.h... yes
+checking for sys/stat.h... yes
+checking for stdlib.h... yes
+checking for string.h... yes
+checking for memory.h... yes
+checking for strings.h... yes
+checking for inttypes.h... yes
+checking for stdint.h... yes
+checking for unistd.h... yes
+checking dirent.h... no
+checking float.h usability... yes
+checking float.h presence... yes
+checking for float.h... yes
+checking values.h usability... no
+checking values.h presence... yes
+configure: WARNING: values.h: present but cannot be compiled
+configure: WARNING: values.h:     check for missing prerequisite headers?
+configure: WARNING: values.h: see the Autoconf documentation
+configure: WARNING: values.h:     section "Present But Cannot Be Compiled"
+configure: WARNING: values.h: proceeding with the preprocessor's result
+configure: WARNING: values.h: in the future, the compiler will take precedence
+configure: WARNING:     ## ------------------------------ ##
+configure: WARNING:     ## Report this to the tcl lists.  ##
+configure: WARNING:     ## ------------------------------ ##
+checking for values.h... yes
+checking for stdlib.h... (cached) yes
+checking for string.h... (cached) yes
+checking sys/wait.h usability... yes
+checking sys/wait.h presence... yes
+checking for sys/wait.h... yes
+checking dlfcn.h usability... yes
+checking dlfcn.h presence... yes
+checking for dlfcn.h... yes
+checking sys/param.h usability... yes
+checking sys/param.h presence... yes
+checking for sys/param.h... yes
+checking for pthread_mutex_init in -lpthread... yes
+checking for pthread_attr_setstacksize... no
+checking for pthread_atfork... no
+checking for building with threads... yes
+checking for sin... yes
+checking for main in -lieee... yes
+checking for main in -linet... yes
+checking net/errno.h usability... no
+checking net/errno.h presence... no
+checking for net/errno.h... no
+checking for connect... yes
+checking for gethostbyname... yes
+checking how to build libraries... shared
+checking for tclsh... /usr/bin/tclsh8.6
+checking zlib.h usability... no
+checking zlib.h presence... yes
+configure: WARNING: zlib.h: present but cannot be compiled
+configure: WARNING: zlib.h:     check for missing prerequisite headers?
+configure: WARNING: zlib.h: see the Autoconf documentation
+configure: WARNING: zlib.h:     section "Present But Cannot Be Compiled"
+configure: WARNING: zlib.h: proceeding with the preprocessor's result
+configure: WARNING: zlib.h: in the future, the compiler will take precedence
+configure: WARNING:     ## ------------------------------ ##
+configure: WARNING:     ## Report this to the tcl lists.  ##
+configure: WARNING:     ## ------------------------------ ##
+checking for zlib.h... yes
+checking for gz_header... no
+checking for ranlib... ranlib
+checking if 64bit support is requested... no
+checking if 64bit Sparc VIS support is requested... no
+checking if compiler supports visibility "hidden"... yes
+checking if rpath support is requested... yes
+checking system version... Linux-4.4.114-42-default
+checking for dlopen in -ldl... yes
+checking for ar... ar
+checking for cast to union support... yes
+checking for build with symbols... no
+checking for required early compiler flags... none
+checking for 64-bit integer type... long long
+checking for struct dirent64... yes
+checking for struct stat64... yes
+checking for open64... yes
+checking for lseek64... yes
+checking for off64_t... yes
+checking whether byte ordering is bigendian... yes
+checking for getcwd... yes
+checking for mkstemp... no
+checking for opendir... no
+checking for strtol... no
+checking for waitpid... no
+checking for strerror... no
+checking for getwd... no
+checking for wait3... no
+checking for uname... no
+checking for realpath... no
+checking for getnameinfo... no
+checking for getaddrinfo... no
+checking for freeaddrinfo... no
+checking for gai_strerror... no
+checking for struct addrinfo... yes
+checking for struct in6_addr... yes
+checking for struct sockaddr_in6... yes
+checking for struct sockaddr_storage... yes
+checking for strlcpy... no
+checking for getpwuid_r... no
+checking for getpwnam_r... no
+checking for getgrgid_r... no
+checking for getgrnam_r... no
+checking for gethostbyname_r... no
+checking for gethostbyaddr_r... no
+checking termios.h usability... no
+checking termios.h presence... yes
+configure: WARNING: termios.h: present but cannot be compiled
+configure: WARNING: termios.h:     check for missing prerequisite headers?
+configure: WARNING: termios.h: see the Autoconf documentation
+configure: WARNING: termios.h:     section "Present But Cannot Be Compiled"
+configure: WARNING: termios.h: proceeding with the preprocessor's result
+configure: WARNING: termios.h: in the future, the compiler will take precedence
+configure: WARNING:     ## ------------------------------ ##
+configure: WARNING:     ## Report this to the tcl lists.  ##
+configure: WARNING:     ## ------------------------------ ##
+checking for termios.h... yes
+checking sys/ioctl.h usability... yes
+checking sys/ioctl.h presence... yes
+checking for sys/ioctl.h... yes
+checking sys/modem.h usability... no
+checking sys/modem.h presence... no
+checking for sys/modem.h... no
+checking for fd_set in sys/types... no
+checking for fd_mask in sys/select... present
+checking sys/time.h usability... yes
+checking sys/time.h presence... yes
+checking for sys/time.h... yes
+checking whether time.h and sys/time.h may both be included... yes
+checking for gmtime_r... no
+checking for localtime_r... no
+checking for mktime... no
+checking tm_tzadj in struct tm... no
+checking tm_gmtoff in struct tm... no
+checking long timezone variable... no
+checking time_t timezone variable... no
+checking for struct stat.st_blocks... yes
+checking for struct stat.st_blksize... yes
+checking for blkcnt_t... yes
+checking for fstatfs... no
+checking for working memcmp... yes
+checking for memmove... yes
+checking for strstr... no
+checking for strtoul... yes
+checking proper strtoul implementation... broken
+checking for strtod... no
+checking for strtod... (cached) no
+checking for mode_t... yes
+checking for pid_t... yes
+checking for size_t... yes
+checking for uid_t in sys/types.h... yes
+checking for socklen_t... yes
+checking for intptr_t... yes
+checking for uintptr_t... yes
+checking for opendir... (cached) no
+checking union wait... no
+checking for strncasecmp... no
+checking for strncasecmp in -lsocket... no
+checking for strncasecmp in -linet... no
+checking for gettimeofday... yes
+checking for gettimeofday declaration... present
+checking whether char is unsigned... no
+checking signed char declarations... yes
+checking for a putenv() that copies the buffer... yes
+checking langinfo.h usability... no
+checking langinfo.h presence... yes
+configure: WARNING: langinfo.h: present but cannot be compiled
+configure: WARNING: langinfo.h:     check for missing prerequisite headers?
+configure: WARNING: langinfo.h: see the Autoconf documentation
+configure: WARNING: langinfo.h:     section "Present But Cannot Be Compiled"
+configure: WARNING: langinfo.h: proceeding with the preprocessor's result
+configure: WARNING: langinfo.h: in the future, the compiler will take precedence
+configure: WARNING:     ## ------------------------------ ##
+configure: WARNING:     ## Report this to the tcl lists.  ##
+configure: WARNING:     ## ------------------------------ ##
+checking for langinfo.h... yes
+checking whether to use nl_langinfo... no
+checking for chflags... no
+checking for mkstemps... no
+checking isnan... no
+checking for fts... no
+checking for sys/ioctl.h... (cached) yes
+checking sys/filio.h usability... no
+checking sys/filio.h presence... no
+checking for sys/filio.h... no
+checking system version... (cached) Linux-4.4.114-42-default
+checking FIONBIO vs. O_NONBLOCK for nonblocking I/O... O_NONBLOCK
+checking whether to use dll unloading... yes
+checking for timezone data... /usr/share/zoneinfo
+checking whether to enable DTrace support... no
+checking whether the cpuid instruction is usable... no
+configure: creating ./config.status
+config.status: creating Makefile
+config.status: creating dltest/Makefile
+config.status: creating tclConfig.sh
+config.status: creating tcl.pc

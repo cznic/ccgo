@@ -4,39 +4,32 @@
 
 package ccgo
 
-// linux_386
-//
-//	TCC	cc 51 ccgo 51 build 51 run 51 ok 51
-//	Other	cc 16 ccgo 16 build 16 run 16 ok 16
-//	GCC	cc 1105 ccgo 1065 build 1058 run 1058 ok 1058
-//	Shell	cc 1 ccgo 1 build 1 run 1 ok 1
-//	TCL	tclsqlite build ok
-
 // linux_amd64
 //
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51
 //	Other	cc 18 ccgo 18 build 18 run 18 ok 18
 //	GCC	cc 1107 ccgo 1089 build 1087 run 1087 ok 1087
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1
-//	--- FAIL: TestTCL (3241.93s)
-//		all_test.go:1354:
-//			Test cases:   260473
-//			Pass:         259499 (99.63%)
-//			Fail:            974 (0.37%)
+//	TCL	tclsqlite build ok
+//	--- FAIL: TestTCL (2274.51s)
+//		all_test.go:1354: 
+//			Test cases:   261833
+//			Pass:         261067 (99.71%)
+//			Fail:            766 (0.29%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
-//			! attach-8.1 expected: [1 {file is not a database}]
-//			! attach-8.1 got:      [1 {unable to open database: test2.db}]
-//			! attach-8.2 expected: [26]
-//			! attach-8.2 got:      [14]
 //			! auth3-2.2 expected: [1]
 //			! auth3-2.2 got:      [0]
 //			! autovacuum-1.1.3 expected: [4]
 //			! autovacuum-1.1.3 got:      [16]
+//			! autovacuum-1.2.3 expected: [4]
+//			! autovacuum-1.2.3 got:      [16]
+//			! autovacuum-1.3.3 expected: [4]
+//			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1362:
+//		all_test.go:1362: 
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 199 ms"
+//			Last completed test file: "Time: selectC.test 300 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -147,6 +140,46 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (4.561998948s)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.879793693s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.72111034s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (6.847887088s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (7.592585643s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (7.915392275s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (8.563181069s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (9.637497006s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (9.949725447s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (10.711628767s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (15.536759518s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (16.46083875s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (21.509880684s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (22.192211023s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (27.15820462s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (28.212730803s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (29.241025418s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (29.910470868s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (30.703523714s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (35.116376562s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (35.424566725s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (35.740590371s)
+//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (40.311840459s)
+//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (41.150775707s)
+//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (42.173688334s)
+//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (42.914809462s)
+//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (43.889081047s)
+//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (44.503164978s)
+//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (45.296900266s)
+//	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (45.612105456s)
+//	cc 31 ccgo 31 build 31 run 31 ok 31 (100.00%) csmith 31 (45.948953343s)
+//	cc 32 ccgo 32 build 32 run 32 ok 32 (100.00%) csmith 32 (46.755800599s)
+//	cc 33 ccgo 33 build 33 run 33 ok 33 (100.00%) csmith 33 (54.308953961s)
+//	cc 34 ccgo 34 build 34 run 34 ok 34 (100.00%) csmith 34 (54.933487505s)
+//	cc 35 ccgo 35 build 35 run 35 ok 35 (100.00%) csmith 35 (55.967978341s)
+//	cc 36 ccgo 36 build 36 run 36 ok 36 (100.00%) csmith 36 (1m0.177852529s)
+//	CSmith	cc 36 ccgo 36 build 36 run 36 ok 36 (100.00%) csmith 36 (1m0.177875403s)
+//	FAIL
+//	exit status 1
+//	FAIL	github.com/cznic/ccgo/v2	2603.200s
 
 import (
 	"bufio"
@@ -167,7 +200,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cznic/sqlite2go/internal/c99"
+	"github.com/cznic/cc/v2"
 )
 
 func caller(s string, va ...interface{}) {
@@ -234,7 +267,7 @@ var (
 
 func init() {
 	var err error
-	if searchPaths, err = c99.Paths(true); err != nil {
+	if searchPaths, err = cc.Paths(true); err != nil {
 		panic(err)
 	}
 }
@@ -265,19 +298,19 @@ func trim(b []byte) []byte {
 	return bytes.Join(a, []byte{'\n'})
 }
 
-func translate(tweaks *c99.Tweaks, includePaths, sysIncludePaths []string, def string, sources ...c99.Source) (*c99.TranslationUnit, error) {
-	in := []c99.Source{c99.MustBuiltin()}
+func translate(tweaks *cc.Tweaks, includePaths, sysIncludePaths []string, def string, sources ...cc.Source) (*cc.TranslationUnit, error) {
+	in := []cc.Source{cc.MustBuiltin()}
 	if def != "" {
-		in = append(in, c99.NewStringSource("<defines>", def))
+		in = append(in, cc.NewStringSource("<defines>", def))
 	}
 	in = append(in, sources...)
 	if *oTrace {
 		fmt.Fprintln(os.Stderr, in)
 	}
-	return c99.Translate(tweaks, includePaths, sysIncludePaths, in...)
+	return cc.Translate(tweaks, includePaths, sysIncludePaths, in...)
 }
 
-func test(t *testing.T, clean bool, cc, ccgo, build, run *int, def, imp string, inc2 []string, dir string, pth []string, args ...string) ([]byte, error) {
+func test(t *testing.T, clean bool, c, ccgo, build, run *int, def, imp string, inc2 []string, dir string, pth []string, args ...string) ([]byte, error) {
 	testFn = pth[len(pth)-1]
 	if clean {
 		m, err := filepath.Glob(filepath.Join(dir, "*.*"))
@@ -292,7 +325,7 @@ func test(t *testing.T, clean bool, cc, ccgo, build, run *int, def, imp string, 
 		}
 	}
 
-	tweaks := &c99.Tweaks{
+	tweaks := &cc.Tweaks{
 		// TrackExpand:                 func(s string) { fmt.Print(s) }, //TODO-
 		EnableAnonymousStructFields: true,
 		EnableEmptyStructs:          true,
@@ -306,14 +339,14 @@ func test(t *testing.T, clean bool, cc, ccgo, build, run *int, def, imp string, 
 	}
 	inc := append([]string{"@"}, inc2...)
 
-	crt0, err := c99.Translate(tweaks, inc, searchPaths, c99.MustBuiltin(), c99.MustCrt0())
+	crt0, err := cc.Translate(tweaks, inc, searchPaths, cc.MustBuiltin(), cc.MustCrt0())
 	if err != nil {
 		return nil, err
 	}
 
-	tus := []*c99.TranslationUnit{crt0}
+	tus := []*cc.TranslationUnit{crt0}
 	for _, v := range pth {
-		tu, err := translate(tweaks, inc, searchPaths, def, c99.MustFileSource2(v, false))
+		tu, err := translate(tweaks, inc, searchPaths, def, cc.MustFileSource2(v, false))
 		if err != nil {
 			//dbg("cc: %v", errString(err)) //TODO-
 			if !*oCC {
@@ -325,7 +358,7 @@ func test(t *testing.T, clean bool, cc, ccgo, build, run *int, def, imp string, 
 		tus = append(tus, tu)
 	}
 
-	*cc++
+	*c++
 	f, err := os.Create(filepath.Join(dir, "main.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -400,7 +433,7 @@ import (
 }
 
 func TestTCC(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	blacklist := map[string]struct{}{
 		"13_integer_literals.c": {}, // 9:12: ExprInt strconv.ParseUint: parsing "0b010101010101": invalid syntax
 		"31_args.c":             {},
@@ -423,7 +456,7 @@ func TestTCC(t *testing.T) {
 		}
 	}()
 
-	m, err := filepath.Glob(filepath.FromSlash("../c99/testdata/tcc-0.9.26/tests/tests2/*.c"))
+	m, err := filepath.Glob(filepath.FromSlash("testdata/tcc-0.9.26/tests/tests2/*.c"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -478,7 +511,7 @@ func TestTCC(t *testing.T) {
 }
 
 func TestOther(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	if s := *oRE; s != "" {
 		re = regexp.MustCompile(s)
 	}
@@ -494,7 +527,7 @@ func TestOther(t *testing.T) {
 		}
 	}()
 
-	m, err := filepath.Glob(filepath.FromSlash("../c99/testdata/bug/*.c"))
+	m, err := filepath.Glob(filepath.FromSlash("testdata/bug/*.c"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -545,7 +578,7 @@ func TestOther(t *testing.T) {
 }
 
 func TestGCC(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	const def = `
 #define SIGNAL_SUPPRESS // gcc.c-torture/execute/20101011-1.c
 `
@@ -591,7 +624,7 @@ func TestGCC(t *testing.T) {
 		}
 	}()
 
-	m, err := filepath.Glob(filepath.FromSlash("../c99/testdata/github.com/gcc-mirror/gcc/gcc/testsuite/gcc.c-torture/execute/*.c"))
+	m, err := filepath.Glob(filepath.FromSlash("testdata/github.com/gcc-mirror/gcc/gcc/testsuite/gcc.c-torture/execute/*.c"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +678,7 @@ func TestGCC(t *testing.T) {
 }
 
 func TestSQLiteShell(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	dir, err := ioutil.TempDir("", "test-ccgo-shell-")
 	if err != nil {
 		t.Fatal(err)
@@ -658,7 +691,7 @@ func TestSQLiteShell(t *testing.T) {
 	}()
 
 	var cc, ccgo, build, run, ok int
-	root := filepath.FromSlash("../../_sqlite/sqlite-amalgamation-3210000")
+	root := filepath.FromSlash("testdata/_sqlite/sqlite-amalgamation-3210000")
 	if out, err := test(t, false, &cc, &ccgo, &build, &run, `
 		#define HAVE_FDATASYNC 1
 		#define HAVE_ISNAN 1
@@ -694,7 +727,7 @@ func TestSQLiteShell(t *testing.T) {
 }
 
 func TestTCL(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	const (
 		allDefs = `// Output of gcc features.c && ./a.out in github.com/cznic/sqlite2go/internal/c99/headers on linux_amd64.
 			#define _POSIX_SOURCE 1
@@ -921,9 +954,9 @@ func TestTCL(t *testing.T) {
 
 	g := newGen(nil, nil)
 	g.escAllTLDs = true
-	root := "../.."
+	root := "testdata"
 
-	sqliteTweaks := &c99.Tweaks{
+	sqliteTweaks := &cc.Tweaks{
 		// TrackExpand:                 func(s string) { fmt.Print(s) }, //TODO-
 		// TrackIncludes:               func(s string) { fmt.Printf("#include %s\n", s) }, //TODO-
 		EnableAnonymousStructFields: true,
@@ -961,7 +994,7 @@ func TestTCL(t *testing.T) {
 		"ext/misc/unionvtab.c",
 		"ext/misc/wholenumber.c",
 	} {
-		in := []c99.Source{c99.MustFileSource2(filepath.FromSlash(filepath.Join(root, sqlite, v)), false)}
+		in := []cc.Source{cc.MustFileSource2(filepath.FromSlash(filepath.Join(root, sqlite, v)), false)}
 		tu, err := translate(sqliteTweaks, inc, sysInc, sqliteDefs+tclDefs, in...)
 		if err != nil {
 			t.Fatal(err)
@@ -972,7 +1005,7 @@ func TestTCL(t *testing.T) {
 		}
 	}
 
-	tclTweaks := &c99.Tweaks{
+	tclTweaks := &cc.Tweaks{
 		// TrackExpand:                 func(s string) { fmt.Print(s) },                   //TODO-
 		// TrackIncludes:               func(s string) { fmt.Printf("#include %s\n", s) }, //TODO-
 		EnableAnonymousStructFields: true,
@@ -1080,7 +1113,7 @@ func TestTCL(t *testing.T) {
 		"unix/tclUnixThrd.c",
 		"unix/tclUnixTime.c",
 	} {
-		tu, err := translate(tclTweaks, inc, sysInc, tclDefs, c99.MustFileSource2(filepath.FromSlash(filepath.Join(root, tcl, v)), false))
+		tu, err := translate(tclTweaks, inc, sysInc, tclDefs, cc.MustFileSource2(filepath.FromSlash(filepath.Join(root, tcl, v)), false))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1096,7 +1129,7 @@ func TestTCL(t *testing.T) {
 	}
 
 	for _, v := range m {
-		tu, err := translate(tclTweaks, inc, sysInc, tclDefs, c99.MustFileSource2(v, false))
+		tu, err := translate(tclTweaks, inc, sysInc, tclDefs, cc.MustFileSource2(v, false))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1117,7 +1150,7 @@ func TestTCL(t *testing.T) {
 	}
 
 	for _, v := range m {
-		tu, err := translate(sqliteTweaks, inc, sysInc, allDefs+sqliteDefs, c99.MustFileSource2(v, false))
+		tu, err := translate(sqliteTweaks, inc, sysInc, allDefs+sqliteDefs, cc.MustFileSource2(v, false))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1135,7 +1168,7 @@ func TestTCL(t *testing.T) {
 
 	// file with main must be last
 	v := "src/tclsqlite.c"
-	in := []c99.Source{c99.MustFileSource2(filepath.FromSlash(filepath.Join(root, sqlite, v)), false), c99.MustCrt0()}
+	in := []cc.Source{cc.MustFileSource2(filepath.FromSlash(filepath.Join(root, sqlite, v)), false), cc.MustCrt0()}
 	tu, err := translate(sqliteTweaks, inc, searchPaths, allDefs+sqliteDefs, in...)
 	if err != nil {
 		t.Fatal(err)
@@ -1156,7 +1189,7 @@ func TestTCL(t *testing.T) {
 		}
 	}()
 
-	src, err := filepath.Abs(filepath.Join(cwd, filepath.FromSlash("../..")))
+	src, err := filepath.Abs(filepath.Join(cwd, "testdata"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1165,7 +1198,7 @@ func TestTCL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c99.FlushCache()
+	cc.FlushCache()
 	build := "build -o test"
 	if *oTCLRace {
 		build += " -race"
@@ -1369,19 +1402,19 @@ Blacklisted test files: %d
 	}
 }
 
-func (g *gen) define2(n *c99.Declarator) {
+func (g *gen) define2(n *cc.Declarator) {
 more:
 	n = g.normalizeDeclarator(n)
 	nm := n.Name()
 	done := false
-	if n.Linkage == c99.LinkageExternal {
+	if n.Linkage == cc.LinkageExternal {
 		_, produced := g.producedExterns[nm]
 		_, initialized := g.initializedExterns[nm]
 		hasInitializer := n.Initializer != nil
 		switch {
 		case !produced && !initialized && !hasInitializer:
 			switch x := underlyingType(n.Type, true).(type) {
-			case *c99.ArrayType:
+			case *cc.ArrayType:
 				if x.Size.Value == nil {
 					g.incompleteExternArrays[nm] = n
 					done = true // Must resolve later
@@ -1408,26 +1441,26 @@ more:
 		_, done = g.producedDeclarators[n]
 	}
 	if !done {
-		if n.Linkage == c99.LinkageExternal {
+		if n.Linkage == cc.LinkageExternal {
 			_, done = g.producedExterns[nm]
 			//dbg("%v: %q, %v", g.position(n), dict.S(nm), done)
 		}
 
-		if n.Type.Kind() == c99.Function && n.FunctionDefinition == nil {
+		if n.Type.Kind() == cc.Function && n.FunctionDefinition == nil {
 			done = true
 		}
 		if !done {
 			switch underlyingType(n.Type, true).(type) {
 			case
-				*c99.ArrayType,
-				*c99.EnumType,
-				*c99.FunctionType,
-				*c99.PointerType,
-				*c99.StructType,
-				*c99.UnionType,
-				c99.TypeKind:
+				*cc.ArrayType,
+				*cc.EnumType,
+				*cc.FunctionType,
+				*cc.PointerType,
+				*cc.StructType,
+				*cc.UnionType,
+				cc.TypeKind:
 
-				if n.Linkage == c99.LinkageExternal {
+				if n.Linkage == cc.LinkageExternal {
 					g.producedExterns[nm] = struct{}{}
 				}
 				g.producedDeclarators[n] = struct{}{}
@@ -1443,40 +1476,40 @@ more:
 		m := g.queue.Front()
 		g.queue.Remove(m)
 		switch x := m.Value.(type) {
-		case *c99.Declarator:
+		case *cc.Declarator:
 			n = x
 			goto more
-		case *c99.EnumType:
+		case *cc.EnumType:
 			g.defineEnumType(x)
-		case *c99.FunctionType:
+		case *cc.FunctionType:
 			// nop
-		case *c99.NamedType:
+		case *cc.NamedType:
 			g.enqueue(x.Type)
-		case *c99.PointerType:
+		case *cc.PointerType:
 			if !x.IsVoidPointerType() {
 				g.enqueue(x.Item)
 			}
-		case *c99.StructType:
+		case *cc.StructType:
 			// nop
-		case *c99.TaggedEnumType:
+		case *cc.TaggedEnumType:
 			g.defineTaggedEnumType(x)
-		case *c99.TaggedStructType:
+		case *cc.TaggedStructType:
 			switch {
 			case x.Type == nil || x.Type == x:
 				g.opaqueStructTags[x.Tag] = struct{}{}
 			default:
 				g.defineTaggedStructType(x)
 			}
-		case *c99.TaggedUnionType:
+		case *cc.TaggedUnionType:
 			switch {
 			case x.Type == nil || x.Type == x:
 				g.opaqueStructTags[x.Tag] = struct{}{}
 			default:
 				g.defineTaggedUnionType(x)
 			}
-		case c99.TypeKind:
+		case cc.TypeKind:
 			// nop
-		case *c99.UnionType:
+		case *cc.UnionType:
 			// nop
 		default:
 			todo("%T %v", x, x)
@@ -1485,12 +1518,12 @@ more:
 }
 
 // produced && !initialized && hasInitializer
-func (g *gen) escapedTLD2(n *c99.Declarator) {
+func (g *gen) escapedTLD2(n *cc.Declarator) {
 	switch x := n.Type.(type) {
 	case
-		*c99.NamedType,
-		*c99.TaggedStructType,
-		*c99.TaggedUnionType:
+		*cc.NamedType,
+		*cc.TaggedStructType,
+		*cc.TaggedUnionType:
 
 		g.enqueue(x)
 	}
@@ -1506,9 +1539,9 @@ func (g *gen) escapedTLD2(n *c99.Declarator) {
 		return
 	}
 
-	switch x := c99.UnderlyingType(n.Type).(type) {
-	case *c99.ArrayType:
-		if x.Item.Kind() == c99.Char && n.Initializer.Expr.Operand.Value != nil {
+	switch x := cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
 			todo("%v:", g.position(n))
 			g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
 			return
@@ -1521,11 +1554,11 @@ func (g *gen) escapedTLD2(n *c99.Declarator) {
 	g.w("}")
 }
 
-func (g *gen) file(dir, fn0 string, tu *c99.TranslationUnit) error {
+func (g *gen) file(dir, fn0 string, tu *cc.TranslationUnit) error {
 	g.enqueued = map[interface{}]struct{}{}
-	g.externs = map[int]*c99.Declarator{}
-	g.producedDeclarators = map[*c99.Declarator]struct{}{}
-	g.staticDeclarators = map[int]*c99.Declarator{}
+	g.externs = map[int]*cc.Declarator{}
+	g.producedDeclarators = map[*cc.Declarator]struct{}{}
+	g.staticDeclarators = map[int]*cc.Declarator{}
 	fn, err := g.file0(dir, fn0, tu)
 	if err != nil {
 		return err
@@ -1658,7 +1691,7 @@ func (g *gen) crt0() error {
 	return nil
 }
 
-func (g *gen) file0(dir, fn string, tu *c99.TranslationUnit) (f string, err error) {
+func (g *gen) file0(dir, fn string, tu *cc.TranslationUnit) (f string, err error) {
 	returned := false
 
 	defer func() {
@@ -1680,7 +1713,7 @@ func (g *gen) file0(dir, fn string, tu *c99.TranslationUnit) (f string, err erro
 		i++
 		s = fmt.Sprintf("_%d", i)
 	}
-	g.in = []*c99.TranslationUnit{tu}
+	g.in = []*cc.TranslationUnit{tu}
 	g.out0 = bytes.Buffer{}
 	switch {
 	case g.model == nil:
@@ -1703,9 +1736,9 @@ next:
 		nm := dict.SID(s)
 		n := tu.FileScope.Idents[nm]
 		switch x := n.(type) {
-		case *c99.Declarator:
+		case *cc.Declarator:
 			switch x.Linkage {
-			case c99.LinkageExternal:
+			case cc.LinkageExternal:
 				p := g.position(x).Filename
 				for _, v := range searchPaths {
 					if strings.HasPrefix(p, v) {
@@ -1718,16 +1751,16 @@ next:
 					}
 				}
 
-				if x.Type.Kind() == c99.Function && x.Name() == idBacktrace {
+				if x.Type.Kind() == cc.Function && x.Name() == idBacktrace {
 					continue
 				}
 
 				g.externs[nm] = x
 				a2 = append(a2, nm)
-			case c99.LinkageInternal:
+			case cc.LinkageInternal:
 				g.staticDeclarators[nm] = x
 			}
-		case *c99.EnumerationConstant:
+		case *cc.EnumerationConstant:
 			// nop
 		default:
 			todo("%v: %T %s", g.position0(n), x, nm)
@@ -1741,7 +1774,7 @@ next:
 }
 
 func TestCSmith(t *testing.T) {
-	c99.FlushCache()
+	cc.FlushCache()
 	csmith, err := exec.LookPath("csmith")
 	if err != nil {
 		t.Logf("%v: skipping test", err)

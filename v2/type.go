@@ -8,23 +8,23 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
-	"github.com/cznic/sqlite2go/internal/c99"
 )
 
 type tCacheKey struct {
-	c99.Type
+	cc.Type
 	bool
 }
 
-func isVaList(t c99.Type) bool {
-	x, ok := t.(*c99.NamedType)
+func isVaList(t cc.Type) bool {
+	x, ok := t.(*cc.NamedType)
 	return ok && (x.Name == idVaList || x.Name == idBuiltinVaList)
 }
 
-func (g *gen) typ(t c99.Type) string { return g.ptyp(t, true, 0) }
+func (g *gen) typ(t cc.Type) string { return g.ptyp(t, true, 0) }
 
-func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
+func (g *gen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 	k := tCacheKey{t, ptr2uintptr}
 	if s, ok := g.tCache[k]; ok {
 		return s
@@ -33,35 +33,35 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 	defer func() { g.tCache[k] = r }()
 
 	if ptr2uintptr {
-		if t.Kind() == c99.Ptr && !isVaList(t) {
-			if _, ok := t.(*c99.NamedType); !ok {
+		if t.Kind() == cc.Ptr && !isVaList(t) {
+			if _, ok := t.(*cc.NamedType); !ok {
 				g.enqueue(t)
 				return "uintptr"
 			}
 		}
 
-		if x, ok := t.(*c99.ArrayType); ok && x.Size.Value == nil {
+		if x, ok := t.(*cc.ArrayType); ok && x.Size.Value == nil {
 			return "uintptr"
 		}
 	}
 
 	switch x := t.(type) {
-	case *c99.ArrayType:
+	case *cc.ArrayType:
 		if x.Size.Value == nil {
 			return fmt.Sprintf("*%s", g.ptyp(x.Item, ptr2uintptr, lvl))
 		}
 
 		return fmt.Sprintf("[%d]%s", x.Size.Value.(*ir.Int64Value).Value, g.ptyp(x.Item, ptr2uintptr, lvl))
-	case *c99.FunctionType:
+	case *cc.FunctionType:
 		var buf bytes.Buffer
 		fmt.Fprintf(&buf, "func(%sTLS", crt)
 		switch {
-		case len(x.Params) == 1 && x.Params[0].Kind() == c99.Void:
+		case len(x.Params) == 1 && x.Params[0].Kind() == cc.Void:
 			// nop
 		default:
 			for _, v := range x.Params {
 				switch underlyingType(v, true).(type) {
-				case *c99.ArrayType:
+				case *cc.ArrayType:
 					fmt.Fprintf(&buf, ", uintptr")
 				default:
 					fmt.Fprintf(&buf, ", %s", g.typ(v))
@@ -72,11 +72,11 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 			fmt.Fprintf(&buf, ", ...interface{}")
 		}
 		buf.WriteString(")")
-		if x.Result != nil && x.Result.Kind() != c99.Void {
+		if x.Result != nil && x.Result.Kind() != cc.Void {
 			buf.WriteString(" " + g.typ(x.Result))
 		}
 		return buf.String()
-	case *c99.NamedType:
+	case *cc.NamedType:
 		if isVaList(x) {
 			if ptr2uintptr {
 				return "*[]interface{}"
@@ -88,7 +88,7 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 		g.enqueue(t)
 		t := x.Type
 		for {
-			if x, ok := t.(*c99.NamedType); ok {
+			if x, ok := t.(*cc.NamedType); ok {
 				t = x.Type
 				continue
 			}
@@ -96,18 +96,18 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 			break
 		}
 		return g.ptyp(t, ptr2uintptr, lvl)
-	case *c99.PointerType:
-		if x.Item.Kind() == c99.Void {
+	case *cc.PointerType:
+		if x.Item.Kind() == cc.Void {
 			return "uintptr"
 		}
 
 		switch {
-		case x.Kind() == c99.Function:
+		case x.Kind() == cc.Function:
 			todo("")
 		default:
 			return fmt.Sprintf("*%s", g.ptyp(x.Item, ptr2uintptr, lvl+1))
 		}
-	case *c99.StructType:
+	case *cc.StructType:
 		var buf bytes.Buffer
 		buf.WriteString("struct{")
 		layout := g.model.Layout(x)
@@ -133,58 +133,58 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 				fmt.Fprintf(&buf, "%s ", mangleIdent(v.Name, true))
 			}
 			fmt.Fprintf(&buf, "%s;", g.ptyp(v.Type, ptr2uintptr, lvl+1))
-			if lvl == 0 && ptr2uintptr && v.Type.Kind() == c99.Ptr {
+			if lvl == 0 && ptr2uintptr && v.Type.Kind() == cc.Ptr {
 				fmt.Fprintf(&buf, "// %s\n", g.ptyp(v.Type, false, lvl+1))
 			}
 		}
 		buf.WriteByte('}')
 		return buf.String()
-	case *c99.EnumType:
+	case *cc.EnumType:
 		if x.Tag == 0 {
 			return g.typ(x.Enums[0].Operand.Type)
 		}
 
 		g.enqueue(x)
 		return fmt.Sprintf("E%s", dict.S(x.Tag))
-	case *c99.TaggedEnumType:
+	case *cc.TaggedEnumType:
 		g.enqueue(x)
 		return fmt.Sprintf("E%s", dict.S(x.Tag))
-	case *c99.TaggedStructType:
+	case *cc.TaggedStructType:
 		g.enqueue(x)
 		return fmt.Sprintf("S%s", dict.S(x.Tag))
-	case *c99.TaggedUnionType:
+	case *cc.TaggedUnionType:
 		g.enqueue(x)
 		return fmt.Sprintf("U%s", dict.S(x.Tag))
-	case c99.TypeKind:
+	case cc.TypeKind:
 		switch x {
 		case
-			c99.Char,
-			c99.Int,
-			c99.Long,
-			c99.LongLong,
-			c99.SChar,
-			c99.Short:
+			cc.Char,
+			cc.Int,
+			cc.Long,
+			cc.LongLong,
+			cc.SChar,
+			cc.Short:
 
 			return fmt.Sprintf("int%d", g.model[x].Size*8)
 		case
-			c99.UChar,
-			c99.UShort,
-			c99.UInt,
-			c99.ULong,
-			c99.ULongLong:
+			cc.UChar,
+			cc.UShort,
+			cc.UInt,
+			cc.ULong,
+			cc.ULongLong:
 
 			return fmt.Sprintf("uint%d", g.model[x].Size*8)
-		case c99.Float:
+		case cc.Float:
 			return fmt.Sprintf("float32")
 		case
-			c99.Double,
-			c99.LongDouble:
+			cc.Double,
+			cc.LongDouble:
 
 			return fmt.Sprintf("float64")
 		default:
 			todo("", x)
 		}
-	case *c99.UnionType:
+	case *cc.UnionType:
 		al := int64(g.model.Alignof(x))
 		sz := g.model.Sizeof(x)
 		switch {
@@ -199,7 +199,7 @@ func (g *gen) ptyp(t c99.Type, ptr2uintptr bool, lvl int) (r string) {
 	panic("unreachable")
 }
 
-func prefer(d *c99.Declarator) bool {
+func prefer(d *cc.Declarator) bool {
 	if d.DeclarationSpecifier.IsExtern() {
 		return false
 	}
@@ -211,21 +211,21 @@ func prefer(d *c99.Declarator) bool {
 	t := d.Type
 	for {
 		switch x := underlyingType(t, true).(type) {
-		case *c99.ArrayType:
+		case *cc.ArrayType:
 			return x.Size.Type != nil
-		case *c99.FunctionType:
+		case *cc.FunctionType:
 			return false
 		case
-			*c99.EnumType,
-			*c99.StructType:
+			*cc.EnumType,
+			*cc.StructType:
 
 			return true
-		case *c99.PointerType:
+		case *cc.PointerType:
 			t = x.Item
-		case *c99.TaggedStructType:
+		case *cc.TaggedStructType:
 			return x.Type != nil
-		case c99.TypeKind:
-			if x.IsScalarType() || x == c99.Void {
+		case cc.TypeKind:
+			if x.IsScalarType() || x == cc.Void {
 				return true
 			}
 
@@ -236,65 +236,65 @@ func prefer(d *c99.Declarator) bool {
 	}
 }
 
-func underlyingType(t c99.Type, enums bool) c99.Type {
+func underlyingType(t cc.Type, enums bool) cc.Type {
 	for {
 		switch x := t.(type) {
 		case
-			*c99.ArrayType,
-			*c99.FunctionType,
-			*c99.PointerType,
-			*c99.StructType,
-			*c99.UnionType:
+			*cc.ArrayType,
+			*cc.FunctionType,
+			*cc.PointerType,
+			*cc.StructType,
+			*cc.UnionType:
 
 			return x
-		case *c99.EnumType:
+		case *cc.EnumType:
 			if enums {
 				return x
 			}
 
 			return x.Enums[0].Operand.Type
-		case *c99.NamedType:
+		case *cc.NamedType:
 			if x.Type == nil {
 				return x
 			}
 
 			t = x.Type
-		case *c99.TaggedEnumType:
+		case *cc.TaggedEnumType:
 			if x.Type == nil {
 				return x
 			}
 
 			t = x.Type
-		case *c99.TaggedStructType:
+		case *cc.TaggedStructType:
 			if x.Type == nil {
 				return x
 			}
 
 			t = x.Type
-		case *c99.TaggedUnionType:
+		case *cc.TaggedUnionType:
 			if x.Type == nil {
 				return x
 			}
 
 			t = x.Type
-		case c99.TypeKind:
+		case cc.TypeKind:
 			switch x {
 			case
-				c99.Char,
-				c99.Double,
-				c99.Float,
-				c99.Int,
-				c99.Long,
-				c99.LongDouble,
-				c99.LongLong,
-				c99.SChar,
-				c99.Short,
-				c99.UChar,
-				c99.UInt,
-				c99.ULong,
-				c99.ULongLong,
-				c99.UShort,
-				c99.Void:
+				cc.Char,
+				cc.Double,
+				cc.Float,
+				cc.Int,
+				cc.Long,
+				cc.LongDouble,
+				cc.LongLong,
+				cc.SChar,
+				cc.Short,
+				cc.UChar,
+				cc.UInt,
+				cc.ULong,
+				cc.ULongLong,
+				cc.UShort,
+				cc.Void:
 
 				return x
 			default:

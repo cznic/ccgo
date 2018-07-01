@@ -16,8 +16,8 @@ import (
 	"runtime/debug"
 	"strings"
 
+	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
-	"github.com/cznic/sqlite2go/internal/c99"
 	"github.com/cznic/strutil"
 	"github.com/cznic/xc"
 )
@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	allocaDeclarator = &c99.Declarator{}
+	allocaDeclarator = &cc.Declarator{}
 	bNL              = []byte{'\n'}
 	bPanic           = []byte("panic")
 	dict             = xc.Dict
@@ -87,7 +87,7 @@ func errString(err error) string {
 	return b.String()
 }
 
-func isSingleExpression(n *c99.ExprList) bool { return n.ExprList == nil }
+func isSingleExpression(n *cc.ExprList) bool { return n.ExprList == nil }
 
 func mangleIdent(nm int, exported bool) string {
 	switch {
@@ -142,10 +142,10 @@ func todo(msg string, args ...interface{}) {
 	panic(fmt.Errorf("\n\n%v:%d: TODO\n\n%s", f, l, fmt.Sprintf(msg, args...))) //TODOOK
 }
 
-func isFnPtr(t c99.Type, out *c99.Type) bool {
-	switch x := c99.UnderlyingType(t).(type) {
-	case *c99.PointerType:
-		if x.Item.Kind() == c99.Function {
+func isFnPtr(t cc.Type, out *cc.Type) bool {
+	switch x := cc.UnderlyingType(t).(type) {
+	case *cc.PointerType:
+		if x.Item.Kind() == cc.Function {
 			if out != nil {
 				*out = x.Item
 			}
@@ -155,7 +155,7 @@ func isFnPtr(t c99.Type, out *c99.Type) bool {
 	return false
 }
 
-func (g *gen) typeComment(t c99.Type) (r string) {
+func (g *gen) typeComment(t cc.Type) (r string) {
 	const max = 64
 	defer func() {
 		r = strings.Replace(r, "\n", "", -1)
@@ -165,15 +165,15 @@ func (g *gen) typeComment(t c99.Type) (r string) {
 	}()
 
 	switch x := t.(type) {
-	case *c99.NamedType:
+	case *cc.NamedType:
 		return fmt.Sprintf("T%s = %s", dict.S(x.Name), g.typeComment(x.Type))
-	case *c99.PointerType:
+	case *cc.PointerType:
 		n := 1
 		for {
-			t, ok := underlyingType(x.Item, true).(*c99.PointerType)
+			t, ok := underlyingType(x.Item, true).(*cc.PointerType)
 			if !ok {
 				switch {
-				case x.Item == c99.Void:
+				case x.Item == cc.Void:
 					return fmt.Sprintf("%svoid", strings.Repeat("*", n))
 				default:
 					return fmt.Sprintf("%s%s", strings.Repeat("*", n), g.typeComment(x.Item))

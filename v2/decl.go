@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
-	"github.com/cznic/sqlite2go/internal/c99"
 )
 
-func (g *gen) define(n *c99.Declarator) {
+func (g *gen) define(n *cc.Declarator) {
 more:
 	n = g.normalizeDeclarator(n)
 	defined := true
-	if n.Linkage == c99.LinkageExternal {
+	if n.Linkage == cc.LinkageExternal {
 		_, defined = g.externs[n.Name()]
 	}
 	if _, ok := g.producedDeclarators[n]; defined && !ok {
@@ -28,25 +28,25 @@ more:
 		x := g.queue.Front()
 		g.queue.Remove(x)
 		switch y := x.Value.(type) {
-		case *c99.Declarator:
+		case *cc.Declarator:
 			n = y
 			goto more
-		case *c99.EnumType:
+		case *cc.EnumType:
 			g.defineEnumType(y)
-		case *c99.NamedType:
+		case *cc.NamedType:
 			g.enqueue(y.Type)
-		case *c99.TaggedEnumType:
+		case *cc.TaggedEnumType:
 			g.defineTaggedEnumType(y)
-		case *c99.TaggedStructType:
+		case *cc.TaggedStructType:
 			g.defineTaggedStructType(y)
-		case *c99.TaggedUnionType:
+		case *cc.TaggedUnionType:
 			g.defineTaggedUnionType(y)
 		case
-			*c99.ArrayType,
-			*c99.PointerType,
-			*c99.StructType,
-			c99.TypeKind,
-			*c99.UnionType:
+			*cc.ArrayType,
+			*cc.PointerType,
+			*cc.StructType,
+			cc.TypeKind,
+			*cc.UnionType:
 
 			// nop
 		default:
@@ -55,19 +55,19 @@ more:
 	}
 }
 
-func (g *gen) defineEnumType(t *c99.EnumType) {
+func (g *gen) defineEnumType(t *cc.EnumType) {
 	if t.Tag != 0 {
-		g.defineTaggedEnumType(&c99.TaggedEnumType{Tag: t.Tag, Type: t})
+		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
 	}
 }
 
-func (g *gen) defineTaggedEnumType(t *c99.TaggedEnumType) {
+func (g *gen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 	if _, ok := g.producedEnumTags[t.Tag]; ok {
 		return
 	}
 
 	g.producedEnumTags[t.Tag] = struct{}{}
-	et := t.Type.(*c99.EnumType)
+	et := t.Type.(*cc.EnumType)
 	tag := dict.S(t.Tag)
 	g.w("\ntype E%s = %s\n", tag, g.typ(et.Enums[0].Operand.Type))
 	g.w("\nconst (")
@@ -96,7 +96,7 @@ func (g *gen) defineTaggedEnumType(t *c99.TaggedEnumType) {
 
 }
 
-func (g *gen) defineTaggedStructType(t *c99.TaggedStructType) {
+func (g *gen) defineTaggedStructType(t *cc.TaggedStructType) {
 	if _, ok := g.producedStructTags[t.Tag]; ok {
 		return
 	}
@@ -109,7 +109,7 @@ func (g *gen) defineTaggedStructType(t *c99.TaggedStructType) {
 		g.w("\ntype S%s %s\n", dict.S(t.Tag), g.typ(t.Type))
 		if isTesting {
 			g.w("\n\nfunc init() {")
-			st := c99.UnderlyingType(t.Type).(*c99.StructType)
+			st := cc.UnderlyingType(t.Type).(*cc.StructType)
 			fields := st.Fields
 			for i, v := range g.model.Layout(st) {
 				if v.Bits < 0 {
@@ -139,7 +139,7 @@ func (g *gen) defineTaggedStructType(t *c99.TaggedStructType) {
 	}
 }
 
-func (g *gen) defineTaggedUnionType(t *c99.TaggedUnionType) {
+func (g *gen) defineTaggedUnionType(t *cc.TaggedUnionType) {
 	if _, ok := g.producedStructTags[t.Tag]; ok {
 		return
 	}
@@ -153,19 +153,19 @@ func (g *gen) defineTaggedUnionType(t *c99.TaggedUnionType) {
 	}
 }
 
-func (g *gen) tld(n *c99.Declarator) {
+func (g *gen) tld(n *cc.Declarator) {
 	nm := n.Name()
-	t := c99.UnderlyingType(n.Type)
-	if t.Kind() == c99.Function {
+	t := cc.UnderlyingType(n.Type)
+	if t.Kind() == cc.Function {
 		g.functionDefinition(n)
 		return
 	}
 
 	switch x := n.Type.(type) {
 	case
-		*c99.NamedType,
-		*c99.TaggedStructType,
-		*c99.TaggedUnionType:
+		*cc.NamedType,
+		*cc.TaggedStructType,
+		*cc.TaggedUnionType:
 
 		g.enqueue(x)
 	}
@@ -176,7 +176,7 @@ func (g *gen) tld(n *c99.Declarator) {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
 	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
-	if n.Initializer != nil && n.Linkage == c99.LinkageExternal {
+	if n.Initializer != nil && n.Linkage == cc.LinkageExternal {
 		g.initializedExterns[nm] = struct{}{}
 	}
 	if g.isZeroInitializer(n.Initializer) {
@@ -191,13 +191,13 @@ func (g *gen) tld(n *c99.Declarator) {
 		}
 
 		switch x := t.(type) {
-		case *c99.StructType:
+		case *cc.StructType:
 			g.w("\nvar %s = bss + %d\n", g.mangleDeclarator(n), g.allocBSS(n.Type))
-		case *c99.PointerType:
+		case *cc.PointerType:
 			g.w("\nvar %s uintptr\n", g.mangleDeclarator(n))
 		case
-			*c99.EnumType,
-			c99.TypeKind:
+			*cc.EnumType,
+			cc.TypeKind:
 
 			if x.IsArithmeticType() {
 				g.w("\nvar %s %s\n", g.mangleDeclarator(n), g.typ(n.Type))
@@ -217,7 +217,7 @@ func (g *gen) tld(n *c99.Declarator) {
 	}
 
 	switch n.Initializer.Case {
-	case c99.InitializerExpr: // Expr
+	case cc.InitializerExpr: // Expr
 		g.w("\nvar %s = ", g.mangleDeclarator(n))
 		g.convert(n.Initializer.Expr, n.Type)
 		g.w("\n")
@@ -226,15 +226,15 @@ func (g *gen) tld(n *c99.Declarator) {
 	}
 }
 
-func (g *gen) escapedTLD(n *c99.Declarator) {
+func (g *gen) escapedTLD(n *cc.Declarator) {
 	if g.isConstInitializer(n.Type, n.Initializer) {
 		g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
 		return
 	}
 
-	switch x := c99.UnderlyingType(n.Type).(type) {
-	case *c99.ArrayType:
-		if x.Item.Kind() == c99.Char && n.Initializer.Expr.Operand.Value != nil {
+	switch x := cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
 			g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
 			return
 		}
@@ -246,12 +246,12 @@ func (g *gen) escapedTLD(n *c99.Declarator) {
 	g.w("}")
 }
 
-func (g *gen) functionDefinition(n *c99.Declarator) {
+func (g *gen) functionDefinition(n *cc.Declarator) {
 	if n.FunctionDefinition == nil {
 		return
 	}
 
-	g.mainFn = n.Name() == idMain && n.Linkage == c99.LinkageExternal
+	g.mainFn = n.Name() == idMain && n.Linkage == cc.LinkageExternal
 	g.nextLabel = 1
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
@@ -261,7 +261,7 @@ func (g *gen) functionDefinition(n *c99.Declarator) {
 	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
 	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
 	names := n.ParameterNames()
-	t := n.Type.(*c99.FunctionType)
+	t := n.Type.(*cc.FunctionType)
 	if len(names) != len(t.Params) {
 		if len(names) != 0 {
 			if !(len(names) == 1 && names[0] == 0) {
@@ -272,13 +272,13 @@ func (g *gen) functionDefinition(n *c99.Declarator) {
 		names = make([]int, len(t.Params))
 	}
 	params := n.Parameters
-	var escParams []*c99.Declarator
+	var escParams []*cc.Declarator
 	switch {
-	case len(t.Params) == 1 && t.Params[0].Kind() == c99.Void:
+	case len(t.Params) == 1 && t.Params[0].Kind() == cc.Void:
 		// nop
 	default:
 		for i, v := range t.Params {
-			var param *c99.Declarator
+			var param *cc.Declarator
 			if i < len(params) {
 				param = params[i]
 			}
@@ -289,8 +289,8 @@ func (g *gen) functionDefinition(n *c99.Declarator) {
 				g.w("a%s %s", dict.S(nm), g.typ(v))
 				escParams = append(escParams, param)
 			default:
-				switch c99.UnderlyingType(v).(type) {
-				case *c99.ArrayType:
+				switch cc.UnderlyingType(v).(type) {
+				case *cc.ArrayType:
 					g.w("%s uintptr /* %v */ ", mangleIdent(nm, false), g.typ(v))
 				default:
 					g.w("%s %s ", mangleIdent(nm, false), g.typ(v))
@@ -299,7 +299,7 @@ func (g *gen) functionDefinition(n *c99.Declarator) {
 					continue
 				}
 
-				if v.Kind() == c99.Ptr {
+				if v.Kind() == cc.Ptr {
 					g.w("/* %s */", g.typeComment(v))
 				}
 			}
@@ -309,32 +309,32 @@ func (g *gen) functionDefinition(n *c99.Declarator) {
 		}
 	}
 	g.w(")")
-	void := t.Result.Kind() == c99.Void
+	void := t.Result.Kind() == cc.Void
 	if !void {
 		g.w("(r %s", g.typ(t.Result))
-		if t.Result.Kind() == c99.Ptr {
+		if t.Result.Kind() == cc.Ptr {
 			g.w("/* %s */", g.typeComment(t.Result))
 		}
 		g.w(")")
 	}
 	vars := n.FunctionDefinition.LocalVariables()
 	if n.Alloca {
-		vars = append(append([]*c99.Declarator(nil), vars...), allocaDeclarator)
+		vars = append(append([]*cc.Declarator(nil), vars...), allocaDeclarator)
 	}
 	g.functionBody(n.FunctionDefinition.FunctionBody, vars, void, n.Parameters, escParams)
 	g.w("\n")
 }
 
-func (g *gen) functionBody(n *c99.FunctionBody, vars []*c99.Declarator, void bool, params, escParams []*c99.Declarator) {
+func (g *gen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool, params, escParams []*cc.Declarator) {
 	if vars == nil {
-		vars = []*c99.Declarator{}
+		vars = []*cc.Declarator{}
 	}
 	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false)
 }
 
-func (g *gen) mangleDeclarator(n *c99.Declarator) string {
+func (g *gen) mangleDeclarator(n *cc.Declarator) string {
 	nm := n.Name()
-	if n.Linkage == c99.LinkageInternal {
+	if n.Linkage == cc.LinkageInternal {
 		if m := g.staticDeclarators[nm]; m != nil {
 			n = m
 		}
@@ -347,7 +347,7 @@ func (g *gen) mangleDeclarator(n *c99.Declarator) string {
 		return mangleIdent(nm, true)
 	}
 
-	if n.Linkage == c99.LinkageExternal {
+	if n.Linkage == cc.LinkageExternal {
 		switch {
 		case g.externs[n.Name()] == nil:
 			return crt + mangleIdent(nm, true)
@@ -359,13 +359,13 @@ func (g *gen) mangleDeclarator(n *c99.Declarator) string {
 	return mangleIdent(nm, false)
 }
 
-func (g *gen) normalizeDeclarator(n *c99.Declarator) *c99.Declarator {
+func (g *gen) normalizeDeclarator(n *cc.Declarator) *cc.Declarator {
 	if n == nil {
 		return nil
 	}
 
 	switch n.Linkage {
-	case c99.LinkageExternal:
+	case cc.LinkageExternal:
 		if d, ok := g.externs[n.Name()]; ok {
 			n = d
 		}
@@ -378,12 +378,12 @@ func (g *gen) normalizeDeclarator(n *c99.Declarator) *c99.Declarator {
 	return n
 }
 
-func (g *gen) declaration(n *c99.Declaration, deadCode *bool) {
+func (g *gen) declaration(n *cc.Declaration, deadCode *bool) {
 	// DeclarationSpecifiers InitDeclaratorListOpt ';'
 	g.initDeclaratorListOpt(n.InitDeclaratorListOpt, deadCode)
 }
 
-func (g *gen) initDeclaratorListOpt(n *c99.InitDeclaratorListOpt, deadCode *bool) {
+func (g *gen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool) {
 	if n == nil {
 		return
 	}
@@ -391,13 +391,13 @@ func (g *gen) initDeclaratorListOpt(n *c99.InitDeclaratorListOpt, deadCode *bool
 	g.initDeclaratorList(n.InitDeclaratorList, deadCode)
 }
 
-func (g *gen) initDeclaratorList(n *c99.InitDeclaratorList, deadCode *bool) {
+func (g *gen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
 	for ; n != nil; n = n.InitDeclaratorList {
 		g.initDeclarator(n.InitDeclarator, deadCode)
 	}
 }
 
-func (g *gen) initDeclarator(n *c99.InitDeclarator, deadCode *bool) {
+func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 	d := n.Declarator
 	if d.DeclarationSpecifier.IsStatic() {
 		return
@@ -407,7 +407,7 @@ func (g *gen) initDeclarator(n *c99.InitDeclarator, deadCode *bool) {
 		return
 	}
 
-	if n.Case == c99.InitDeclaratorInit { // Declarator '=' Initializer
+	if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
 		g.initializer(d)
 	}
 }
