@@ -12,7 +12,7 @@ package ccgo
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL	tclsqlite build ok
 //	--- FAIL: TestTCL (4347.80s)
-//		all_test.go:1373: 
+//		all_test.go:1373:
 //			Test cases:   261833
 //			Pass:         260985 (99.68%)
 //			Fail:            848 (0.32%)
@@ -27,7 +27,7 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1381: 
+//		all_test.go:1381:
 //			Test binary exit error: exit status 1
 //			Last completed test file: "Time: selectC.test 352 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
@@ -598,6 +598,11 @@ func TestGCC(t *testing.T) {
 		"pr32244-1.c":                  {}, //TODO bits, arithmetic precision
 		"pr34971.c":                    {}, //TODO bits, arithmetic precision
 		"pr77767.c":                    {}, //TODO VLA
+
+		//TODO bit field arithmetic
+		// 20040709-1.c
+		// 20040709-2.c
+
 	}
 
 	if s := *oRE; s != "" {
