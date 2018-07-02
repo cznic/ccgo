@@ -11,11 +11,11 @@ package ccgo
 //	GCC	cc 1107 ccgo 1089 build 1087 run 1087 ok 1087
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL	tclsqlite build ok
-//	--- FAIL: TestTCL (2274.51s)
-//		all_test.go:1354: 
-//			Test cases:   261833
-//			Pass:         261067 (99.71%)
-//			Fail:            766 (0.29%)
+//	--- FAIL: TestTCL (4361.81s)
+//		all_test.go:1374: 
+//			Test cases:   261819
+//			Pass:         261012 (99.69%)
+//			Fail:            807 (0.31%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -27,9 +27,9 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1362: 
+//		all_test.go:1382: 
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 300 ms"
+//			Last completed test file: "Time: selectC.test 350 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -140,46 +140,32 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (4.561998948s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.879793693s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.72111034s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (6.847887088s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (7.592585643s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (7.915392275s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (8.563181069s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (9.637497006s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (9.949725447s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (10.711628767s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (15.536759518s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (16.46083875s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (21.509880684s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (22.192211023s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (27.15820462s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (28.212730803s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (29.241025418s)
-//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (29.910470868s)
-//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (30.703523714s)
-//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (35.116376562s)
-//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (35.424566725s)
-//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (35.740590371s)
-//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (40.311840459s)
-//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (41.150775707s)
-//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (42.173688334s)
-//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (42.914809462s)
-//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (43.889081047s)
-//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (44.503164978s)
-//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (45.296900266s)
-//	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (45.612105456s)
-//	cc 31 ccgo 31 build 31 run 31 ok 31 (100.00%) csmith 31 (45.948953343s)
-//	cc 32 ccgo 32 build 32 run 32 ok 32 (100.00%) csmith 32 (46.755800599s)
-//	cc 33 ccgo 33 build 33 run 33 ok 33 (100.00%) csmith 33 (54.308953961s)
-//	cc 34 ccgo 34 build 34 run 34 ok 34 (100.00%) csmith 34 (54.933487505s)
-//	cc 35 ccgo 35 build 35 run 35 ok 35 (100.00%) csmith 35 (55.967978341s)
-//	cc 36 ccgo 36 build 36 run 36 ok 36 (100.00%) csmith 36 (1m0.177852529s)
-//	CSmith	cc 36 ccgo 36 build 36 run 36 ok 36 (100.00%) csmith 36 (1m0.177875403s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (2.413689842s)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (10.941912814s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (11.946496165s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (13.718798038s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (15.219628724s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (25.692020918s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (26.414883404s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (28.951412039s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (30.669583646s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (32.145449161s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (37.888236995s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (38.578854632s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (40.485677361s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (42.00762107s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (44.213138599s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (46.196559859s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (48.120166687s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (49.674391013s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (51.438671014s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (54.974991097s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (56.605750619s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (57.845646415s)
+//	CSmith	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (1m2.020978881s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	2603.200s
+//	FAIL	github.com/cznic/ccgo/v2	5106.573s
 
 import (
 	"bufio"
@@ -1852,9 +1838,10 @@ out:
 			"--bitfields",            // --bitfields | --no-bitfields: enable | disable full-bitfields structs (disabled by default).
 			"--no-const-pointers",    // --const-pointers | --no-const-pointers: enable | disable const pointers (enabled by default).
 			"--no-consts",            // --consts | --no-consts: enable | disable const qualifier (enabled by default).
-			"--paranoid",             // --paranoid | --no-paranoid: enable | disable pointer-related assertions (disabled by default).
+			"--no-packed-struct",     // --packed-struct | --no-packed-struct: enable | disable packed structs by adding #pragma pack(1) before struct definition (disabled by default).
 			"--no-volatile-pointers", // --volatile-pointers | --no-volatile-pointers: enable | disable volatile pointers (enabled by default).
 			"--no-volatiles",         // --volatiles | --no-volatiles: enable | disable volatiles (enabled by default).
+			"--paranoid",             // --paranoid | --no-paranoid: enable | disable pointer-related assertions (disabled by default).
 		).Output()
 		if err != nil {
 			t.Fatalf("%v\n%s", err, out)
