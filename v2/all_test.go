@@ -179,6 +179,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -261,6 +262,23 @@ func init() {
 	if searchPaths, err = cc.Paths(true); err != nil {
 		panic(err)
 	}
+}
+
+// Command outputs a Go program generated from in to w.
+//
+// No package or import clause is generated.
+func Command(w io.Writer, in []*cc.TranslationUnit) (err error) {
+	returned := false
+
+	defer func() {
+		if e := recover(); !returned && err == nil {
+			err = fmt.Errorf("PANIC: %v\n%s", e, compact(string(debugStack()), compactStack))
+		}
+	}()
+
+	err = newGen(w, in).gen(true)
+	returned = true
+	return err
 }
 
 func TestOpt(t *testing.T) {

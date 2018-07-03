@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package ccgo translates c99 ASTs to Go source code. (Work In Progress)
+// Package ccgo translates C99 ASTs to Go source code. Work In Progress. API unstable.
 package ccgo
 
 import (
@@ -47,29 +47,6 @@ func main() {
 	compactStack = 30
 )
 
-// Command outputs a Go program generated from in to w.
-//
-// No package or import clause is generated.
-func Command(w io.Writer, in []*cc.TranslationUnit) (err error) {
-	returned := false
-
-	defer func() {
-		if e := recover(); !returned && err == nil {
-			err = fmt.Errorf("PANIC: %v\n%s", e, compact(string(debugStack()), compactStack))
-		}
-	}()
-
-	err = newGen(w, in).gen(true)
-	returned = true
-	return err
-}
-
-// Package outputs a Go package generated from in to w.
-//
-// No package or import clause is generated.
-func Package(w io.Writer, in []*cc.TranslationUnit) error {
-	return newGen(w, in).gen(false)
-}
 
 type gen struct {
 	bss                    int64

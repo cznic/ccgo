@@ -1,6 +1,6 @@
 # ccgo
 
-Package ccgo translates c99 ASTs to Go. (Work In Progress)
+Package ccgo translates c99 ASTs to Go. Work In Progress. API unstable.
 
 Installation
 
