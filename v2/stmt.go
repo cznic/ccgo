@@ -132,7 +132,140 @@ for _, v := range allocs {
 	}
 }
 
+func (g *ngen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map[*cc.LabeledStmt]int, sentinel bool, brk, cont *int, params, escParams []*cc.Declarator, deadcode bool) {
+	if vars != nil {
+		g.w(" {")
+	}
+	vars = append([]*cc.Declarator(nil), vars...)
+	w := 0
+	for _, v := range vars {
+		if v != allocaDeclarator {
+			if v.Referenced == 0 && v.Initializer != nil && v.Linkage == cc.LinkageNone && v.DeclarationSpecifier.IsStatic() && v.Name() == idFuncName {
+				continue
+			}
+
+			if v.Referenced == 0 && v.Initializer == nil && !v.AddressTaken {
+				continue
+			}
+
+			if v.DeclarationSpecifier.IsStatic() {
+				todo("", g.position(n))
+				//TODO g.enqueueNumbered(v)
+				continue
+			}
+		}
+
+		vars[w] = v
+		w++
+	}
+	vars = vars[:w]
+	alloca := false
+	var malloc int64
+	var offp, offv []int64
+	for _, v := range escParams {
+		malloc = roundup(malloc, 16)
+		offp = append(offp, malloc)
+		malloc += g.model.Sizeof(v.Type)
+	}
+	for _, v := range vars {
+		if v == allocaDeclarator {
+			continue
+		}
+
+		if g.escaped(v) {
+			malloc = roundup(malloc, 16)
+			offv = append(offv, malloc)
+			malloc += g.model.Sizeof(v.Type)
+		}
+	}
+	if malloc != 0 {
+		g.w("\nesc := %sMustMalloc(%d)", crt, malloc)
+	}
+	if len(vars)+len(escParams) != 0 {
+		localNames := map[int]struct{}{}
+		num := 0
+		for _, v := range append(params, vars...) {
+			if v == nil || v == allocaDeclarator {
+				continue
+			}
+
+			nm := v.Name()
+			if _, ok := localNames[nm]; ok {
+				num++
+				g.nums[v] = num
+			}
+			localNames[nm] = struct{}{}
+		}
+		switch {
+		case len(vars)+len(escParams) == 1:
+			g.w("\nvar ")
+		default:
+			g.w("\nvar (\n")
+		}
+		for i, v := range escParams {
+			g.w("\n\t%s = esc+%d // *%s", g.mangleDeclarator(v), offp[i], g.ptyp(v.Type, false, 1))
+		}
+		for _, v := range vars {
+			switch {
+			case v == allocaDeclarator:
+				g.w("\nallocs []uintptr")
+				g.needAlloca = true
+				alloca = true
+			case g.escaped(v):
+				g.w("\n\t%s = esc+%d // *%s", g.mangleDeclarator(v), offv[0], g.typeComment(v.Type))
+				g.w("\n\t_ = %s", g.mangleDeclarator(v))
+				offv = offv[1:]
+			default:
+				switch {
+				case v.Type.Kind() == cc.Ptr:
+					g.w("\n\t%s %s\t// %s", g.mangleDeclarator(v), g.typ(v.Type), g.typeComment(v.Type))
+				default:
+					g.w("\n\t%s %s", g.mangleDeclarator(v), g.typ(v.Type))
+				}
+				g.w("\n\t_ = %s", g.mangleDeclarator(v))
+			}
+		}
+		if len(vars)+len(escParams) != 1 {
+			g.w("\n)")
+		}
+	}
+	switch {
+	case alloca:
+		g.w("\ndefer func() {")
+		if malloc != 0 {
+			g.w("\n%sFree(esc)", crt)
+		}
+		if alloca {
+			g.w(`
+for _, v := range allocs {
+	%sFree(v)
+}`, crt)
+		}
+		g.w("\n}()")
+	case malloc != 0:
+		g.w("\ndefer %sFree(esc)", crt)
+	}
+	for _, v := range escParams {
+		g.w("\n*(*%s)(unsafe.Pointer(%s)) = a%s", g.typ(v.Type), g.mangleDeclarator(v), dict.S(v.Name()))
+	}
+	g.blockItemListOpt(n.BlockItemListOpt, cases, brk, cont, &deadcode)
+	if vars != nil {
+		if sentinel && !deadcode {
+			g.w(";return r")
+		}
+		g.w("\n}")
+	}
+}
+
 func (g *gen) blockItemListOpt(n *cc.BlockItemListOpt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+	if n == nil {
+		return
+	}
+
+	g.blockItemList(n.BlockItemList, cases, brk, cont, deadcode)
+}
+
+func (g *ngen) blockItemListOpt(n *cc.BlockItemListOpt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	if n == nil {
 		return
 	}
@@ -146,6 +279,12 @@ func (g *gen) blockItemList(n *cc.BlockItemList, cases map[*cc.LabeledStmt]int, 
 	}
 }
 
+func (g *ngen) blockItemList(n *cc.BlockItemList, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+	for ; n != nil; n = n.BlockItemList {
+		g.blockItem(n.BlockItem, cases, brk, cont, deadcode)
+	}
+}
+
 func (g *gen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
 	switch n.Case {
 	case cc.BlockItemDecl: // Declaration
@@ -154,6 +293,17 @@ func (g *gen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, con
 		g.stmt(n.Stmt, cases, brk, cont, deadcode)
 	default:
 		todo("", g.position0(n), n.Case)
+	}
+}
+
+func (g *ngen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+	switch n.Case {
+	case cc.BlockItemDecl: // Declaration
+		g.declaration(n.Declaration, deadcode)
+	case cc.BlockItemStmt: // Stmt
+		g.stmt(n.Stmt, cases, brk, cont, deadcode)
+	default:
+		todo("", g.position(n), n.Case)
 	}
 }
 
@@ -173,6 +323,25 @@ func (g *gen) stmt(n *cc.Stmt, cases map[*cc.LabeledStmt]int, brk, cont *int, de
 		g.labeledStmt(n.LabeledStmt, cases, brk, cont, deadcode)
 	default:
 		todo("", g.position0(n), n.Case)
+	}
+}
+
+func (g *ngen) stmt(n *cc.Stmt, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool) {
+	switch n.Case {
+	case cc.StmtExpr: // ExprStmt
+		g.exprStmt(n.ExprStmt, deadcode)
+	//TODO case cc.StmtJump: // JumpStmt
+	//TODO 	g.jumpStmt(n.JumpStmt, brk, cont, deadcode)
+	//TODO case cc.StmtIter: // IterationStmt
+	//TODO 	g.iterationStmt(n.IterationStmt, cases, brk, cont, deadcode)
+	//TODO case cc.StmtBlock: // CompoundStmt
+	//TODO 	g.compoundStmt(n.CompoundStmt, nil, cases, false, brk, cont, nil, nil, *deadcode)
+	//TODO case cc.StmtSelect: // SelectionStmt
+	//TODO 	g.selectionStmt(n.SelectionStmt, cases, brk, cont, deadcode)
+	//TODO case cc.StmtLabeled: // LabeledStmt
+	//TODO 	g.labeledStmt(n.LabeledStmt, cases, brk, cont, deadcode)
+	default:
+		todo("", g.position(n), n.Case)
 	}
 }
 
@@ -492,6 +661,17 @@ func (g *gen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool) {
 }
 
 func (g *gen) exprStmt(n *cc.ExprStmt, deadcode *bool) {
+	if *deadcode {
+		return
+	}
+
+	if o := n.ExprListOpt; o != nil {
+		g.w("\n")
+		g.exprList(o.ExprList, true)
+	}
+}
+
+func (g *ngen) exprStmt(n *cc.ExprStmt, deadcode *bool) {
 	if *deadcode {
 		return
 	}

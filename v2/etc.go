@@ -44,9 +44,9 @@ var (
 	idStderr                 = dict.SID("stderr")
 	idStdin                  = dict.SID("stdin")
 	idStdout                 = dict.SID("stdout")
-	idVaEnd                  = dict.SID("__va_end")
+	idVaEnd                  = dict.SID("__ccgo_va_end")
 	idVaList                 = dict.SID("va_list")
-	idVaStart                = dict.SID("__va_start")
+	idVaStart                = dict.SID("__ccgo_va_start")
 
 	testFn      string
 	traceOpt    bool
@@ -156,6 +156,39 @@ func isFnPtr(t cc.Type, out *cc.Type) bool {
 }
 
 func (g *gen) typeComment(t cc.Type) (r string) {
+	const max = 64
+	defer func() {
+		r = strings.Replace(r, "\n", "", -1)
+		if len(r) > max+3 {
+			r = r[:max/2] + "..." + r[len(r)-max/2:]
+		}
+	}()
+
+	switch x := t.(type) {
+	case *cc.NamedType:
+		return fmt.Sprintf("T%s = %s", dict.S(x.Name), g.typeComment(x.Type))
+	case *cc.PointerType:
+		n := 1
+		for {
+			t, ok := underlyingType(x.Item, true).(*cc.PointerType)
+			if !ok {
+				switch {
+				case x.Item == cc.Void:
+					return fmt.Sprintf("%svoid", strings.Repeat("*", n))
+				default:
+					return fmt.Sprintf("%s%s", strings.Repeat("*", n), g.typeComment(x.Item))
+				}
+			}
+
+			x = t
+			n++
+		}
+	default:
+		return g.ptyp(t, false, 1)
+	}
+}
+
+func (g *ngen) typeComment(t cc.Type) (r string) {
 	const max = 64
 	defer func() {
 		r = strings.Replace(r, "\n", "", -1)

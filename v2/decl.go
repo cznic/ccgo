@@ -55,6 +55,14 @@ more:
 	}
 }
 
+func (g *ngen) define(n *cc.Declarator) {
+	if !n.IsTLD() {
+		panic("internal error")
+	}
+
+	g.tld(n)
+}
+
 func (g *gen) defineEnumType(t *cc.EnumType) {
 	if t.Tag != 0 {
 		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
@@ -226,6 +234,74 @@ func (g *gen) tld(n *cc.Declarator) {
 	}
 }
 
+func (g *ngen) tld(n *cc.Declarator) {
+	nm := n.Name()
+	t := cc.UnderlyingType(n.Type)
+	if t.Kind() == cc.Function {
+		g.functionDefinition(n)
+		return
+	}
+
+	pos := g.position(n)
+	pos.Filename, _ = filepath.Abs(pos.Filename)
+	if !isTesting {
+		pos.Filename = filepath.Base(pos.Filename)
+	}
+	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
+	if n.DeclarationSpecifier.IsTypedef() {
+		g.w("\ntype T%s = %s", g.mangleDeclarator(n), g.typ(n.Type))
+		return
+	}
+
+	if g.isZeroInitializer(n.Initializer) {
+		if isVaList(n.Type) {
+			g.w("\nvar %s *[]interface{}", g.mangleDeclarator(n))
+			return
+		}
+
+		if g.escaped(n) {
+			g.w("\nvar %s = allocBSS(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
+			return
+		}
+
+		switch x := t.(type) {
+		case *cc.StructType:
+			todo("", g.position(n))
+			//TODO g.w("\nvar %s = bss + %d\n", g.mangleDeclarator(n), g.allocBSS(n.Type))
+		case *cc.PointerType:
+			g.w("\nvar %s uintptr\n", g.mangleDeclarator(n))
+		case
+			*cc.EnumType,
+			cc.TypeKind:
+
+			if x.IsArithmeticType() {
+				g.w("\nvar %s %s\n", g.mangleDeclarator(n), g.typ(n.Type))
+				break
+			}
+
+			todo("%v: %v", g.position(n), x)
+		default:
+			todo("%v: %s %v %T", g.position(n), dict.S(nm), n.Type, x)
+		}
+		return
+	}
+
+	if g.escaped(n) {
+		g.escapedTLD(n)
+		return
+	}
+
+	switch n.Initializer.Case {
+	case cc.InitializerExpr: // Expr
+		g.w("\nvar %s = ", g.mangleDeclarator(n))
+		todo("", g.position(n))
+		//TODO g.convert(n.Initializer.Expr, n.Type)
+		g.w("\n")
+	default:
+		todo("", g.position(n), n.Initializer.Case)
+	}
+}
+
 func (g *gen) escapedTLD(n *cc.Declarator) {
 	if g.isConstInitializer(n.Type, n.Initializer) {
 		g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
@@ -241,6 +317,28 @@ func (g *gen) escapedTLD(n *cc.Declarator) {
 	}
 
 	g.w("\nvar %s = bss + %d // %v \n", g.mangleDeclarator(n), g.allocBSS(n.Type), n.Type)
+	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
+	g.literal(n.Type, n.Initializer)
+	g.w("}")
+}
+
+func (g *ngen) escapedTLD(n *cc.Declarator) {
+	if g.isConstInitializer(n.Type, n.Initializer) {
+		todo("", g.position(n))
+		//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+		return
+	}
+
+	switch x := cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
+			todo("", g.position(n))
+			//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+			return
+		}
+	}
+
+	g.w("\nvar %s = allocBSS(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
 	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
 	g.literal(n.Type, n.Initializer)
 	g.w("}")
@@ -325,7 +423,96 @@ func (g *gen) functionDefinition(n *cc.Declarator) {
 	g.w("\n")
 }
 
+func (g *ngen) functionDefinition(n *cc.Declarator) {
+	g.nextLabel = 1
+	pos := g.position(n)
+	pos.Filename, _ = filepath.Abs(pos.Filename)
+	if !isTesting {
+		pos.Filename = filepath.Base(pos.Filename)
+	}
+	s := "defined"
+	if n.FunctionDefinition == nil {
+		s = "declared"
+	}
+	g.w("\n\n// %s is %s at %v", g.mangleDeclarator(n), s, pos)
+	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
+	names := n.ParameterNames()
+	t := n.Type.(*cc.FunctionType)
+	if len(names) != len(t.Params) {
+		if len(names) != 0 {
+			if !(len(names) == 1 && names[0] == 0) {
+				todo("K&R C %v %v %v", g.position(n), names, t.Params)
+			}
+		}
+
+		names = make([]int, len(t.Params))
+	}
+	params := n.Parameters
+	var escParams []*cc.Declarator
+	switch {
+	case len(t.Params) == 1 && t.Params[0].Kind() == cc.Void:
+		// nop
+	default:
+		for i, v := range t.Params {
+			var param *cc.Declarator
+			if i < len(params) {
+				param = params[i]
+			}
+			nm := names[i]
+			g.w(", ")
+			switch {
+			case param != nil && g.escaped(param):
+				g.w("a%s %s", dict.S(nm), g.typ(v))
+				escParams = append(escParams, param)
+			default:
+				switch cc.UnderlyingType(v).(type) {
+				case *cc.ArrayType:
+					g.w("%s uintptr /* %v */ ", mangleIdent(nm, false), g.typ(v))
+				default:
+					g.w("%s %s ", mangleIdent(nm, false), g.typ(v))
+				}
+				if isVaList(v) {
+					continue
+				}
+
+				if v.Kind() == cc.Ptr {
+					g.w("/* %s */", g.typeComment(v))
+				}
+			}
+		}
+		if t.Variadic {
+			g.w(", %s...interface{}", ap)
+		}
+	}
+	g.w(")")
+	void := t.Result.Kind() == cc.Void
+	if !void {
+		g.w("(r %s", g.typ(t.Result))
+		if t.Result.Kind() == cc.Ptr {
+			g.w("/* %s */", g.typeComment(t.Result))
+		}
+		g.w(")")
+	}
+	if n.FunctionDefinition == nil {
+		return
+	}
+
+	vars := n.FunctionDefinition.LocalVariables()
+	if n.Alloca {
+		vars = append(append([]*cc.Declarator(nil), vars...), allocaDeclarator)
+	}
+	g.functionBody(n.FunctionDefinition.FunctionBody, vars, void, n.Parameters, escParams)
+	g.w("\n")
+}
+
 func (g *gen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool, params, escParams []*cc.Declarator) {
+	if vars == nil {
+		vars = []*cc.Declarator{}
+	}
+	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false)
+}
+
+func (g *ngen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool, params, escParams []*cc.Declarator) {
 	if vars == nil {
 		vars = []*cc.Declarator{}
 	}
@@ -359,6 +546,34 @@ func (g *gen) mangleDeclarator(n *cc.Declarator) string {
 	return mangleIdent(nm, false)
 }
 
+func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
+	nm := n.Name()
+	if n.Linkage == cc.LinkageInternal {
+		todo("", g.position(n))
+		// if m := g.staticDeclarators[nm]; m != nil {
+		// 	n = m
+		// }
+	}
+	if num, ok := g.nums[n]; ok {
+		return fmt.Sprintf("_%d%s", num, dict.S(nm))
+	}
+
+	if n.IsField {
+		return mangleIdent(nm, true)
+	}
+
+	if n.Linkage == cc.LinkageExternal {
+		//TODO switch {
+		//TODO case g.externs[n.Name()] == nil:
+		//TODO 	return crt + mangleIdent(nm, true)
+		//TODO default:
+		return mangleIdent(nm, true)
+		//TODO }
+	}
+
+	return mangleIdent(nm, false)
+}
+
 func (g *gen) normalizeDeclarator(n *cc.Declarator) *cc.Declarator {
 	if n == nil {
 		return nil
@@ -383,6 +598,11 @@ func (g *gen) declaration(n *cc.Declaration, deadCode *bool) {
 	g.initDeclaratorListOpt(n.InitDeclaratorListOpt, deadCode)
 }
 
+func (g *ngen) declaration(n *cc.Declaration, deadCode *bool) {
+	// DeclarationSpecifiers InitDeclaratorListOpt ';'
+	g.initDeclaratorListOpt(n.InitDeclaratorListOpt, deadCode)
+}
+
 func (g *gen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool) {
 	if n == nil {
 		return
@@ -391,7 +611,21 @@ func (g *gen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool)
 	g.initDeclaratorList(n.InitDeclaratorList, deadCode)
 }
 
+func (g *ngen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool) {
+	if n == nil {
+		return
+	}
+
+	g.initDeclaratorList(n.InitDeclaratorList, deadCode)
+}
+
 func (g *gen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
+	for ; n != nil; n = n.InitDeclaratorList {
+		g.initDeclarator(n.InitDeclarator, deadCode)
+	}
+}
+
+func (g *ngen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
 	for ; n != nil; n = n.InitDeclaratorList {
 		g.initDeclarator(n.InitDeclarator, deadCode)
 	}
@@ -409,5 +643,26 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 
 	if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
 		g.initializer(d)
+	}
+}
+
+func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
+	d := n.Declarator
+	switch {
+	case d.IsTLD():
+		g.define(d)
+	default:
+		if d.DeclarationSpecifier.IsStatic() {
+			return
+		}
+
+		if d.Referenced == 0 && d.Initializer == nil {
+			return
+		}
+
+		if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
+			todo("", g.position(n))
+			//TODO g.initializer(d)
+		}
 	}
 }

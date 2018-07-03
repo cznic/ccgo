@@ -6,6 +6,7 @@
 package ccgo
 
 import (
+	"bufio"
 	"bytes"
 	"container/list"
 	"fmt"
@@ -47,8 +48,66 @@ func main() {
 	compactStack = 30
 )
 
+// Object writes a linker object file produced from in to out.
+func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) error {
+	var buf bytes.Buffer
+	g := newNGen(&buf, in)
+	if err := g.gen(); err != nil {
+		return err
+	}
 
-type gen struct {
+	return objWrite(out, goos, goarch, objVersion, objMagic, &buf)
+}
+
+// Linker produces Go files from object files.
+type Linker struct {
+	out io.Writer
+}
+
+// NewLinker returns a newly created Linker writing to out.
+func NewLinker(out io.Writer) *Linker {
+	return &Linker{
+		out: out,
+	}
+}
+
+// Link incerementaly links objects files.
+func (l *Linker) Link(obj ...io.Reader) error {
+	panic("TODO")
+}
+
+// Close finihes the linking.
+func (l *Linker) Close() (err error) {
+	defer func() {
+		if x, ok := l.out.(*bufio.Writer); ok {
+			if e := x.Flush(); e != nil && err == nil {
+				err = e
+			}
+		}
+
+	}()
+
+	panic("TODO")
+}
+
+// Main implements a C compiler command.
+//
+// Example ccgo command
+//
+//	package main
+//
+//	import (
+//		"os"
+//
+//		"github.com/cznic/ccgo/v2"
+//	)
+//
+//	func main() { os.Exit(ccgo.Main(os.Args...)) }
+func Main(args ...string) int {
+	panic("TODO")
+}
+
+type gen struct { //TODO-
 	bss                    int64
 	ds                     []byte
 	enqueued               map[interface{}]struct{}
@@ -88,7 +147,30 @@ type gen struct {
 	needPreInc bool
 }
 
-func newGen(out io.Writer, in []*cc.TranslationUnit) *gen {
+type ngen struct { //TODO rename to gen
+	fset      *token.FileSet
+	in        *cc.TranslationUnit
+	model     cc.Model
+	nextLabel int
+	nums      map[*cc.Declarator]int
+	out       io.Writer
+	out0      bytes.Buffer
+	tCache    map[tCacheKey]string
+
+	needAlloca bool
+}
+
+func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
+	return &ngen{
+		in:     in,
+		model:  in.Model,
+		nums:   map[*cc.Declarator]int{},
+		out:    out,
+		tCache: map[tCacheKey]string{},
+	}
+}
+
+func newGen(out io.Writer, in []*cc.TranslationUnit) *gen { //TODO-
 	return &gen{
 		enqueued:  map[interface{}]struct{}{},
 		externs:   map[int]*cc.Declarator{},
@@ -258,6 +340,21 @@ const %s = uintptr(0)
 	return newOpt().do(g.out, &g.out0, testFn, g.needBool2int)
 }
 
+func (g *ngen) gen() error {
+	for l := g.in.ExternalDeclarationList; l != nil; l = l.ExternalDeclarationList {
+		switch n := l.ExternalDeclaration; n.Case {
+		case cc.ExternalDeclarationDecl: // Declaration
+			f := false
+			g.declaration(n.Declaration, &f)
+		case cc.ExternalDeclarationFunc: // FunctionDefinition
+			g.functionDefinition(n.FunctionDefinition.Declarator)
+		default:
+			panic(fmt.Errorf("unexpected %v", n.Case))
+		}
+	}
+	panic("TODO")
+}
+
 // dbg only
 func (g *gen) position0(n cc.Node) token.Position { return g.in[0].FileSet.PositionFor(n.Pos(), true) }
 
@@ -265,10 +362,25 @@ func (g *gen) position(n *cc.Declarator) token.Position {
 	return g.in[g.units[n]].FileSet.PositionFor(n.Pos(), true)
 }
 
+func (g *ngen) position(n cc.Node) token.Position {
+	return g.in.FileSet.PositionFor(n.Pos(), true)
+}
+
 func (g *gen) w(s string, args ...interface{}) {
 	if _, err := fmt.Fprintf(&g.out0, s, args...); err != nil {
 		panic(err)
 	}
+
+	if traceWrites {
+		fmt.Fprintf(os.Stderr, s, args...)
+	}
+}
+
+func (g *ngen) w(s string, args ...interface{}) {
+	if _, err := fmt.Fprintf(&g.out0, s, args...); err != nil {
+		panic(err)
+	}
+
 	if traceWrites {
 		fmt.Fprintf(os.Stderr, s, args...)
 	}
@@ -347,6 +459,30 @@ func (g gen) escaped(n *cc.Declarator) bool {
 	}
 
 	if n.AddressTaken || n.IsTLD() && g.escAllTLDs {
+		return true
+	}
+
+	switch cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		return !n.IsFunctionParameter
+	case
+		*cc.StructType,
+		*cc.TaggedStructType,
+		*cc.TaggedUnionType,
+		*cc.UnionType:
+
+		return n.IsTLD() || n.DeclarationSpecifier.IsStatic()
+	default:
+		return false
+	}
+}
+
+func (g ngen) escaped(n *cc.Declarator) bool {
+	if isVaList(n.Type) {
+		return false
+	}
+
+	if n.IsTLD() || n.AddressTaken {
 		return true
 	}
 

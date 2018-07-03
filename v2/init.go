@@ -30,6 +30,24 @@ func (g *gen) isZeroInitializer(n *cc.Initializer) bool {
 	return true
 }
 
+func (g *ngen) isZeroInitializer(n *cc.Initializer) bool {
+	if n == nil {
+		return true
+	}
+
+	if n.Case == cc.InitializerExpr { // Expr
+		return n.Expr.IsZero()
+	}
+
+	// '{' InitializerList CommaOpt '}'
+	for l := n.InitializerList; l != nil; l = l.InitializerList {
+		if !g.isZeroInitializer(l.Initializer) {
+			return false
+		}
+	}
+	return true
+}
+
 func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 	switch n.Case {
 	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
@@ -127,6 +145,107 @@ func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 		}
 	default:
 		todo("%v: %v", g.position0(n), n.Case)
+	}
+	panic("unreachable")
+}
+
+func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
+	switch n.Case {
+	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+		switch x := underlyingType(t, true).(type) {
+		case *cc.ArrayType:
+			for l := n.InitializerList; l != nil; l = l.InitializerList {
+				if !g.isConstInitializer(x.Item, l.Initializer) {
+					return false
+				}
+			}
+			return true
+		case *cc.StructType:
+			layout := g.model.Layout(x)
+			fld := 0
+			for l := n.InitializerList; l != nil; l = l.InitializerList {
+				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
+					fld++
+				}
+				if d := l.Designation; d != nil {
+					l := d.List
+					if len(l) != 1 {
+						todo("", g.position(n))
+					}
+
+					fld = l[0]
+				}
+
+				if !g.isConstInitializer(layout[fld].Type, l.Initializer) {
+					return false
+				}
+
+				fld++
+			}
+			return true
+		case *cc.UnionType:
+			layout := g.model.Layout(x)
+			fld := 0
+			for l := n.InitializerList; l != nil; l = l.InitializerList {
+				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
+					fld++
+				}
+				if d := l.Designation; d != nil {
+					l := d.List
+					if len(l) != 1 {
+						todo("", g.position(n))
+					}
+
+					fld = l[0]
+				}
+
+				if !g.isConstInitializer(layout[fld].Type, l.Initializer) {
+					return false
+				}
+
+				fld++
+			}
+			return true
+		default:
+			todo("%v: %T %v", g.position(n), x, t)
+		}
+	case cc.InitializerExpr: // Expr
+		op := n.Expr.Operand
+		if op.Value == nil || !g.voidCanIgnore(n.Expr) {
+			return false
+		}
+
+		switch x := underlyingType(t, true).(type) {
+		case *cc.ArrayType:
+			switch y := n.Expr.Operand.Value.(type) {
+			case *ir.StringValue:
+				if x.Size.Value != nil {
+					switch x.Item.Kind() {
+					case cc.Char, cc.SChar, cc.UChar:
+						return true
+					default:
+						return false
+					}
+				}
+
+				return false
+			default:
+				todo("%v: %T %v %v", g.position(n), y, t, op)
+			}
+		case *cc.EnumType:
+			return true
+		case *cc.PointerType:
+			_, ok := op.Value.(*ir.Int64Value)
+			return ok
+		case cc.TypeKind:
+			if x.IsArithmeticType() {
+				return true
+			}
+		default:
+			todo("%v: %T %v %v", g.position(n), x, t, op)
+		}
+	default:
+		todo("%v: %v", g.position(n), n.Case)
 	}
 	panic("unreachable")
 }
@@ -476,6 +595,177 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 		g.w("}))")
 	default:
 		todo("%v: %T", g.position0(n), x)
+	}
+}
+
+func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
+	switch x := cc.UnderlyingType(t).(type) {
+	case *cc.ArrayType:
+		if n.Expr != nil {
+			switch x.Item.Kind() {
+			case
+				cc.Char,
+				cc.UChar:
+
+				g.w("*(*%s)(unsafe.Pointer(", g.typ(t))
+				switch n.Expr.Case {
+				case cc.ExprString:
+					s := dict.S(int(n.Expr.Operand.Value.(*ir.StringValue).StringID))
+					switch {
+					case x.Size.Value == nil:
+						g.w("%q", s)
+					default:
+						b := make([]byte, x.Size.Value.(*ir.Int64Value).Value)
+						copy(b, s)
+						if len(b) != 0 && b[len(b)-1] == 0 {
+							b = b[:len(b)-1]
+						}
+						g.w("%q", string(b))
+					}
+				default:
+					todo("", g.position(n), n.Expr.Case)
+				}
+				g.w("))")
+			default:
+				todo("", g.position(n), x.Item.Kind())
+			}
+			return
+		}
+
+		g.w("%s{", g.typ(t))
+		todo("", g.position(n))
+		//TODO g.initializerListNL(n.InitializerList)
+		//TODO if !g.isZeroInitializer(n) {
+		//TODO 	index := 0
+		//TODO 	for l := n.InitializerList; l != nil; l = l.InitializerList {
+		//TODO 		if l.Designation != nil {
+		//TODO 			todo("", g.position0(n))
+		//TODO 		}
+		//TODO 		if !g.isZeroInitializer(l.Initializer) {
+		//TODO 			g.w("%d: ", index)
+		//TODO 			g.literal(x.Item, l.Initializer)
+		//TODO 			g.w(", ")
+		//TODO 			g.initializerListNL(n.InitializerList)
+		//TODO 		}
+		//TODO 		index++
+		//TODO 	}
+		//TODO }
+		//TODO g.w("}")
+	case *cc.PointerType:
+		if n.Expr.IsZero() || n.Expr.Operand.Value == cc.Null {
+			g.w("0")
+			return
+		}
+
+		g.value(n.Expr, false)
+	case *cc.StructType:
+		if n.Expr != nil {
+			todo("", g.position(n))
+			//TODO g.value(n.Expr, false)
+			return
+		}
+
+		g.w("%s{", g.typ(t))
+		todo("", g.position(n))
+		//TODO g.initializerListNL(n.InitializerList)
+		//TODO if !g.isZeroInitializer(n) {
+		//TODO 	layout := g.model.Layout(t)
+		//TODO 	fld := 0
+		//TODO 	fields := x.Fields
+		//TODO 	for l := n.InitializerList; l != nil; l = l.InitializerList {
+		//TODO 		for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
+		//TODO 			fld++
+		//TODO 		}
+		//TODO 		if d := l.Designation; d != nil {
+		//TODO 			l := d.List
+		//TODO 			if len(l) != 1 {
+		//TODO 				todo("", g.position0(n))
+		//TODO 			}
+
+		//TODO 			fld = l[0]
+		//TODO 		}
+		//TODO 		switch {
+		//TODO 		case layout[fld].Bits > 0:
+		//TODO 			todo("bit field %v", g.position0(n))
+		//TODO 		}
+		//TODO 		if !g.isZeroInitializer(l.Initializer) {
+		//TODO 			d := fields[fld]
+		//TODO 			g.w("%s: ", mangleIdent(d.Name, true))
+		//TODO 			g.literal(d.Type, l.Initializer)
+		//TODO 			g.w(", ")
+		//TODO 			g.initializerListNL(n.InitializerList)
+		//TODO 		}
+		//TODO 		fld++
+		//TODO 	}
+		//TODO }
+		//TODO g.w("}")
+	case *cc.EnumType:
+		switch n.Case {
+		case cc.InitializerExpr:
+			todo("", g.position(n))
+			//TODO g.value(n.Expr, false)
+		default:
+			todo("", g.position(n), n.Case)
+		}
+	case cc.TypeKind:
+		if x.IsArithmeticType() {
+			todo("", g.position(n))
+			//TODO g.convert(n.Expr, t)
+			return
+		}
+
+		todo("", g.position(n), x)
+	case *cc.UnionType:
+		// *(*struct{ X int32 })(unsafe.Pointer(&struct{int32}{int32(1)})),
+		if n.Expr != nil {
+			todo("", g.position(n), x)
+			return
+		}
+
+		if g.isZeroInitializer(n) {
+			g.w("%s{}", g.typ(t))
+			return
+		}
+
+		g.w("*(*%s)(unsafe.Pointer(&struct{", g.typ(t))
+		if !g.isZeroInitializer(n) {
+			layout := g.model.Layout(t)
+			fld := 0
+			fields := x.Fields
+			for l := n.InitializerList; l != nil; l = l.InitializerList {
+				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
+					fld++
+				}
+				if d := l.Designation; d != nil {
+					l := d.List
+					if len(l) != 1 {
+						todo("", g.position(n))
+					}
+
+					fld = l[0]
+				}
+				switch {
+				case layout[fld].Bits > 0:
+					todo("bit field %v", g.position(n))
+				}
+				if fld != 0 {
+					todo("", g.position(n))
+				}
+
+				d := fields[fld]
+				switch pad := g.model.Sizeof(t) - g.model.Sizeof(d.Type); {
+				case pad == 0:
+					g.w("%s}{", g.typ(d.Type))
+				default:
+					g.w("f %s; _[%d]byte}{f: ", g.typ(d.Type), pad)
+				}
+				g.literal(d.Type, l.Initializer)
+				fld++
+			}
+		}
+		g.w("}))")
+	default:
+		todo("%v: %T", g.position(n), x)
 	}
 }
 
