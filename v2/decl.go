@@ -260,7 +260,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 		}
 
 		if g.escaped(n) {
-			g.w("\nvar %s = allocBSS(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
+			g.w("\nvar %s = LBSS(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
 			return
 		}
 
@@ -338,7 +338,7 @@ func (g *ngen) escapedTLD(n *cc.Declarator) {
 		}
 	}
 
-	g.w("\nvar %s = allocBSS(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
+	g.w("\nvar %s = LBSS(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
 	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
 	g.literal(n.Type, n.Initializer)
 	g.w("}")

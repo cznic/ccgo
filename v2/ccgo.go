@@ -148,25 +148,28 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
-	fset      *token.FileSet
-	in        *cc.TranslationUnit
-	model     cc.Model
-	nextLabel int
-	nums      map[*cc.Declarator]int
-	out       io.Writer
-	out0      bytes.Buffer
-	tCache    map[tCacheKey]string
+	fset         *token.FileSet
+	helpers      map[string]int
+	in           *cc.TranslationUnit
+	model        cc.Model
+	needBool2int int
+	nextLabel    int
+	nums         map[*cc.Declarator]int
+	out          io.Writer
+	out0         bytes.Buffer
+	tCache       map[tCacheKey]string
 
 	needAlloca bool
 }
 
 func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
 	return &ngen{
-		in:     in,
-		model:  in.Model,
-		nums:   map[*cc.Declarator]int{},
-		out:    out,
-		tCache: map[tCacheKey]string{},
+		helpers: map[string]int{},
+		in:      in,
+		model:   in.Model,
+		nums:    map[*cc.Declarator]int{},
+		out:     out,
+		tCache:  map[tCacheKey]string{},
 	}
 }
 
@@ -352,7 +355,8 @@ func (g *ngen) gen() error {
 			panic(fmt.Errorf("unexpected %v", n.Case))
 		}
 	}
-	panic("TODO")
+	g.genHelpers()
+	return newOpt().do(g.out, &g.out0, testFn, g.needBool2int)
 }
 
 // dbg only
@@ -536,6 +540,21 @@ func (g *gen) registerHelper(a ...interface{}) string {
 	return fmt.Sprintf(b[0], id)
 }
 
+func (g *ngen) registerHelper(a ...interface{}) string {
+	b := make([]string, len(a))
+	for i, v := range a {
+		b[i] = fmt.Sprint(v)
+	}
+	k := strings.Join(b, "$")
+	if id := g.helpers[k]; id != 0 {
+		return fmt.Sprintf(b[0], id)
+	}
+
+	id := len(g.helpers) + 1
+	g.helpers[k] = id
+	return fmt.Sprintf(b[0], id)
+}
+
 func (g *gen) genHelpers() {
 	a := make([]string, 0, len(g.helpers))
 	for k := range g.helpers {
@@ -596,5 +615,17 @@ return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
 		default:
 			todo("%q", a)
 		}
+	}
+}
+
+func (g *ngen) genHelpers() {
+	a := make([]string, 0, len(g.helpers))
+	for k := range g.helpers {
+		a = append(a, k)
+	}
+	sort.Strings(a)
+	for _, k := range a {
+		a := strings.Split(k, "$")
+		g.w("\nconst Lh"+a[0]+" = %q", g.helpers[k], strings.Join(a[1:], "$"))
 	}
 }

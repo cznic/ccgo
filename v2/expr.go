@@ -2827,8 +2827,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 					return
 				}
 
-				todo("", g.position(n))
-				//TODO g.w("%s(%s(%s))", g.registerHelper("fn%d", g.typ(t)), g.registerHelper("fp%d", g.typ(d.Type)), g.mangleDeclarator(d))
+				g.w("%s(%s(%s))", g.registerHelper("fn%d", g.typ(t)), g.registerHelper("fp%d", g.typ(d.Type)), g.mangleDeclarator(d))
 				return
 			}
 

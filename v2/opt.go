@@ -139,6 +139,10 @@ func (o *opt) spec(n *ast.Spec) {
 }
 
 func (o *opt) blockStmt(n *ast.BlockStmt, outermost bool) {
+	if n == nil {
+		return
+	}
+
 	o.body(&n.List)
 	if !outermost {
 		return
