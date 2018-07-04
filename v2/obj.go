@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+/*
+
+var <mangled name> = Lb(n)		allocate BSS(n)
+const Lp<mangled name> = "type"		function prototype
+const Lh<helper><num> = "args"		helper function
+
+*/
+
 const (
 	objVersion = "1"
 )

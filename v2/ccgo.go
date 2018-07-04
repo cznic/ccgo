@@ -148,28 +148,30 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
-	fset         *token.FileSet
-	helpers      map[string]int
-	in           *cc.TranslationUnit
-	model        cc.Model
-	needBool2int int
-	nextLabel    int
-	nums         map[*cc.Declarator]int
-	out          io.Writer
-	out0         bytes.Buffer
-	tCache       map[tCacheKey]string
+	definedExterns map[int]struct{}
+	fset           *token.FileSet
+	helpers        map[string]int
+	in             *cc.TranslationUnit
+	model          cc.Model
+	needBool2int   int
+	nextLabel      int
+	nums           map[*cc.Declarator]int
+	out            io.Writer
+	out0           bytes.Buffer
+	tCache         map[tCacheKey]string
 
 	needAlloca bool
 }
 
 func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
 	return &ngen{
-		helpers: map[string]int{},
-		in:      in,
-		model:   in.Model,
-		nums:    map[*cc.Declarator]int{},
-		out:     out,
-		tCache:  map[tCacheKey]string{},
+		definedExterns: map[int]struct{}{},
+		helpers:        map[string]int{},
+		in:             in,
+		model:          in.Model,
+		nums:           map[*cc.Declarator]int{},
+		out:            out,
+		tCache:         map[tCacheKey]string{},
 	}
 }
 

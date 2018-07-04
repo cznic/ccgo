@@ -55,14 +55,6 @@ more:
 	}
 }
 
-func (g *ngen) define(n *cc.Declarator) {
-	if !n.IsTLD() {
-		panic("internal error")
-	}
-
-	g.tld(n)
-}
-
 func (g *gen) defineEnumType(t *cc.EnumType) {
 	if t.Tag != 0 {
 		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
@@ -235,6 +227,10 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
+	if !g.escaped(n) { // invariant
+		panic("internal error")
+	}
+
 	nm := n.Name()
 	t := cc.UnderlyingType(n.Type)
 	if t.Kind() == cc.Function {
@@ -242,17 +238,13 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
+	g.definedExterns[n.Name()] = struct{}{}
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
 	if !isTesting {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
-	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
-	if n.DeclarationSpecifier.IsTypedef() {
-		g.w("\ntype T%s = %s", g.mangleDeclarator(n), g.typ(n.Type))
-		return
-	}
-
+	g.w("\n\n// %s %s, %v", g.mangleDeclarator(n), g.typeComment(n.Type), pos)
 	if g.isZeroInitializer(n.Initializer) {
 		if isVaList(n.Type) {
 			g.w("\nvar %s *[]interface{}", g.mangleDeclarator(n))
@@ -260,7 +252,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 		}
 
 		if g.escaped(n) {
-			g.w("\nvar %s = LBSS(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
+			g.w("\nvar %s = Lb(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
 			return
 		}
 
@@ -286,20 +278,25 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
-	if g.escaped(n) {
-		g.escapedTLD(n)
+	if g.isConstInitializer(n.Type, n.Initializer) {
+		todo("", g.position(n))
+		//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
 		return
 	}
 
-	switch n.Initializer.Case {
-	case cc.InitializerExpr: // Expr
-		g.w("\nvar %s = ", g.mangleDeclarator(n))
-		todo("", g.position(n))
-		//TODO g.convert(n.Initializer.Expr, n.Type)
-		g.w("\n")
-	default:
-		todo("", g.position(n), n.Initializer.Case)
+	switch x := cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
+			todo("", g.position(n))
+			//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+			return
+		}
 	}
+
+	g.w("\nvar %s = Lb(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
+	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
+	g.literal(n.Type, n.Initializer)
+	g.w("}")
 }
 
 func (g *gen) escapedTLD(n *cc.Declarator) {
@@ -317,28 +314,6 @@ func (g *gen) escapedTLD(n *cc.Declarator) {
 	}
 
 	g.w("\nvar %s = bss + %d // %v \n", g.mangleDeclarator(n), g.allocBSS(n.Type), n.Type)
-	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
-	g.literal(n.Type, n.Initializer)
-	g.w("}")
-}
-
-func (g *ngen) escapedTLD(n *cc.Declarator) {
-	if g.isConstInitializer(n.Type, n.Initializer) {
-		todo("", g.position(n))
-		//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
-		return
-	}
-
-	switch x := cc.UnderlyingType(n.Type).(type) {
-	case *cc.ArrayType:
-		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
-			todo("", g.position(n))
-			//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
-			return
-		}
-	}
-
-	g.w("\nvar %s = LBSS(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
 	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
 	g.literal(n.Type, n.Initializer)
 	g.w("}")
@@ -430,11 +405,13 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 	if !isTesting {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
-	s := "defined"
 	if n.FunctionDefinition == nil {
-		s = "declared"
+		g.w("\n\n// %s\nconst Lp%s = %q", pos, mangleIdent(n.Name(), n.Linkage == cc.LinkageExternal), g.typ(n.Type))
+		return
 	}
-	g.w("\n\n// %s is %s at %v", g.mangleDeclarator(n), s, pos)
+
+	g.definedExterns[n.Name()] = struct{}{}
+	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
 	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
 	names := n.ParameterNames()
 	t := n.Type.(*cc.FunctionType)
@@ -493,10 +470,6 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 		}
 		g.w(")")
 	}
-	if n.FunctionDefinition == nil {
-		return
-	}
-
 	vars := n.FunctionDefinition.LocalVariables()
 	if n.Alloca {
 		vars = append(append([]*cc.Declarator(nil), vars...), allocaDeclarator)
@@ -563,12 +536,11 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.Linkage == cc.LinkageExternal {
-		//TODO switch {
-		//TODO case g.externs[n.Name()] == nil:
-		//TODO 	return crt + mangleIdent(nm, true)
-		//TODO default:
+		if _, ok := g.definedExterns[nm]; !ok && nm != idMain {
+			return crt + mangleIdent(nm, true)
+		}
+
 		return mangleIdent(nm, true)
-		//TODO }
 	}
 
 	return mangleIdent(nm, false)
@@ -648,15 +620,15 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 
 func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 	d := n.Declarator
+	if d.Referenced == 0 && d.Initializer == nil {
+		return
+	}
+
 	switch {
 	case d.IsTLD():
-		g.define(d)
+		g.tld(d)
 	default:
 		if d.DeclarationSpecifier.IsStatic() {
-			return
-		}
-
-		if d.Referenced == 0 && d.Initializer == nil {
 			return
 		}
 
