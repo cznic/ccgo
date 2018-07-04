@@ -330,8 +330,8 @@ func (g *ngen) stmt(n *cc.Stmt, cases map[*cc.LabeledStmt]int, brk, cont *int, d
 	switch n.Case {
 	case cc.StmtExpr: // ExprStmt
 		g.exprStmt(n.ExprStmt, deadcode)
-	//TODO case cc.StmtJump: // JumpStmt
-	//TODO 	g.jumpStmt(n.JumpStmt, brk, cont, deadcode)
+	case cc.StmtJump: // JumpStmt
+		g.jumpStmt(n.JumpStmt, brk, cont, deadcode)
 	//TODO case cc.StmtIter: // IterationStmt
 	//TODO 	g.iterationStmt(n.IterationStmt, cases, brk, cont, deadcode)
 	//TODO case cc.StmtBlock: // CompoundStmt
@@ -657,6 +657,67 @@ func (g *gen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool) {
 		g.w("\ngoto _%d\n", *cont)
 	default:
 		todo("", g.position0(n), n.Case)
+	}
+}
+
+func (g *ngen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool) {
+	if g.mainFn {
+		n.ReturnOperand.Type = cc.Int
+	}
+	switch n.Case {
+	case cc.JumpStmtReturn: // "return" ExprListOpt ';'
+		switch o := n.ExprListOpt; {
+		case o != nil:
+			switch rt := n.ReturnOperand.Type; {
+			case rt == nil:
+				switch {
+				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == cc.ExprCond:
+					todo("", g.position(n))
+				default:
+					g.exprList(o.ExprList, true)
+				}
+			default:
+				switch {
+				case isSingleExpression(o.ExprList) && o.ExprList.Expr.Case == cc.ExprCond:
+					n := o.ExprList.Expr // Expr '?' ExprList ':' Expr
+					switch {
+					case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
+						todo("", g.position(n))
+					case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
+						todo("", g.position(n))
+					default:
+						g.w("\nif ")
+						g.value(n.Expr, false)
+						g.w(" != 0 { return ")
+						g.exprList2(n.ExprList, rt)
+						g.w("}\n\nreturn ")
+						g.convert(n.Expr2, rt)
+						g.w("\n")
+					}
+				default:
+					g.w("\nreturn ")
+					g.exprList2(o.ExprList, rt)
+				}
+			}
+		default:
+			g.w("\nreturn ")
+		}
+		g.w("\n")
+		*deadcode = true
+	case cc.JumpStmtBreak: // "break" ';'
+		if *brk < 0 {
+			*brk = -*brk // Signal used.
+		}
+		g.w("\ngoto _%d\n", *brk)
+	case cc.JumpStmtGoto: // "goto" IDENTIFIER ';'
+		g.w("\ngoto %s\n", mangleIdent(n.Token2.Val, false))
+	case cc.JumpStmtContinue: // "continue" ';'
+		if *cont < 0 {
+			*cont = -*cont // Signal used.
+		}
+		g.w("\ngoto _%d\n", *cont)
+	default:
+		todo("", g.position(n), n.Case)
 	}
 }
 

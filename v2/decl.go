@@ -7,6 +7,7 @@ package ccgo
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
@@ -410,6 +411,7 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 		return
 	}
 
+	g.mainFn = n.Name() == idMain && n.Linkage == cc.LinkageExternal
 	g.definedExterns[n.Name()] = struct{}{}
 	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
 	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
@@ -536,7 +538,7 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.Linkage == cc.LinkageExternal {
-		if _, ok := g.definedExterns[nm]; !ok && nm != idMain {
+		if _, ok := g.definedExterns[nm]; !ok && g.isCRT(n) {
 			return crt + mangleIdent(nm, true)
 		}
 
@@ -544,6 +546,13 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	return mangleIdent(nm, false)
+}
+
+var crtDetect = filepath.Join("src", filepath.FromSlash(cc.ImportPath()), "headers")
+
+func (g *ngen) isCRT(n cc.Node) bool {
+	p := g.position(n)
+	return strings.Contains(p.Filename, crtDetect)
 }
 
 func (g *gen) normalizeDeclarator(n *cc.Declarator) *cc.Declarator {
@@ -633,8 +642,7 @@ func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 		}
 
 		if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
-			todo("", g.position(n))
-			//TODO g.initializer(d)
+			g.initializer(d)
 		}
 	}
 }

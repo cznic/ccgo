@@ -88,6 +88,22 @@ func (g *gen) exprList2(n *cc.ExprList, t cc.Type) {
 	}
 }
 
+func (g *ngen) exprList2(n *cc.ExprList, t cc.Type) {
+	switch l := g.pexprList(n); {
+	case len(l) == 1:
+		g.convert(l[0], t)
+	default:
+		g.w("func() %v {", g.typ(t))
+		for _, v := range l[:len(l)-1] {
+			g.void(v)
+			g.w(";")
+		}
+		g.w("return ")
+		g.convert(l[len(l)-1], t)
+		g.w("}()")
+	}
+}
+
 func (g *gen) void(n *cc.Expr) {
 	if n.Case == cc.ExprCast && n.Expr.Case == cc.ExprIdent && !isVaList(n.Expr.Operand.Type) {
 		g.enqueue(n.Expr.Declarator)
@@ -367,60 +383,61 @@ func (g *ngen) void(n *cc.Expr) {
 	switch n.Case {
 	case cc.ExprCall: // Expr '(' ArgumentExprListOpt ')'
 		g.value(n, false)
-	//TODO case cc.ExprAssign: // Expr '=' Expr
-	//TODO 	if n.Expr.Equals(n.Expr2) {
-	//TODO 		return
-	//TODO 	}
+	case cc.ExprAssign: // Expr '=' Expr
+		if n.Expr.Equals(n.Expr2) {
+			return
+		}
 
-	//TODO 	op := n.Expr.Operand
-	//TODO 	if op.Bits() != 0 {
-	//TODO 		g.assignmentValue(n)
-	//TODO 		return
-	//TODO 	}
+		op := n.Expr.Operand
+		if op.Bits() != 0 {
+			todo("", g.position(n))
+			//TODO g.assignmentValue(n)
+			return
+		}
 
-	//TODO 	if isVaList(n.Expr.Operand.Type) {
-	//TODO 		switch rhs := n.Expr2.Operand; {
-	//TODO 		case isVaList(rhs.Type): // va_copy
-	//TODO 			g.w("{ x := *")
-	//TODO 			g.value(n.Expr2, false)
-	//TODO 			g.w("; ")
-	//TODO 			g.w("*")
-	//TODO 			g.lvalue(n.Expr)
-	//TODO 			g.w(" = &x }")
-	//TODO 			return
-	//TODO 		case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaStart:
-	//TODO 			g.w("{ x := ap; *")
-	//TODO 			g.lvalue(n.Expr)
-	//TODO 			g.w(" = &x }")
-	//TODO 			return
-	//TODO 		case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaEnd:
-	//TODO 			g.w("*")
-	//TODO 			g.lvalue(n.Expr)
-	//TODO 			g.w(" = nil")
-	//TODO 			return
-	//TODO 		}
-	//TODO 		panic(fmt.Errorf("%v: %v = %v", g.position0(n), n.Expr.Operand, n.Expr2.Operand))
-	//TODO 	}
+		if isVaList(n.Expr.Operand.Type) {
+			switch rhs := n.Expr2.Operand; {
+			case isVaList(rhs.Type): // va_copy
+				g.w("{ x := *")
+				g.value(n.Expr2, false)
+				g.w("; ")
+				g.w("*")
+				g.lvalue(n.Expr)
+				g.w(" = &x }")
+				return
+			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaStart:
+				g.w("{ x := ap; *")
+				g.lvalue(n.Expr)
+				g.w(" = &x }")
+				return
+			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaEnd:
+				g.w("*")
+				g.lvalue(n.Expr)
+				g.w(" = nil")
+				return
+			}
+			panic(fmt.Errorf("%v: %v = %v", g.position(n), n.Expr.Operand, n.Expr2.Operand))
+		}
 
-	//TODO 	g.w("*")
-	//TODO 	g.lvalue(n.Expr)
-	//TODO 	g.w(" = ")
-	//TODO 	if isVaList(n.Expr.Operand.Type) && n.Expr2.Case == cc.ExprCast {
-	//TODO 		g.w("/*TODO103 %v = %v */", n.Expr.Operand, n.Expr2.Operand)
-	//TODO 		if ec := n.Expr2; g.voidCanIgnore(ec) {
-	//TODO 			switch op := ec.Expr; {
-	//TODO 			case op.IsNonZero():
-	//TODO 				g.w("&%s", ap)
-	//TODO 				return
-	//TODO 			case op.IsZero():
-	//TODO 				g.w("nil")
-	//TODO 				return
-	//TODO 			}
-	//TODO 		}
-	//TODO 		panic(g.position0(n))
-	//TODO 	}
+		g.w("*")
+		g.lvalue(n.Expr)
+		g.w(" = ")
+		if isVaList(n.Expr.Operand.Type) && n.Expr2.Case == cc.ExprCast {
+			g.w("/*TODO103 %v = %v */", n.Expr.Operand, n.Expr2.Operand)
+			if ec := n.Expr2; g.voidCanIgnore(ec) {
+				switch op := ec.Expr; {
+				case op.IsNonZero():
+					g.w("&%s", ap)
+					return
+				case op.IsZero():
+					g.w("nil")
+					return
+				}
+			}
+			panic(g.position(n))
+		}
 
-	//TODO 	g.convert(n.Expr2, n.Expr.Operand.Type)
+		g.convert(n.Expr2, n.Expr.Operand.Type)
 	//TODO case
 	//TODO 	cc.ExprPostInc, // Expr "++"
 	//TODO 	cc.ExprPreInc:  // "++" Expr
@@ -620,6 +637,11 @@ func (g *ngen) void(n *cc.Expr) {
 }
 
 func (g *gen) lvalue(n *cc.Expr) {
+	g.w("&")
+	g.value(n, false)
+}
+
+func (g *ngen) lvalue(n *cc.Expr) {
 	g.w("&")
 	g.value(n, false)
 }
@@ -1257,8 +1279,7 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 	defer g.w(")")
 
 	if n.Operand.Value != nil && g.voidCanIgnore(n) {
-		todo("", g.position(n))
-		//TODO g.constant(n)
+		g.constant(n)
 		return
 	}
 
@@ -2474,6 +2495,156 @@ func (g *gen) constant(n *cc.Expr) {
 	}
 } // constant
 
+func (g *ngen) constant(n *cc.Expr) {
+	switch x := n.Operand.Value.(type) {
+	case *ir.Float32Value:
+		switch {
+		case math.IsInf(float64(x.Value), 1):
+			g.w("math.Inf(1)")
+			return
+		case math.IsInf(float64(x.Value), -1):
+			g.w("math.Inf(-1)")
+			return
+		}
+		switch u := cc.UnderlyingType(n.Operand.Type).(type) {
+		case cc.TypeKind:
+			switch u {
+			case cc.Double:
+				switch {
+				case x.Value == 0 && math.Copysign(1, float64(x.Value)) == -1:
+					g.w(" nz64")
+					g.needNZ64 = true
+				default:
+					g.w(" %v", float64(x.Value))
+				}
+				return
+			case cc.Float:
+				switch {
+				case x.Value == 0 && math.Copysign(1, float64(x.Value)) == -1:
+					g.w(" nz32")
+					g.needNZ32 = true
+				default:
+					g.w(" %v", x.Value)
+				}
+				return
+			default:
+				todo("", g.position(n), u)
+			}
+		default:
+			todo("%v: %T", g.position(n), u)
+		}
+	case *ir.Float64Value:
+		switch {
+		case math.IsInf(x.Value, 1):
+			g.w("math.Inf(1)")
+			return
+		case math.IsInf(x.Value, -1):
+			g.w("math.Inf(-1)")
+			return
+		}
+
+		switch u := cc.UnderlyingType(n.Operand.Type).(type) {
+		case cc.TypeKind:
+			if u.IsIntegerType() {
+				g.w(" %v", cc.ConvertFloat64(x.Value, u, g.model))
+				return
+			}
+
+			switch u {
+			case
+				cc.Double,
+				cc.LongDouble:
+
+				switch {
+				case x.Value == 0 && math.Copysign(1, x.Value) == -1:
+					g.w(" nz64")
+					g.needNZ64 = true
+				default:
+					g.w(" %v", x.Value)
+				}
+				return
+			case cc.Float:
+				switch {
+				case x.Value == 0 && math.Copysign(1, x.Value) == -1:
+					g.w(" nz32")
+					g.needNZ32 = true
+				default:
+					g.w(" %v", float32(x.Value))
+				}
+				return
+			default:
+				todo("", g.position(n), u)
+			}
+		default:
+			todo("%v: %T", g.position(n), u)
+		}
+	case *ir.Int64Value:
+		if n.Case == cc.ExprChar {
+			g.w(" %s", strconv.QuoteRuneToASCII(rune(x.Value)))
+			return
+		}
+
+		f := " %d"
+		m := n
+		s := ""
+		for done := false; !done; { //TODO-
+			switch m.Case {
+			case cc.ExprInt: // INTCONST
+				s = string(m.Token.S())
+				done = true
+			case
+				cc.ExprCast,       // '(' TypeName ')' Expr
+				cc.ExprUnaryMinus: // '-' Expr
+
+				m = m.Expr
+			default:
+				done = true
+			}
+		}
+		s = strings.ToLower(s)
+		switch {
+		case strings.HasPrefix(s, "0x"):
+			f = "%#x"
+		case strings.HasPrefix(s, "0"):
+			f = "%#o"
+		}
+
+		switch y := cc.UnderlyingType(n.Operand.Type).(type) {
+		case *cc.PointerType:
+			if n.IsZero() {
+				g.w("%s", null)
+				return
+			}
+
+			switch {
+			case y.Item.Kind() == cc.Function:
+				g.w("uintptr(%v)", uintptr(x.Value))
+			default:
+				g.w("uintptr("+f+")", uintptr(x.Value))
+			}
+			return
+		}
+
+		switch {
+		case n.Operand.Type.IsUnsigned():
+			g.w(f, uint64(cc.ConvertInt64(x.Value, n.Operand.Type, g.model)))
+		default:
+			g.w(f, cc.ConvertInt64(x.Value, n.Operand.Type, g.model))
+		}
+	case *ir.StringValue:
+		g.w(" %q", dict.S(int(x.StringID)))
+	case *ir.AddressValue:
+		if x == cc.Null {
+			g.w("%s", null)
+			return
+		}
+
+		todo("", g.position(n))
+	default:
+		todo("%v: %v %T(%v)", g.position(n), n.Operand, x, x)
+	}
+} // constant
+
 func (g *gen) voidArithmeticAsop(n *cc.Expr) {
 	var mask uint64
 	op, _ := cc.UsualArithmeticConversions(g.model, n.Expr.Operand, n.Expr2.Operand)
@@ -2891,8 +3062,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 		switch {
 		case n.Operand.Value != nil && g.voidCanIgnore(n):
 			g.w(" %s(", g.typ(t))
-			todo("", g.position(n))
-			//TODO g.constant(n)
+			g.constant(n)
 			g.w(")")
 		default:
 			g.value(n, false)

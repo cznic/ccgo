@@ -365,6 +365,105 @@ func (g *gen) initializer(d *cc.Declarator) { // non TLD
 	}
 }
 
+func (g *ngen) initializer(d *cc.Declarator) {
+	if g.escaped(d) { // invariant
+		panic("internal error")
+	}
+
+	n := d.Initializer
+	if n.Case == cc.InitializerExpr { // Expr
+		switch {
+		case g.escaped(d):
+			g.w("\n*(*%s)(unsafe.Pointer(%s))", g.typ(d.Type), g.mangleDeclarator(d))
+		default:
+			g.w("\n%s", g.mangleDeclarator(d))
+		}
+		g.w(" = ")
+		g.literal(d.Type, n)
+		return
+	}
+
+	if g.isConstInitializer(d.Type, n) {
+		b := make([]byte, g.model.Sizeof(d.Type))
+		todo("", g.position(d))
+		//TODO g.renderInitializer(b, d.Type, n)
+		switch {
+		case g.escaped(d):
+			g.w("\n%sCopy(%s, %q, %d)", crt, g.mangleDeclarator(d), b, len(b))
+		default:
+			g.w("\n%s = *(*%s)(unsafe.Pointer(%q))", g.mangleDeclarator(d), g.typ(d.Type), b)
+		}
+		return
+	}
+
+	todo("", g.position(d))
+	//TODO switch {
+	//TODO case g.initializerHasBitFields(d.Type, d.Initializer):
+	//TODO 	switch n.Case {
+	//TODO 	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+	//TODO 		switch x := underlyingType(d.Type, true).(type) {
+	//TODO 		case *cc.StructType:
+	//TODO 			layout := g.model.Layout(x)
+	//TODO 			fld := 0
+	//TODO 			fields := x.Fields
+	//TODO 			for l := n.InitializerList; l != nil; l = l.InitializerList {
+	//TODO 				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
+	//TODO 					fld++
+	//TODO 				}
+	//TODO 				if d := l.Designation; d != nil {
+	//TODO 					l := d.List
+	//TODO 					if len(l) != 1 {
+	//TODO 						todo("", g.position0(n))
+	//TODO 					}
+
+	//TODO 					fld = l[0]
+	//TODO 				}
+
+	//TODO 				switch n := l.Initializer; n.Case {
+	//TODO 				case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
+	//TODO 					todo("", g.position0(n))
+	//TODO 				case cc.InitializerExpr: // Expr
+	//TODO 					fp := x.Field(fields[fld].Name)
+	//TODO 					e := &cc.Expr{
+	//TODO 						Case: cc.ExprAssign,
+	//TODO 						Expr: &cc.Expr{
+	//TODO 							Case: cc.ExprSelect,
+	//TODO 							Expr: &cc.Expr{
+	//TODO 								Case:       cc.ExprIdent,
+	//TODO 								Declarator: d,
+	//TODO 								Scope:      d.Scope,
+	//TODO 								Token:      xc.Token{Val: d.Name()},
+	//TODO 							},
+	//TODO 							Operand: cc.Operand{Type: fp.Type, FieldProperties: fp},
+	//TODO 							Token2:  xc.Token{Val: fields[fld].Name},
+	//TODO 						},
+	//TODO 						Expr2:   n.Expr,
+	//TODO 						Operand: cc.Operand{Type: fp.Declarator.Type},
+	//TODO 					}
+	//TODO 					g.w("\n")
+	//TODO 					g.void(e)
+	//TODO 				}
+
+	//TODO 				fld++
+	//TODO 			}
+	//TODO 		default:
+	//TODO 			todo("%v: %T", g.position0(n), x)
+	//TODO 		}
+	//TODO 	case cc.InitializerExpr: // Expr
+	//TODO 		todo("", g.position0(n))
+	//TODO 	}
+	//TODO default:
+	//TODO 	switch {
+	//TODO 	case g.escaped(d):
+	//TODO 		g.w("\n*(*%s)(unsafe.Pointer(%s))", g.typ(d.Type), g.mangleDeclarator(d))
+	//TODO 	default:
+	//TODO 		g.w("\n%s", g.mangleDeclarator(d))
+	//TODO 	}
+	//TODO 	g.w(" = ")
+	//TODO 	g.literal(d.Type, n)
+	//TODO }
+}
+
 func (g *gen) initializerHasBitFields(t cc.Type, n *cc.Initializer) bool {
 	switch n.Case {
 	case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
@@ -709,8 +808,7 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 		}
 	case cc.TypeKind:
 		if x.IsArithmeticType() {
-			todo("", g.position(n))
-			//TODO g.convert(n.Expr, t)
+			g.convert(n.Expr, t)
 			return
 		}
 

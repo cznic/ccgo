@@ -6,7 +6,6 @@
 package ccgo
 
 import (
-	"bufio"
 	"bytes"
 	"container/list"
 	"fmt"
@@ -47,48 +46,6 @@ func main() {
 `
 	compactStack = 30
 )
-
-// Object writes a linker object file produced from in to out.
-func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) error {
-	var buf bytes.Buffer
-	g := newNGen(&buf, in)
-	if err := g.gen(); err != nil {
-		return err
-	}
-
-	return objWrite(out, goos, goarch, objVersion, objMagic, &buf)
-}
-
-// Linker produces Go files from object files.
-type Linker struct {
-	out io.Writer
-}
-
-// NewLinker returns a newly created Linker writing to out.
-func NewLinker(out io.Writer) *Linker {
-	return &Linker{
-		out: out,
-	}
-}
-
-// Link incerementaly links objects files.
-func (l *Linker) Link(obj ...io.Reader) error {
-	panic("TODO")
-}
-
-// Close finihes the linking.
-func (l *Linker) Close() (err error) {
-	defer func() {
-		if x, ok := l.out.(*bufio.Writer); ok {
-			if e := x.Flush(); e != nil && err == nil {
-				err = e
-			}
-		}
-
-	}()
-
-	panic("TODO")
-}
 
 // Main implements a C compiler command.
 //
@@ -160,7 +117,10 @@ type ngen struct { //TODO rename to gen
 	out0           bytes.Buffer
 	tCache         map[tCacheKey]string
 
+	mainFn     bool
 	needAlloca bool
+	needNZ32   bool //TODO -> crt
+	needNZ64   bool //TODO -> crt
 }
 
 func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
@@ -628,6 +588,7 @@ func (g *ngen) genHelpers() {
 	sort.Strings(a)
 	for _, k := range a {
 		a := strings.Split(k, "$")
-		g.w("\nconst Lh"+a[0]+" = %q", g.helpers[k], strings.Join(a[1:], "$"))
+		fmt.Fprintf(g.out, "\nconst Lh"+a[0]+" = %q", g.helpers[k], strings.Join(a[1:], "$"))
 	}
+	fmt.Fprintln(g.out)
 }
