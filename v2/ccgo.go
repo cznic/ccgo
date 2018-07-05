@@ -6,6 +6,7 @@
 package ccgo
 
 import (
+	"bufio"
 	"bytes"
 	"container/list"
 	"fmt"
@@ -60,8 +61,19 @@ func main() {
 //	)
 //
 //	func main() { os.Exit(ccgo.Main(os.Args...)) }
-func Main(args ...string) int {
+func Main(args ...string) (r int) {
+	returned := false
+
+	defer func() {
+		e := recover()
+		if !returned && r == 0 {
+			fmt.Fprintf(os.Stderr, "PANIC: %v\n%s", e, debugStack())
+		}
+	}()
+
 	panic("TODO")
+	returned = true
+	return r
 }
 
 type gen struct { //TODO-
@@ -116,6 +128,7 @@ type ngen struct { //TODO rename to gen
 	out            io.Writer
 	out0           bytes.Buffer
 	tCache         map[tCacheKey]string
+	tldPreamble    bytes.Buffer
 
 	mainFn     bool
 	needAlloca bool
@@ -305,20 +318,24 @@ const %s = uintptr(0)
 	return newOpt().do(g.out, &g.out0, testFn, g.needBool2int)
 }
 
-func (g *ngen) gen() error {
+func (g *ngen) gen() (err error) {
 	for l := g.in.ExternalDeclarationList; l != nil; l = l.ExternalDeclarationList {
 		switch n := l.ExternalDeclaration; n.Case {
 		case cc.ExternalDeclarationDecl: // Declaration
 			f := false
 			g.declaration(n.Declaration, &f)
 		case cc.ExternalDeclarationFunc: // FunctionDefinition
-			g.functionDefinition(n.FunctionDefinition.Declarator)
+			g.tld(n.FunctionDefinition.Declarator)
 		default:
 			panic(fmt.Errorf("unexpected %v", n.Case))
 		}
 	}
-	g.genHelpers()
-	return newOpt().do(g.out, &g.out0, testFn, g.needBool2int)
+	if x, ok := g.out.(*bufio.Writer); ok {
+		if e := x.Flush(); e != nil && err == nil {
+			err = e
+		}
+	}
+	return nil
 }
 
 // dbg only
@@ -349,6 +366,12 @@ func (g *ngen) w(s string, args ...interface{}) {
 
 	if traceWrites {
 		fmt.Fprintf(os.Stderr, s, args...)
+	}
+}
+
+func (g *ngen) wPreamble(s string, args ...interface{}) {
+	if _, err := fmt.Fprintf(&g.tldPreamble, s, args...); err != nil {
+		panic(err)
 	}
 }
 
@@ -514,6 +537,7 @@ func (g *ngen) registerHelper(a ...interface{}) string {
 
 	id := len(g.helpers) + 1
 	g.helpers[k] = id
+	g.wPreamble("\n\nconst Lh"+b[0]+" = %q\n", id, strings.Join(b[1:], "$"))
 	return fmt.Sprintf(b[0], id)
 }
 
@@ -578,17 +602,4 @@ return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
 			todo("%q", a)
 		}
 	}
-}
-
-func (g *ngen) genHelpers() {
-	a := make([]string, 0, len(g.helpers))
-	for k := range g.helpers {
-		a = append(a, k)
-	}
-	sort.Strings(a)
-	for _, k := range a {
-		a := strings.Split(k, "$")
-		fmt.Fprintf(g.out, "\nconst Lh"+a[0]+" = %q", g.helpers[k], strings.Join(a[1:], "$"))
-	}
-	fmt.Fprintln(g.out)
 }

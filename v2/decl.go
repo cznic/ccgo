@@ -6,6 +6,7 @@ package ccgo
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -231,6 +232,15 @@ func (g *ngen) tld(n *cc.Declarator) {
 	if !g.escaped(n) { // invariant
 		panic("internal error")
 	}
+
+	defer func() {
+		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
+			panic(err)
+		}
+
+		g.tldPreamble.Reset()
+		g.out0.Reset()
+	}()
 
 	nm := n.Name()
 	t := cc.UnderlyingType(n.Type)
