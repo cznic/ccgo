@@ -11,11 +11,11 @@ package ccgo
 //	GCC0	cc 1107 ccgo 1089 build 1087 run 1087 ok 1087
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4225.69s)
-//		all_test.go:1485:
-//			Test cases:   261864
-//			Pass:         261061 (99.69%)
-//			Fail:            803 (0.31%)
+//	--- FAIL: TestTCL0 (2303.07s)
+//		all_test.go:1566:
+//			Test cases:   261766
+//			Pass:         261015 (99.71%)
+//			Fail:            751 (0.29%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -27,9 +27,9 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1493:
+//		all_test.go:1574:
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 1501 ms"
+//			Last completed test file: "Time: selectC.test 316 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -140,27 +140,37 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.756890796s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (2.454490368s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (3.715440676s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (11.633758872s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (20.711689938s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (35.41910243s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (37.61001056s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (47.039239483s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (49.33395334s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (50.689627458s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (52.705254752s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (54.105240387s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (54.809459679s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (56.810859034s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (58.491675498s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (59.772157714s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (1m0.459466184s)
-//	CSmith0	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (1m0.459500003s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (971.380605ms)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (7.959255358s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (8.819073231s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (9.428747988s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (10.246222007s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (11.100454388s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (11.41501731s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (12.264644374s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (12.927726831s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (13.579153701s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (14.16621567s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (14.953198827s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (15.727217189s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (16.247250751s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (17.275062612s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (17.923781383s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (19.176001307s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (19.894066147s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (20.207580958s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (27.298319308s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (40.243863432s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (40.558523747s)
+//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (47.248422326s)
+//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (48.485624857s)
+//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (55.090837349s)
+//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (56.070570468s)
+//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (56.554634124s)
+//	CSmith0	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (1m2.970778076s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	4928.387s
+//	FAIL	github.com/cznic/ccgo/v2	2631.796s
 
 import (
 	"bufio"
@@ -532,6 +542,7 @@ func TestTCC0(t *testing.T) { //TODO-
 }
 
 func TestTCC(t *testing.T) {
+	return //TODO-
 	blacklist := map[string]struct{}{
 		"13_integer_literals.c": {}, // 9:12: ExprInt strconv.ParseUint: parsing "0b010101010101": invalid syntax
 		"31_args.c":             {},
@@ -593,7 +604,11 @@ func TestTCC(t *testing.T) {
 		}
 
 		bf := bufio.NewWriter(f)
-		l := NewLinker(bf, runtime.GOOS, runtime.GOARCH)
+		l, err := NewLinker(bf, "package main", runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		if err := l.Link("crt0.o", bytes.NewReader(crt0o)); err != nil {
 			t.Fatal(err)
 		}
@@ -610,7 +625,72 @@ func TestTCC(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		// b, err := ioutil.ReadFile(filepath.Join(dir, "main.go"))
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// dbg("%s", b)
 		panic("TODO")
+
+		// package main
+		//
+		// // X__stdfiles [3]uintptr, /home/jnml/src/github.com/cznic/ccgo/v2/crt0.c:3:15
+		// var X__stdfiles = Lb(24)
+		//
+		// // Xstdin *void, /home/jnml/src/github.com/cznic/ccgo/v2/crt0.c:5:6
+		// var Xstdin = Lb(8) // pointer to void
+		//
+		// func init() { *(*uintptr)(unsafe.Pointer(Xstdin)) = X__stdfiles }
+		//
+		// // Xstdout *void, /home/jnml/src/github.com/cznic/ccgo/v2/crt0.c:5:31
+		// var Xstdout = Lb(8) // pointer to void
+		//
+		// func init() { *(*uintptr)(unsafe.Pointer(Xstdout)) = X__stdfiles + 8 }
+		//
+		// // Xstderr *void, /home/jnml/src/github.com/cznic/ccgo/v2/crt0.c:5:57
+		// var Xstderr = Lb(8) // pointer to void
+		//
+		// func init() { *(*uintptr)(unsafe.Pointer(Xstderr)) = X__stdfiles + 16 }
+		//
+		// // X_start is defined at /home/jnml/src/github.com/cznic/ccgo/v2/crt0.c:7:6
+		// func X_start(tls crt.TLS, _argc int32, _argv uintptr /* **int8 */) {
+		// 	crt.X__register_stdfiles(tls, *(*uintptr)(unsafe.Pointer(Xstdin)), *(*uintptr)(unsafe.Pointer(Xstdout)), *(*uintptr)(unsafe.Pointer(Xstderr)), Xenviron)
+		// 	crt.X__builtin_exit(tls, fn1(fp2(Xmain))(tls, _argc, _argv))
+		// }
+		//
+		// // Xmain is defined at /home/jnml/src/github.com/cznic/ccgo/v2/testdata/tcc-0.9.26/tests/tests2/00_assignment.c:3:5
+		// func Xmain(tls crt.TLS) (r int32) {
+		// 	var (
+		// 		_a int32
+		// 		_b int32
+		// 		_c int32
+		// 		_d int32
+		// 	)
+		// 	_a = int32(42)
+		// 	crt.Xprintf(tls, "%d\n", _a)
+		// 	_b = int32(64)
+		// 	crt.Xprintf(tls, "%d\n", _b)
+		// 	_c = int32(12)
+		// 	_d = int32(34)
+		// 	crt.Xprintf(tls, "%d, %d\n", _c, _d)
+		// 	return int32(0)
+		// }
+		//
+		// jnml@4670:~/src/github.com/cznic/ccgo/v2> go run main.go
+		// # command-line-arguments
+		// ./main.go:4:19: undefined: Lb
+		// ./main.go:7:14: undefined: Lb
+		// ./main.go:9:27: undefined: unsafe
+		// ./main.go:12:15: undefined: Lb
+		// ./main.go:14:27: undefined: unsafe
+		// ./main.go:17:15: undefined: Lb
+		// ./main.go:19:27: undefined: unsafe
+		// ./main.go:22:18: undefined: crt
+		// ./main.go:23:2: undefined: crt
+		// ./main.go:28:16: undefined: crt
+		// ./main.go:23:2: too many errors
+		// jnml@4670:~/src/github.com/cznic/ccgo/v2>
+
 	}
 }
 

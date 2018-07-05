@@ -124,24 +124,42 @@ func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) (err err
 	return err
 }
 
-// Linker produces Go files from object files.
-type Linker struct {
-	errMu  sync.Mutex
-	errs   scanner.ErrorList
-	fn     string
-	goarch string
-	goos   string
-	out    io.Writer
-	tld    []string
+type prototype struct {
+	pos string
+	typ string
 }
 
-// NewLinker returns a newly created Linker writing to out.
-func NewLinker(out io.Writer, goos, goarch string) *Linker {
-	return &Linker{
-		goarch: goarch,
-		goos:   goos,
-		out:    out,
+// Linker produces Go files from object files.
+type Linker struct {
+	errMu      sync.Mutex
+	errs       scanner.ErrorList
+	fn         string
+	goarch     string
+	goos       string
+	helpers    map[string]int
+	out        io.Writer
+	prototypes map[string]prototype
+	tld        []string
+}
+
+// NewLinker returns a newly created Linker writing to out. The header argument
+// is written prior to any other linker's output, which does not include the
+// package clause.
+func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
+	header = strings.TrimSpace(header)
+	if header != "" {
+		if _, err := fmt.Fprintln(out, header); err != nil {
+			return nil, err
+		}
 	}
+
+	return &Linker{
+		goarch:     goarch,
+		goos:       goos,
+		helpers:    map[string]int{},
+		out:        out,
+		prototypes: map[string]prototype{},
+	}, nil
 }
 
 func (l *Linker) err(msg string, args ...interface{}) {
@@ -296,5 +314,67 @@ func (l *Linker) emit(w *io.PipeWriter) (err error) {
 }
 
 func (l *Linker) lConst(s string) {
-	panic("TODO")
+	// ex `const LpX__builtin_exit = "func(crt.TLS, int32)"`
+	a := strings.SplitN(s, " ", 4)
+	nm := a[1][1:]
+	arg, err := strconv.Unquote(a[3])
+	if err != nil {
+		panic(err)
+	}
+
+	switch {
+	case strings.HasPrefix(nm, "h"): // helper
+		nm, id := l.parseID(nm[1:])
+		k := nm + arg
+		if x, ok := l.helpers[k]; ok {
+			_ = x
+			_ = id
+			panic("TODO")
+			return
+		}
+
+		l.helpers[k] = id
+	case strings.HasPrefix(nm, "p"): // prototype
+		nm = nm[1:]
+		if x, ok := l.prototypes[nm]; ok {
+			_ = x
+			panic("TODO") // check consistency
+			return
+		}
+
+		l.prototypes[nm] = prototype{pos: l.pos(), typ: arg}
+	default:
+		panic(fmt.Sprintf("%s\n%q %q", strings.Join(l.tld, "\n"), nm, arg))
+	}
+}
+
+func (l *Linker) parseID(s string) (string, int) {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c >= '0' && c <= '9' {
+			if i == 0 {
+				panic("TODO") // missing helper name
+			}
+
+			n, err := strconv.ParseInt(s[i:], 10, 31)
+			if err != nil {
+				panic(err)
+			}
+
+			return s[:i], int(n)
+		}
+	}
+	panic("TODO") // missing helper local ID
+}
+
+func (l *Linker) pos() string {
+	if len(l.tld) != 1 {
+		return ""
+	}
+
+	s := l.tld[0]
+	if strings.HasPrefix(s, "// ") {
+		return s[3:]
+	}
+
+	return ""
 }
