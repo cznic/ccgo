@@ -263,7 +263,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 		}
 
 		if g.escaped(n) {
-			g.w("\nvar %s = Lb(%d)", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
+			g.w("\nvar %s = Lb + %d", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
 			return
 		}
 
@@ -304,7 +304,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 		}
 	}
 
-	g.w("\nvar %s = Lb(%d) // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
+	g.w("\nvar %s = Lb +%d // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
 	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
 	g.literal(n.Type, n.Initializer)
 	g.w("}")
@@ -410,6 +410,7 @@ func (g *gen) functionDefinition(n *cc.Declarator) {
 }
 
 func (g *ngen) functionDefinition(n *cc.Declarator) {
+	fixMain(n)
 	g.nextLabel = 1
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
@@ -421,7 +422,6 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 		return
 	}
 
-	g.mainFn = n.Name() == idMain && n.Linkage == cc.LinkageExternal
 	g.definedExterns[n.Name()] = struct{}{}
 	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
 	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
@@ -639,7 +639,7 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 
 func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 	d := n.Declarator
-	if d.Referenced == 0 && d.Initializer == nil {
+	if d.Referenced == 0 && !d.AddressTaken && d.Initializer == nil {
 		return
 	}
 

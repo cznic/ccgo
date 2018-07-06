@@ -122,8 +122,16 @@ func roundup(n, to int64) int64 {
 	return n
 }
 
-func strComment(sv *ir.StringValue) string {
+func strComment(sv *ir.StringValue) string { //TODO-
 	s := dict.S(int(sv.StringID))
+	if len(s) > 32 {
+		s = append(append([]byte(nil), s[:32]...), []byte("...")...)
+	}
+	s = bytes.Replace(s, []byte("*/"), []byte(`*\x2f`), -1)
+	return fmt.Sprintf("/* %q */", s)
+}
+
+func strComment2(s []byte) string {
 	if len(s) > 32 {
 		s = append(append([]byte(nil), s[:32]...), []byte("...")...)
 	}
@@ -292,4 +300,19 @@ func cpFile(dst, src string, buf []byte) (err error) {
 
 	_, err = io.CopyBuffer(d, s, buf)
 	return err
+}
+
+func fixMain(n *cc.Declarator) bool {
+	if n.Name() == idMain && n.Linkage == cc.LinkageExternal {
+		n.Type = &cc.FunctionType{
+			Params: []cc.Type{
+				cc.Int,
+				&cc.PointerType{Item: &cc.PointerType{Item: cc.Char}},
+			},
+			Result: cc.Int,
+		}
+		return true
+	}
+
+	return false
 }

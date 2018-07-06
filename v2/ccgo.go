@@ -122,7 +122,6 @@ type ngen struct { //TODO rename to gen
 	helpers        map[string]int
 	in             *cc.TranslationUnit
 	model          cc.Model
-	needBool2int   int
 	nextLabel      int
 	nums           map[*cc.Declarator]int
 	out            io.Writer
@@ -130,7 +129,6 @@ type ngen struct { //TODO rename to gen
 	tCache         map[tCacheKey]string
 	tldPreamble    bytes.Buffer
 
-	mainFn     bool
 	needAlloca bool
 	needNZ32   bool //TODO -> crt
 	needNZ64   bool //TODO -> crt

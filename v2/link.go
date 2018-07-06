@@ -9,6 +9,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
 	"go/scanner"
 	"go/token"
 	"io"
@@ -22,14 +25,16 @@ import (
 
 /*
 
-var <mangled name> = Lb(n)		allocate BSS(n)
+Lb + n					bss + m
 const Lp<mangled name> = "type"		function prototype
 const Lh<helper><num> = "args"		helper function
+
 
 */
 
 const (
 	objVersion = 1
+	bssAlign   = 16
 )
 
 var (
@@ -131,15 +136,19 @@ type prototype struct {
 
 // Linker produces Go files from object files.
 type Linker struct {
+	bss        int64
 	errMu      sync.Mutex
 	errs       scanner.ErrorList
-	fn         string
 	goarch     string
 	goos       string
 	helpers    map[string]int
 	out        io.Writer
 	prototypes map[string]prototype
+	strings    map[int]int64
+	text       []int
 	tld        []string
+	ts         int64
+	visitor
 }
 
 // NewLinker returns a newly created Linker writing to out. The header argument
@@ -153,13 +162,22 @@ func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
 		}
 	}
 
-	return &Linker{
+	r := &Linker{
 		goarch:     goarch,
 		goos:       goos,
 		helpers:    map[string]int{},
 		out:        out,
 		prototypes: map[string]prototype{},
-	}, nil
+		strings:    map[int]int64{},
+	}
+	r.visitor.Linker = r
+	return r, nil
+}
+
+func (l *Linker) w(s string, args ...interface{}) {
+	if _, err := fmt.Fprintf(l.out, s, args...); err != nil {
+		panic(err)
+	}
 }
 
 func (l *Linker) err(msg string, args ...interface{}) {
@@ -179,7 +197,7 @@ func (l *Linker) Link(fn string, obj io.Reader) (err error) {
 		}
 	}()
 
-	l.fn = fn
+	l.w("\n// linking %s\n", fn)
 	l.link(obj)
 	if len(l.errs) != 0 {
 		err = l.errs
@@ -194,6 +212,7 @@ func (l *Linker) Close() (err error) {
 	returned := false
 
 	defer func() {
+		l.out = nil
 		e := recover()
 		if !returned && err == nil {
 			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
@@ -209,7 +228,21 @@ func (l *Linker) Close() (err error) {
 
 	}()
 
-	panic("TODO")
+	l.w(`
+var (
+	bss     = crt.BSS(&bssInit[0])
+	bssInit [%d]byte
+`,
+		l.bss)
+	if l.ts != 0 {
+		l.w("\tts      = %sTS(\"", crt)
+		for _, v := range l.text {
+			s := fmt.Sprintf("%q", dict.S(v))
+			l.w("%s\\x00", s[1:len(s)-1])
+		}
+		l.w("\")")
+	}
+	l.w("\n)\n")
 	returned = true
 	return err
 }
@@ -295,19 +328,17 @@ func (l *Linker) link(obj io.Reader) {
 }
 
 func (l *Linker) emit(w *io.PipeWriter) (err error) {
-	if _, err = fmt.Fprintln(l.out); err != nil {
-		l.err(err.Error())
-		w.Close()
+	s := strings.Join(l.tld, "\n")
+	fset := token.NewFileSet()
+	in := io.MultiReader(bytes.NewBufferString("package p\n"), bytes.NewBufferString(s))
+	file, err := parser.ParseFile(fset, "", in, parser.ParseComments)
+	if err != nil {
 		return err
 	}
 
-	for _, v := range l.tld {
-		if _, err = fmt.Fprintln(l.out, v); err != nil {
-			l.err(err.Error())
-			w.Close()
-			return err
-		}
-	}
+	ast.Walk(&l.visitor, file)
+	e := emitor{out: l.out}
+	format.Node(&e, fset, file)
 
 	l.tld = l.tld[:0]
 	return nil
@@ -377,4 +408,69 @@ func (l *Linker) pos() string {
 	}
 
 	return ""
+}
+
+type emitor struct {
+	out  io.Writer
+	gate bool
+}
+
+func (e *emitor) Write(b []byte) (int, error) {
+	if e.gate {
+		return e.out.Write(b)
+	}
+
+	if i := bytes.IndexByte(b, '\n'); i >= 0 {
+		e.gate = true
+		n, err := e.out.Write(b[i+1:])
+		return n + i, err
+	}
+
+	return len(b), nil
+}
+
+func (l *Linker) allocString(s int) int64 {
+	if n, ok := l.strings[s]; ok {
+		return n
+	}
+
+	r := l.ts
+	l.strings[s] = r
+	l.ts += int64(len(dict.S(s))) + 1
+	l.text = append(l.text, s)
+	return r
+}
+
+type visitor struct {
+	*Linker
+}
+
+func (v *visitor) Visit(node ast.Node) ast.Visitor {
+	switch x := node.(type) {
+	case *ast.BinaryExpr:
+		switch x2 := x.X.(type) {
+		case *ast.Ident:
+			if x2.Name == "Lb" {
+				rhs := x.Y.(*ast.BasicLit)
+				n, err := strconv.ParseInt(rhs.Value, 10, 63)
+				if err != nil {
+					panic(err)
+				}
+
+				x2.Name = "bss"
+				rhs.Value = fmt.Sprint(v.bss)
+				v.bss += roundup(n, 8) // keep alignment
+			}
+		}
+	case *ast.BasicLit:
+		if x.Kind == token.STRING {
+			s, err := strconv.Unquote(x.Value)
+			if err != nil {
+				panic(err)
+			}
+
+			x.Value = fmt.Sprintf("ts+%d %s", v.allocString(dict.SID(s)), strComment2([]byte(s)))
+		}
+	}
+	return v
 }
