@@ -4,18 +4,147 @@
 
 package ccgo
 
+// linux_386
+//
+//	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
+//	Other0	cc 18 ccgo 18 build 18 run 18 ok 18
+//	GCC0	cc 1112 ccgo 1093 build 1089 run 1089 ok 1089
+//	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
+//	TCL0	tclsqlite build ok
+//	--- FAIL: TestTCL0 (36.48s)
+//		all_test.go:1586:
+//			Test cases:        0
+//			Pass:              0 (NaN%)
+//			Fail:              0 (NaN%)
+//		all_test.go:1594:
+//			Test binary exit error: exit status 2
+//			Last completed test file: ""
+//			Last passed test: ""
+//			Last line written to stdout: ""
+//			Blacklisted test files: 107
+//			btreefault.test
+//			cffault.test
+//			collate1.test
+//			collate2.test
+//			collate3.test
+//			collate4.test
+//			collate5.test
+//			collate6.test
+//			collate9.test
+//			corruptC.test
+//			crash.test
+//			crash2.test
+//			crash3.test
+//			crash4.test
+//			crash6.test
+//			crash7.test
+//			date.test
+//			e_createtable.test
+//			e_delete.test
+//			e_insert.test
+//			e_reindex.test
+//			e_select.test
+//			e_update.test
+//			e_walauto.test
+//			exists.test
+//			func4.test
+//			fuzz.test
+//			fuzzerfault.test
+//			ieee754.test
+//			incrcorrupt.test
+//			incrvacuum_ioerr.test
+//			ioerr3.test
+//			journal3.test
+//			lock.test
+//			lock4.test
+//			lock5.test
+//			malloc.test
+//			minmax.test
+//			misc1.test
+//			misc3.test
+//			misc7.test
+//			mjournal.test
+//			mmap1.test
+//			mmap4.test
+//			multiplex2.test
+//			nan.test
+//			pager1.test
+//			pager4.test
+//			pagerfault.test
+//			pagerfault2.test
+//			pagerfault3.test
+//			pragma.test
+//			printf.test
+//			quota2.test
+//			rbu.test
+//			reindex.test
+//			rollbackfault.test
+//			rowallock.test
+//			savepoint.test
+//			savepoint4.test
+//			savepointfault.test
+//			schema3.test
+//			select9.test
+//			shared2.test
+//			shared9.test
+//			sharedA.test
+//			sort2.test
+//			sort3.test
+//			sort4.test
+//			sortfault.test
+//			speed4.test
+//			speed4p.test
+//			statfault.test
+//			superlock.test
+//			symlink.test
+//			syscall.test
+//			tempfault.test
+//			thread001.test
+//			thread002.test
+//			thread003.test
+//			thread004.test
+//			thread005.test
+//			thread1.test
+//			thread2.test
+//			tkt-5d863f876e.test
+//			tkt-fc62af4523.test
+//			tkt3838.test
+//			tkt3997.test
+//			trans.test
+//			unionvtabfault.test
+//			unixexcl.test
+//			vacuum2.test
+//			vtabH.test
+//			wal.test
+//			wal2.test
+//			wal3.test
+//			wal4.test
+//			wal5.test
+//			walcrash.test
+//			walcrash2.test
+//			walcrash4.test
+//			walro.test
+//			walslow.test
+//			walthread.test
+//			where.test
+//			whereD.test
+//			writecrash.test
+//	FAIL
+//	exit status 1
+//	FAIL	github.com/cznic/ccgo/v2	481.539s
+
 // linux_amd64
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
 //	Other0	cc 18 ccgo 18 build 18 run 18 ok 18
-//	GCC0	cc 1107 ccgo 1089 build 1087 run 1087 ok 1087
+//	GCC0	cc 1109 ccgo 1090 build 1088 run 1088 ok 1088
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4464.05s)
-//		all_test.go:1551: 
-//			Test cases:   261817
-//			Pass:         261067 (99.71%)
-//			Fail:            750 (0.29%)
+//	--- FAIL: TestTCL0 (2326.84s)
+//		all_test.go:1677:
+//			Test cases:   261859
+//			Pass:         261067 (99.70%)
+//			Fail:            792 (0.30%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -27,9 +156,9 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1559: 
+//		all_test.go:1685:
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 345 ms"
+//			Last completed test file: "Time: selectC.test 279 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -140,31 +269,43 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.979789255s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (3.420877854s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (4.573047667s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (6.260371717s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (8.823010168s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (10.0090621s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (11.640278544s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (15.282453824s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (16.591036987s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (18.077244006s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (19.728807425s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (20.531434069s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (21.995521811s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (22.708997228s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (24.001551754s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (26.511084158s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (34.826858898s)
-//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (43.182677499s)
-//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (51.378536178s)
-//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (52.164208595s)
-//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (53.343480944s)
-//	CSmith0	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (1m0.163127814s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (371.103191ms)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (1.184098784s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (1.884774458s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (9.56790724s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (9.900285532s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (10.219208815s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (10.534097849s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (11.766934897s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (13.473288544s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (14.576305843s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (15.64847004s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (16.408063893s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (17.006780616s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (17.943897864s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (18.278745326s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (18.913666549s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (20.330750597s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (28.377674397s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (28.954499163s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (29.559509182s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (30.911718032s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (31.600302299s)
+//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (32.289192607s)
+//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (33.68208807s)
+//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (41.288589467s)
+//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (41.950589324s)
+//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (42.824849717s)
+//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (43.551121936s)
+//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (44.080694981s)
+//	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (45.116205684s)
+//	cc 31 ccgo 31 build 31 run 31 ok 31 (100.00%) csmith 31 (52.590178809s)
+//	cc 32 ccgo 32 build 32 run 32 ok 32 (100.00%) csmith 32 (52.914235307s)
+//	cc 33 ccgo 33 build 33 run 33 ok 33 (100.00%) csmith 33 (53.870122561s)
+//	CSmith0	cc 33 ccgo 33 build 33 run 33 ok 33 (100.00%) csmith 33 (1m1.322235809s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	5192.266s
+//	FAIL	github.com/cznic/ccgo/v2	2657.965s
 
 import (
 	"bufio"
@@ -393,10 +534,14 @@ func test(t *testing.T, clean bool, c, ccgo, build, run *int, def, imp string, i
 	w.WriteString(`package main
 	
 import (
+	"math"
 	"os"
 	"unsafe"
+
 	"github.com/cznic/crt"
 )
+
+var _ = math.Inf
 `)
 	w.WriteString(imp)
 	if err := Command(w, tus); err != nil {
@@ -837,16 +982,19 @@ func TestGCC0(t *testing.T) { //TODO-
 
 func TestSQLiteShell0(t *testing.T) { //TODO-
 	cc.FlushCache()
-	dir, err := ioutil.TempDir("", "test-ccgo-shell-")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-shell-"); err != nil {
 			t.Fatal(err)
 		}
-	}()
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
 
 	var cc, ccgo, build, run, ok int
 	root := filepath.FromSlash("testdata/_sqlite/sqlite-amalgamation-3210000")
@@ -857,7 +1005,6 @@ func TestSQLiteShell0(t *testing.T) { //TODO-
 		#define HAVE_USLEEP 1
 		#define SQLITE_DEBUG 1
 		#define SQLITE_MEMDEBUG 1
-		#define _LARGEFILE64_SOURCE 1
 		/* #define HAVE_MALLOC_USABLE_SIZE 1 */
 `,
 		"",
@@ -904,7 +1051,6 @@ func TestTCL0(t *testing.T) { //TODO-
 			#define SQLITE_PRIVATE
 			#define SQLITE_TEST 1
 			#define TCLSH_INIT_PROC sqlite3TestInit
-			#define _LARGEFILE64_SOURCE 1
 			/* #define HAVE_MALLOC_USABLE_SIZE 1 */
 			// #define SQLITE_MEMDEBUG 1 //TODO wants execinfo.backtrace*
 `
@@ -991,7 +1137,6 @@ func TestTCL0(t *testing.T) { //TODO-
 			#define TCL_UNLOAD_DLLS 1
 			#define TCL_WIDE_INT_TYPE long long //TODO ?386?
 			#define TIME_WITH_SYS_TIME 1
-			#define _LARGEFILE64_SOURCE 1
 			#define _REENTRANT 1
 			#define _THREAD_SAFE 1
 			// #define HAVE_CPUID 1
@@ -1077,7 +1222,6 @@ func TestTCL0(t *testing.T) { //TODO-
 `
 		tclDefs32 = `
 			#define mp_digit unsigned long
-			#define _FILE_OFFSET_BITS 64
 `
 		tclDefs64 = "\n#define mp_digit unsigned long long\n"
 	)

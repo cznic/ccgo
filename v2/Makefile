@@ -41,7 +41,6 @@ editor:
 	go test -i
 	cp log log0 || true
 	go test -timeout 24h -edit 2>&1 | tee log
-	go install github.com/cznic/sqlite2go
 
 internalError:
 	egrep -ho '"internal error.*"' *.go | sort | cat -n

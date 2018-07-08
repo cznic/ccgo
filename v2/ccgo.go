@@ -118,7 +118,6 @@ type gen struct { //TODO-
 
 type ngen struct { //TODO rename to gen
 	definedExterns map[int]struct{}
-	fset           *token.FileSet
 	helpers        map[string]int
 	in             *cc.TranslationUnit
 	model          cc.Model

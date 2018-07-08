@@ -34,7 +34,6 @@ const Lh<helper><num> = "args"		helper function
 
 const (
 	objVersion = 1
-	bssAlign   = 16
 )
 
 var (
