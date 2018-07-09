@@ -57,6 +57,48 @@ more:
 	}
 }
 
+func (g *ngen) defineQueued() {
+	for g.queue.Front() != nil {
+		x := g.queue.Front()
+		g.queue.Remove(x)
+		func() {
+			defer func() {
+				if err := newNOpt().do(g.out, &g.out0, testFn); err != nil {
+					panic(err)
+				}
+
+				g.out0.Reset()
+			}()
+
+			switch y := x.Value.(type) {
+			//TOOD case *cc.Declarator:
+			//TOOD 	n = y
+			//TOOD 	goto more
+			//TOOD case *cc.EnumType:
+			//TOOD 	g.defineEnumType(y)
+			//TOOD case *cc.NamedType:
+			//TOOD 	g.enqueue(y.Type)
+			case *cc.TaggedEnumType:
+				g.defineTaggedEnumType(y)
+			case *cc.TaggedStructType:
+				g.defineTaggedStructType(y)
+			//TOOD case *cc.TaggedUnionType:
+			//TOOD 	g.defineTaggedUnionType(y)
+			//TOOD case
+			//TOOD 	*cc.ArrayType,
+			//TOOD 	*cc.PointerType,
+			//TOOD 	*cc.StructType,
+			//TOOD 	cc.TypeKind,
+			//TOOD 	*cc.UnionType:
+
+			//TOOD 	// nop
+			default:
+				todo("%T %v", y, y)
+			}
+		}()
+	}
+}
+
 func (g *gen) defineEnumType(t *cc.EnumType) {
 	if t.Tag != 0 {
 		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
@@ -64,6 +106,41 @@ func (g *gen) defineEnumType(t *cc.EnumType) {
 }
 
 func (g *gen) defineTaggedEnumType(t *cc.TaggedEnumType) {
+	if _, ok := g.producedEnumTags[t.Tag]; ok {
+		return
+	}
+
+	g.producedEnumTags[t.Tag] = struct{}{}
+	et := t.Type.(*cc.EnumType)
+	tag := dict.S(t.Tag)
+	g.w("\ntype E%s = %s\n", tag, g.typ(et.Enums[0].Operand.Type))
+	g.w("\nconst (")
+	var iota int64
+	for i, v := range et.Enums {
+		val := v.Operand.Value.(*ir.Int64Value).Value
+		if i == 0 {
+			g.w("\nC%s E%s = iota", dict.S(v.Token.Val), tag)
+			if val != 0 {
+				g.w(" %+d", val)
+			}
+			iota = val + 1
+			continue
+		}
+
+		g.w("\nC%s", dict.S(v.Token.Val))
+		if val == iota {
+			iota++
+			continue
+		}
+
+		g.w(" = %d", val)
+		iota = val + 1
+	}
+	g.w("\n)\n")
+
+}
+
+func (g *ngen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 	if _, ok := g.producedEnumTags[t.Tag]; ok {
 		return
 	}
@@ -106,6 +183,50 @@ func (g *gen) defineTaggedStructType(t *cc.TaggedStructType) {
 	switch {
 	case t.Type == nil:
 		g.opaqueStructTags[t.Tag] = struct{}{}
+	default:
+		g.producedStructTags[t.Tag] = struct{}{}
+		g.w("\ntype S%s %s\n", dict.S(t.Tag), g.typ(t.Type))
+		if isTesting {
+			g.w("\n\nfunc init() {")
+			st := cc.UnderlyingType(t.Type).(*cc.StructType)
+			fields := st.Fields
+			for i, v := range g.model.Layout(st) {
+				if v.Bits < 0 {
+					continue
+				}
+
+				if v.Bits != 0 && v.Bitoff != 0 {
+					continue
+				}
+
+				if v.Bits != 0 && v.Bitoff == 0 {
+					g.w("\nif n := unsafe.Offsetof(S%s{}.F%d); n != %d { panic(n) }", dict.S(t.Tag), v.Offset, v.Offset)
+					g.w("\nif n := unsafe.Sizeof(S%s{}.F%d); n != %d { panic(n) }", dict.S(t.Tag), v.Offset, g.model.Sizeof(v.PackedType))
+					continue
+				}
+
+				if fields[i].Name == 0 {
+					continue
+				}
+
+				g.w("\nif n := unsafe.Offsetof(S%s{}.%s); n != %d { panic(n) }", dict.S(t.Tag), mangleIdent(fields[i].Name, true), v.Offset)
+				g.w("\nif n := unsafe.Sizeof(S%s{}.%s); n != %d { panic(n) }", dict.S(t.Tag), mangleIdent(fields[i].Name, true), v.Size)
+			}
+			g.w("\nif n := unsafe.Sizeof(S%s{}); n != %d { panic(n) }", dict.S(t.Tag), g.model.Sizeof(t))
+			g.w("\n}\n")
+		}
+	}
+}
+
+func (g *ngen) defineTaggedStructType(t *cc.TaggedStructType) {
+	if _, ok := g.producedStructTags[t.Tag]; ok {
+		return
+	}
+
+	switch {
+	case t.Type == nil:
+		todo("", t)
+		//TODO g.opaqueStructTags[t.Tag] = struct{}{}
 	default:
 		g.producedStructTags[t.Tag] = struct{}{}
 		g.w("\ntype S%s %s\n", dict.S(t.Tag), g.typ(t.Type))
@@ -410,7 +531,7 @@ func (g *gen) functionDefinition(n *cc.Declarator) {
 }
 
 func (g *ngen) functionDefinition(n *cc.Declarator) {
-	fixMain(n)
+	main := fixMain(n)
 	g.nextLabel = 1
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
@@ -475,6 +596,7 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 	}
 	g.w(")")
 	void := t.Result.Kind() == cc.Void
+	//dbg("", g.position(n), string(dict.S(n.Name())), void)
 	if !void {
 		g.w("(r %s", g.typ(t.Result))
 		if t.Result.Kind() == cc.Ptr {
@@ -486,7 +608,7 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 	if n.Alloca {
 		vars = append(append([]*cc.Declarator(nil), vars...), allocaDeclarator)
 	}
-	g.functionBody(n.FunctionDefinition.FunctionBody, vars, void, n.Parameters, escParams)
+	g.functionBody(n.FunctionDefinition.FunctionBody, vars, void, n.Parameters, escParams, main)
 	g.w("\n")
 }
 
@@ -497,11 +619,11 @@ func (g *gen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool,
 	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false)
 }
 
-func (g *ngen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool, params, escParams []*cc.Declarator) {
+func (g *ngen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool, params, escParams []*cc.Declarator, main bool) {
 	if vars == nil {
 		vars = []*cc.Declarator{}
 	}
-	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false)
+	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false, main)
 }
 
 func (g *gen) mangleDeclarator(n *cc.Declarator) string {

@@ -321,8 +321,10 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 
 		return fmt.Sprintf("E%s", dict.S(x.Tag))
 	case *cc.TaggedEnumType:
+		g.enqueue(x)
 		return fmt.Sprintf("E%s", dict.S(x.Tag))
 	case *cc.TaggedStructType:
+		g.enqueue(x)
 		return fmt.Sprintf("S%s", dict.S(x.Tag))
 	case *cc.TaggedUnionType:
 		return fmt.Sprintf("U%s", dict.S(x.Tag))

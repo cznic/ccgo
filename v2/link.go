@@ -15,6 +15,7 @@ import (
 	"go/scanner"
 	"go/token"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -141,6 +142,8 @@ type Linker struct {
 	goarch     string
 	goos       string
 	helpers    map[string]int
+	num        int
+	nums       map[string]int
 	out        io.Writer
 	prototypes map[string]prototype
 	strings    map[int]int64
@@ -148,6 +151,8 @@ type Linker struct {
 	tld        []string
 	ts         int64
 	visitor
+
+	bool2int bool
 }
 
 // NewLinker returns a newly created Linker writing to out. The header argument
@@ -165,6 +170,7 @@ func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
 		goarch:     goarch,
 		goos:       goos,
 		helpers:    map[string]int{},
+		nums:       map[string]int{},
 		out:        out,
 		prototypes: map[string]prototype{},
 		strings:    map[int]int64{},
@@ -193,6 +199,10 @@ func (l *Linker) Link(fn string, obj io.Reader) (err error) {
 		e := recover()
 		if !returned && err == nil {
 			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
+		}
+
+		for k := range l.nums {
+			delete(l.nums, k)
 		}
 	}()
 
@@ -227,6 +237,8 @@ func (l *Linker) Close() (err error) {
 
 	}()
 
+	l.genHelpers()
+
 	l.w(`
 var (
 	bss     = crt.BSS(&bssInit[0])
@@ -244,6 +256,81 @@ var (
 	l.w("\n)\n")
 	returned = true
 	return err
+}
+
+func (l *Linker) genHelpers() {
+	a := make([]string, 0, len(l.helpers))
+	for k := range l.helpers {
+		a = append(a, k)
+	}
+	sort.Strings(a)
+	for _, k := range a {
+		a := strings.Split(k, "$")
+		l.w("\n\nfunc "+a[0], l.helpers[k])
+		switch a[0] {
+		case "add%d", "and%d", "div%d", "mod%d", "mul%d", "or%d", "sub%d", "xor%d":
+			// eg.: [0: "add%d" 1: op "+" 2: operand type "uint32"]
+			l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= v; return *p }", a[1], a[2])
+		case "and%db", "or%db", "xor%db":
+			// eg.: [0: "or%db" 1: op "|" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+			l.w(`(p *%[3]s, v %[2]s) %[2]s {
+r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) %[1]s v
+*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
+		case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
+			l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
+		case "set%db":
+			// eg.: [0: "set%db" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
+			l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)}",
+				"", a[2], a[3], a[4], a[5], a[6])
+		case "rsh%d":
+			// eg.: [0: "rsh%d" 1: op ">>" 2: operand type "uint32" 3: mod "32"]
+			l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= (v %% %[3]s); return *p }", a[1], a[2], a[3])
+		case "fn%d":
+			// eg.: [0: "fn%d" 1: type "unc()"]
+			l.w("(p uintptr) %[1]s { return *(*%[1]s)(unsafe.Pointer(&p)) }", a[1])
+		case "fp%d":
+			l.w("(f %[1]s) uintptr { return *(*uintptr)(unsafe.Pointer(&f)) }", a[1])
+		case "postinc%d":
+			// eg.: [0: "postinc%d" 1: operand type "int32" 2: delta "1"]
+			l.w("(p *%[1]s) %[1]s { r := *p; *p += %[2]s; return r }", a[1], a[2])
+		case "preinc%d":
+			// eg.: [0: "preinc%d" 1: operand type "int32" 2: delta "1"]
+			l.w("(p *%[1]s) %[1]s { *p += %[2]s; return *p }", a[1], a[2])
+		case "postinc%db":
+			// eg.: [0: "postinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+			l.w(`(p *%[3]s) %[2]s {
+r := %[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r+%[1]s) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+return r
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
+		case "preinc%db":
+			// eg.: [0: "preinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+			l.w(`(p *%[3]s) %[2]s {
+r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) + %[1]s
+*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
+		case "float2int%d":
+			// eg.: [0: "float2int%d" 1: type "uint64" 2: max "18446744073709551615"]
+			l.w("(f float32) %[1]s { if f > %[2]s { return 0 }; return %[1]s(f) }", a[1], a[2])
+		default:
+			todo("%q", a)
+		}
+	}
+	l.w("\n")
+	if l.bool2int {
+		l.w(`
+func bool2int(b bool) int32 {
+	if b {
+		return 1
+	}
+
+	return 0
+}
+`)
+	}
 }
 
 func (l *Linker) link(obj io.Reader) {
@@ -268,6 +355,7 @@ func (l *Linker) link(obj io.Reader) {
 		collectComments
 		copy
 		copyFunc
+		copyParen
 	)
 
 	state := skipBlank
@@ -289,6 +377,8 @@ func (l *Linker) link(obj io.Reader) {
 			}
 
 			switch {
+			case strings.HasPrefix(s, "const ("):
+				state = copyParen
 			case strings.HasPrefix(s, "const L"):
 				l.lConst(s)
 				state = skipBlank
@@ -296,6 +386,14 @@ func (l *Linker) link(obj io.Reader) {
 				state = copy
 			case strings.HasPrefix(s, "func"):
 				if strings.HasSuffix(s, "}") {
+					l.emit(w)
+					state = skipBlank
+					break
+				}
+
+				state = copyFunc
+			case strings.HasPrefix(s, "type"):
+				if !strings.HasSuffix(s, "{") {
 					l.emit(w)
 					state = skipBlank
 					break
@@ -314,6 +412,12 @@ func (l *Linker) link(obj io.Reader) {
 		case copyFunc:
 			l.tld = append(l.tld, s)
 			if s == "}" {
+				l.emit(w)
+				state = skipBlank
+			}
+		case copyParen:
+			l.tld = append(l.tld, s)
+			if s == ")" {
 				l.emit(w)
 				state = skipBlank
 			}
@@ -354,16 +458,15 @@ func (l *Linker) lConst(s string) {
 
 	switch {
 	case strings.HasPrefix(nm, "h"): // helper
-		nm, id := l.parseID(nm[1:])
-		k := nm + arg
-		if x, ok := l.helpers[k]; ok {
+		_, id := l.parseID(nm[1:])
+		if x, ok := l.helpers[arg]; ok {
 			_ = x
 			_ = id
 			panic("TODO")
 			return
 		}
 
-		l.helpers[k] = id
+		l.helpers[arg] = id
 	case strings.HasPrefix(nm, "p"): // prototype
 		nm = nm[1:]
 		if x, ok := l.prototypes[nm]; ok {
@@ -409,6 +512,16 @@ func (l *Linker) pos() string {
 	return ""
 }
 
+func (l *Linker) rename(s string) string {
+	n := l.nums[s]
+	if n == 0 {
+		l.num++
+		n = l.num
+		l.nums[s] = n
+	}
+	return fmt.Sprintf("_%d%s", n, s)
+}
+
 type emitor struct {
 	out  io.Writer
 	gate bool
@@ -446,6 +559,9 @@ type visitor struct {
 
 func (v *visitor) Visit(node ast.Node) ast.Visitor {
 	switch x := node.(type) {
+	case *ast.SelectorExpr:
+		ast.Walk(v, x.X)
+		return nil
 	case *ast.BinaryExpr:
 		switch x2 := x.X.(type) {
 		case *ast.Ident:
@@ -469,6 +585,17 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 			}
 
 			x.Value = fmt.Sprintf("ts+%d %s", v.allocString(dict.SID(s)), strComment2([]byte(s)))
+		}
+	case *ast.Ident:
+		switch {
+		case strings.HasPrefix(x.Name, "C"): // Enum constant
+			x.Name = v.rename(x.Name)
+		case strings.HasPrefix(x.Name, "E"): // Tagged enum type
+			x.Name = v.rename(x.Name)
+		case strings.HasPrefix(x.Name, "S"): // Tagged struct type
+			x.Name = v.rename(x.Name)
+		case x.Name == "bool2int":
+			v.bool2int = true
 		}
 	}
 	return v

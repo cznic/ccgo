@@ -117,16 +117,20 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
-	definedExterns map[int]struct{}
-	helpers        map[string]int
-	in             *cc.TranslationUnit
-	model          cc.Model
-	nextLabel      int
-	nums           map[*cc.Declarator]int
-	out            io.Writer
-	out0           bytes.Buffer
-	tCache         map[tCacheKey]string
-	tldPreamble    bytes.Buffer
+	definedExterns     map[int]struct{}
+	enqueued           map[interface{}]struct{}
+	helpers            map[string]int
+	in                 *cc.TranslationUnit
+	model              cc.Model
+	nextLabel          int
+	nums               map[*cc.Declarator]int
+	out                io.Writer
+	out0               bytes.Buffer
+	producedEnumTags   map[int]struct{}
+	producedStructTags map[int]struct{}
+	queue              list.List
+	tCache             map[tCacheKey]string
+	tldPreamble        bytes.Buffer
 
 	needAlloca bool
 	needNZ32   bool //TODO -> crt
@@ -135,13 +139,16 @@ type ngen struct { //TODO rename to gen
 
 func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
 	return &ngen{
-		definedExterns: map[int]struct{}{},
-		helpers:        map[string]int{},
-		in:             in,
-		model:          in.Model,
-		nums:           map[*cc.Declarator]int{},
-		out:            out,
-		tCache:         map[tCacheKey]string{},
+		definedExterns:     map[int]struct{}{},
+		enqueued:           map[interface{}]struct{}{},
+		helpers:            map[string]int{},
+		in:                 in,
+		model:              in.Model,
+		nums:               map[*cc.Declarator]int{},
+		out:                out,
+		producedEnumTags:   map[int]struct{}{},
+		producedStructTags: map[int]struct{}{},
+		tCache:             map[tCacheKey]string{},
 	}
 }
 
@@ -186,6 +193,34 @@ func (g *gen) enqueue(n interface{}) {
 		}
 
 		if x.DeclarationSpecifier.IsExtern() {
+			return
+		}
+	}
+
+	g.queue.PushBack(n)
+}
+
+func (g *ngen) enqueue(n interface{}) {
+	if _, ok := g.enqueued[n]; ok {
+		return
+	}
+
+	g.enqueued[n] = struct{}{}
+	switch x := n.(type) {
+	case *cc.Declarator:
+		if x.Linkage == cc.LinkageNone {
+			todo("", g.position(x))
+			return
+		}
+
+		if x.DeclarationSpecifier.IsStatic() {
+			todo("", g.position(x))
+			//g.enqueueNumbered(x)
+			return
+		}
+
+		if x.DeclarationSpecifier.IsExtern() {
+			todo("", g.position(x))
 			return
 		}
 	}
@@ -327,6 +362,7 @@ func (g *ngen) gen() (err error) {
 			panic(fmt.Errorf("unexpected %v", n.Case))
 		}
 	}
+	g.defineQueued()
 	if x, ok := g.out.(*bufio.Writer); ok {
 		if e := x.Flush(); e != nil && err == nil {
 			err = e
@@ -534,7 +570,7 @@ func (g *ngen) registerHelper(a ...interface{}) string {
 
 	id := len(g.helpers) + 1
 	g.helpers[k] = id
-	g.wPreamble("\n\nconst Lh"+b[0]+" = %q\n", id, strings.Join(b[1:], "$"))
+	g.wPreamble("\n\nconst Lh"+b[0]+" = %q\n", id, k)
 	return fmt.Sprintf(b[0], id)
 }
 
