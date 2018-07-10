@@ -136,16 +136,17 @@ package ccgo
 // linux_amd64
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
-//	TCC	cc 51 ccgo 51 build 51 run 51 ok 51
+//	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other0	cc 18 ccgo 18 build 18 run 18 ok 18
+//	Other	cc 18 ccgo 18 build 18 run 18 ok 18 n 18
 //	GCC0	cc 1109 ccgo 1090 build 1088 run 1088 ok 1088
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4287.24s)
-//		all_test.go:1744:
-//			Test cases:   261833
-//			Pass:         261053 (99.70%)
-//			Fail:            780 (0.30%)
+//	--- FAIL: TestTCL0 (4386.93s)
+//		all_test.go:1892:
+//			Test cases:   261872
+//			Pass:         261067 (99.69%)
+//			Fail:            805 (0.31%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -157,9 +158,9 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1752:
+//		all_test.go:1900:
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 1446 ms"
+//			Last completed test file: "Time: selectC.test 344 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -270,22 +271,31 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.762023418s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.544875495s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.279115874s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (7.008324663s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (7.984187533s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (18.516925589s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (20.30852132s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (42.509461492s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (44.568281048s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (45.293180478s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (46.794874002s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (48.368586824s)
-//	CSmith0	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (1m2.608430242s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (10.396931s)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (12.089760246s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (14.90888743s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (22.237435854s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (23.641666927s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (24.932387037s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (25.633828143s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (27.016115953s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (29.66188213s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (31.023111073s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (32.26356737s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (33.679395822s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (34.848511197s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (35.566122649s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (36.26299479s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (38.05221575s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (40.117325123s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (49.184278307s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (50.796115702s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (51.499233916s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (54.61132102s)
+//	CSmith0	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (1m0.901361095s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	5012.005s
+//	FAIL	github.com/cznic/ccgo/v2	5116.863s
 
 import (
 	"bufio"
@@ -690,10 +700,30 @@ func TestTCC(t *testing.T) {
 		}()
 	}
 
-	m, err := filepath.Glob(filepath.FromSlash("testdata/tcc-0.9.26/tests/tests2/*.c"))
+	root, err := filepath.Abs(filepath.FromSlash("testdata/tcc-0.9.26/tests/tests2/*.c"))
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	m, err := filepath.Glob(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	inc := []string{"@"}
 	tweaks := &cc.Tweaks{
@@ -742,7 +772,7 @@ const (
 			continue
 		}
 
-		nm := filepath.Join(dir, "main.go")
+		nm := "main.go"
 		f, err := os.Create(nm)
 		if err != nil {
 			t.Error(err)
@@ -782,7 +812,7 @@ const (
 		}
 
 		ccgo++
-		bin := filepath.Join(dir, "main")
+		bin := "main"
 		out, err := exec.Command("go", "build", "-o", bin, nm).CombinedOutput()
 		if err != nil {
 			t.Errorf("%s: %s\n%v", pth, out, err)
@@ -790,7 +820,7 @@ const (
 		}
 
 		build++
-		if out, err = exec.Command(bin).CombinedOutput(); err != nil {
+		if out, err = exec.Command(filepath.Join(dir, bin)).CombinedOutput(); err != nil {
 			t.Errorf("%s\n%v", out, err)
 			continue
 		}
@@ -814,11 +844,11 @@ const (
 		ok++
 	}
 	if c != n || ccgo != n || build != n || run != n || ok != n {
-		t.Fatalf("cc %v ccgo %v build %v run %v ok %v", c, ccgo, build, run, ok)
+		t.Fatalf("TCC cc %v ccgo %v build %v run %v ok %v n %v", c, ccgo, build, run, ok, n)
 	}
 
 	if *oEdit {
-		fmt.Printf("TCC\tcc %v ccgo %v build %v run %v ok %v\n", c, ccgo, build, run, ok)
+		fmt.Printf("TCC\tcc %v ccgo %v build %v run %v ok %v n %v\n", c, ccgo, build, run, ok, n)
 	}
 }
 
@@ -886,6 +916,175 @@ func TestOther0(t *testing.T) { //TODO-
 
 	if *oEdit {
 		fmt.Printf("Other0\tcc %v ccgo %v build %v run %v ok %v\n", cc, ccgo, build, run, ok)
+	}
+}
+
+func TestOther(t *testing.T) {
+	var re *regexp.Regexp
+	if s := *oRE; s != "" {
+		re = regexp.MustCompile(s)
+	}
+
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-other-"); err != nil {
+			t.Fatal(err)
+		}
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
+
+	root, err := filepath.Abs(filepath.FromSlash("testdata/bug/*.c"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := filepath.Glob(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	inc := []string{"@"}
+	tweaks := &cc.Tweaks{
+		EnableAnonymousStructFields: true,
+		EnableImplicitBuiltins:      true,
+	}
+
+	mainSrc := fmt.Sprintf(`
+package main
+
+import (
+	"os"
+	"unsafe"
+
+	"github.com/cznic/crt"
+)
+
+const (
+	null = uintptr(0)
+)
+`+mainSrc, crt)
+	var c, ccgo, build, run, ok, n int
+	for _, pth := range m {
+		if re != nil && !re.MatchString(filepath.Base(pth)) {
+			continue
+		}
+
+		n++
+		in := []cc.Source{defCCGO, cc.MustBuiltin(), cc.MustFileSource(pth)}
+		if *oTrace {
+			fmt.Fprintln(os.Stderr, in)
+		}
+		tu, err := cc.Translate(tweaks, inc, searchPaths, in...)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		c++
+		var obj bytes.Buffer
+		if err := Object(&obj, runtime.GOOS, runtime.GOARCH, tu); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		nm := "main.go"
+		f, err := os.Create(nm)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		bf := bufio.NewWriter(f)
+		l, err := NewLinker(bf, mainSrc, runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if err := l.Link("crt0.o", bytes.NewReader(crt0o)); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if err := l.Link(pth, &obj); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if err := l.Close(); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if err := bf.Flush(); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if err := f.Close(); err != nil {
+			t.Error(err)
+			continue
+		}
+
+		ccgo++
+		bin := "main"
+		out, err := exec.Command("go", "build", "-o", bin, nm).CombinedOutput()
+		if err != nil {
+			t.Errorf("%s: %s\n%v", pth, out, err)
+			continue
+		}
+
+		build++
+		if out, err = exec.Command(filepath.Join(dir, bin)).CombinedOutput(); err != nil {
+			t.Errorf("%s\n%v", out, err)
+			continue
+		}
+
+		run++
+		expect, err := ioutil.ReadFile(pth[:len(pth)-len(filepath.Ext(pth))] + ".expect")
+		if err != nil {
+			if os.IsNotExist(err) {
+				ok++
+				continue
+			}
+		}
+
+		out = trim(out)
+		expect = trim(expect)
+		if !bytes.Equal(out, expect) {
+			t.Errorf("%s\ngot\n%s\nexp\n%s----\ngot\n%s\nexp\n%s", pth, hex.Dump(out), hex.Dump(expect), out, expect)
+			continue
+		}
+
+		ok++
+	}
+	if c != n || ccgo != n || build != n || run != n || ok != n {
+		t.Fatalf("Other\tcc %v ccgo %v build %v run %v ok %v n %v", c, ccgo, build, run, ok, n)
+	}
+
+	if *oEdit {
+		fmt.Printf("Other\tcc %v ccgo %v build %v run %v ok %v n %v\n", c, ccgo, build, run, ok, n)
 	}
 }
 

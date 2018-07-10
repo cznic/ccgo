@@ -554,6 +554,14 @@ func (g *gen) shiftMod(t cc.Type) int {
 	return 32
 }
 
+func (g *ngen) shiftMod(t cc.Type) int {
+	if g.model.Sizeof(t) > 4 {
+		return 64
+	}
+
+	return 32
+}
+
 func (g *gen) registerHelper(a ...interface{}) string {
 	b := make([]string, len(a))
 	for i, v := range a {

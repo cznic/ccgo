@@ -507,12 +507,9 @@ func (l *Linker) lConst(s string) {
 }
 
 func (l *Linker) parseID(s string) (string, int) {
-	for i := 0; i < len(s); i++ {
-		if c := s[i]; c >= '0' && c <= '9' {
-			if i == 0 {
-				panic("TODO") // missing helper name
-			}
-
+	for i := len(s) - 1; i >= 0; i-- {
+		if c := s[i]; c < '0' || c > '9' {
+			i++
 			n, err := strconv.ParseInt(s[i:], 10, 31)
 			if err != nil {
 				panic(err)
