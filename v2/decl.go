@@ -365,14 +365,14 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
-	switch x := n.Type.(type) {
-	case
-		*cc.NamedType,
-		*cc.TaggedStructType,
-		*cc.TaggedUnionType:
+	//TODO-? switch x := n.Type.(type) {
+	//TODO-? case
+	//TODO-? 	*cc.NamedType,
+	//TODO-? 	*cc.TaggedStructType,
+	//TODO-? 	*cc.TaggedUnionType:
 
-		g.enqueue(x)
-	}
+	//TODO-? 	g.enqueue(x)
+	//TODO-? }
 
 	g.definedExterns[n.Name()] = struct{}{}
 	pos := g.position(n)
@@ -692,7 +692,7 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.Linkage == cc.LinkageExternal {
-		if _, ok := g.definedExterns[nm]; !ok && g.isCRT(n) {
+		if _, ok := g.definedExterns[nm]; n.IsBuiltin || !ok && g.isCRT(n) {
 			return crt + mangleIdent(nm, true)
 		}
 

@@ -238,19 +238,20 @@ func (l *Linker) Close() (err error) {
 
 	}()
 
+	//TODO format the final part
+
 	l.genHelpers()
 
 	l.w(`
 var (
 	bss     = crt.BSS(&bssInit[0])
-	bssInit [%d]byte
-`,
+	bssInit [%d]byte`,
 		l.bss)
 	if n := len(l.ds); n != 0 {
 		if n < 16 {
 			l.ds = append(l.ds, make([]byte, 16-n)...)
 		}
-		l.w("\tds = %sDS(dsInit)\n", crt)
+		l.w("\n\tds = %sDS(dsInit)\n", crt)
 		l.w("\tdsInit = []byte{")
 		if isTesting {
 			l.w("\n\t\t")
@@ -264,10 +265,10 @@ var (
 		if isTesting && len(l.ds)&15 != 0 {
 			l.w("// %#x\n\t", len(l.ds)&^15)
 		}
-		l.w("}\n")
+		l.w("}")
 	}
 	if l.ts != 0 {
-		l.w("\tts      = %sTS(\"", crt)
+		l.w("\n\tts      = %sTS(\"", crt)
 		for _, v := range l.text {
 			s := fmt.Sprintf("%q", dict.S(v))
 			l.w("%s\\x00", s[1:len(s)-1])
@@ -301,9 +302,9 @@ return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
 }`, a[1], a[2], a[3], a[4], a[5], a[6])
 		case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
 			l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
-		case "set%db":
-			// eg.: [0: "set%db" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
-			l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)}",
+		case "setb%d":
+			// eg.: [0: "setb%d" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
+			l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s) }",
 				"", a[2], a[3], a[4], a[5], a[6])
 		case "rsh%d":
 			// eg.: [0: "rsh%d" 1: op ">>" 2: operand type "uint32" 3: mod "32"]
@@ -495,8 +496,11 @@ func (l *Linker) lConst(s string) {
 	case strings.HasPrefix(nm, "p"): // prototype
 		nm = nm[1:]
 		if x, ok := l.prototypes[nm]; ok {
-			_ = x
-			panic("TODO") // check consistency
+			if arg == x.typ { // consistent
+				return
+			}
+
+			todo("%q %q", arg, x.typ)
 			return
 		}
 

@@ -147,6 +147,7 @@ func todo(msg string, args ...interface{}) {
 	}
 	if traceTODO {
 		fmt.Fprintf(os.Stderr, "\n\n%v:%d: TODO\n\n%s\n", f, l, fmt.Sprintf(msg, args...)) //TODOOK
+		os.Exit(1)
 	}
 	panic(fmt.Errorf("\n\n%v:%d: TODO\n\n%s", f, l, fmt.Sprintf(msg, args...))) //TODOOK
 }
