@@ -149,8 +149,7 @@ func (g *ngen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map
 			}
 
 			if v.DeclarationSpecifier.IsStatic() {
-				todo("", g.position(n))
-				//TODO g.enqueueNumbered(v)
+				g.enqueueNumbered(v)
 				continue
 			}
 		}

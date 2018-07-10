@@ -71,13 +71,12 @@ func (g *ngen) defineQueued() {
 			}()
 
 			switch y := x.Value.(type) {
-			//TOOD case *cc.Declarator:
-			//TOOD 	n = y
-			//TOOD 	goto more
+			case *cc.Declarator:
+				g.tld(y)
 			//TOOD case *cc.EnumType:
 			//TOOD 	g.defineEnumType(y)
-			//TOOD case *cc.NamedType:
-			//TOOD 	g.enqueue(y.Type)
+			case *cc.NamedType:
+				// nop ATM, probably needed later
 			case *cc.TaggedEnumType:
 				g.defineTaggedEnumType(y)
 			case *cc.TaggedStructType:
@@ -93,7 +92,7 @@ func (g *ngen) defineQueued() {
 
 			//TOOD 	// nop
 			default:
-				todo("%T %v", y, y)
+				todo("%T", y)
 			}
 		}()
 	}
@@ -350,10 +349,6 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
-	if !g.escaped(n) { // invariant
-		panic("internal error")
-	}
-
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
 			panic(err)
@@ -370,13 +365,22 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
+	switch x := n.Type.(type) {
+	case
+		*cc.NamedType,
+		*cc.TaggedStructType,
+		*cc.TaggedUnionType:
+
+		g.enqueue(x)
+	}
+
 	g.definedExterns[n.Name()] = struct{}{}
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
 	if !isTesting {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
-	g.w("\n\n// %s %s, %v", g.mangleDeclarator(n), g.typeComment(n.Type), pos)
+	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
 	if g.isZeroInitializer(n.Initializer) {
 		if isVaList(n.Type) {
 			g.w("\nvar %s *[]interface{}", g.mangleDeclarator(n))
@@ -410,25 +414,19 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
-	if g.isConstInitializer(n.Type, n.Initializer) {
-		todo("", g.position(n))
-		//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+	if g.escaped(n) {
+		g.escapedTLD(n)
 		return
 	}
 
-	switch x := cc.UnderlyingType(n.Type).(type) {
-	case *cc.ArrayType:
-		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
-			todo("", g.position(n))
-			//TODO g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
-			return
-		}
+	switch n.Initializer.Case {
+	case cc.InitializerExpr: // Expr
+		g.w("\nvar %s = ", g.mangleDeclarator(n))
+		g.convert(n.Initializer.Expr, n.Type)
+		g.w("\n")
+	default:
+		todo("", g.position(n), n.Initializer.Case)
 	}
-
-	g.w("\nvar %s = Lb +%d // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
-	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
-	g.literal(n.Type, n.Initializer)
-	g.w("}")
 }
 
 func (g *gen) escapedTLD(n *cc.Declarator) {
@@ -446,6 +444,27 @@ func (g *gen) escapedTLD(n *cc.Declarator) {
 	}
 
 	g.w("\nvar %s = bss + %d // %v \n", g.mangleDeclarator(n), g.allocBSS(n.Type), n.Type)
+	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
+	g.literal(n.Type, n.Initializer)
+	g.w("}")
+}
+
+func (g *ngen) escapedTLD(n *cc.Declarator) {
+	if g.isConstInitializer(n.Type, n.Initializer) {
+		g.w("\nvar %s = Ld + %q\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+		return
+	}
+
+	switch x := cc.UnderlyingType(n.Type).(type) {
+	case *cc.ArrayType:
+		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
+			todo("", g.position(n))
+			g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
+			return
+		}
+	}
+
+	g.w("\nvar %s = Lb +%d // %v \n", g.mangleDeclarator(n), g.model.Sizeof(n.Type), n.Type)
 	g.w("\n\nfunc init() { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(n.Type), g.mangleDeclarator(n))
 	g.literal(n.Type, n.Initializer)
 	g.w("}")
@@ -656,13 +675,16 @@ func (g *gen) mangleDeclarator(n *cc.Declarator) string {
 func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	nm := n.Name()
 	if n.Linkage == cc.LinkageInternal {
-		todo("", g.position(n))
-		// if m := g.staticDeclarators[nm]; m != nil {
-		// 	n = m
-		// }
+		return fmt.Sprintf("v%s", dict.S(nm))
 	}
+
 	if num, ok := g.nums[n]; ok {
-		return fmt.Sprintf("_%d%s", num, dict.S(nm))
+		switch {
+		case n.DeclarationSpecifier.IsStatic():
+			return fmt.Sprintf("v%d%s", num, dict.S(nm))
+		default:
+			return fmt.Sprintf("_%d%s", num, dict.S(nm))
+		}
 	}
 
 	if n.IsField {
@@ -761,7 +783,7 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 
 func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 	d := n.Declarator
-	if d.Referenced == 0 && !d.AddressTaken && d.Initializer == nil {
+	if d.Referenced == 0 && !d.AddressTaken && (d.Initializer == nil || d.IsTLD()) {
 		return
 	}
 

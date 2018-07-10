@@ -136,49 +136,16 @@ package ccgo
 // linux_amd64
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
-//	--- FAIL: TestTCC (22.25s)
-//		all_test.go:783: PANIC:
-//
-//			/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:659: TODO
-//
-//			/home/jnml/src/github.com/cznic/cc/v2/headers/linux_amd64/usr/include/bits/huge_val.h:53:21
-//			github.com/cznic/ccgo/v2.todo(0x0, 0x0, 0xc420881228, 0x1, 0x1)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/etc.go:150 +0x3ec
-//			github.com/cznic/ccgo/v2.(*ngen).mangleDeclarator(0xc4201f6000, 0xc420239d40, 0xc4204700c0, 0x55)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:659 +0x411
-//			github.com/cznic/ccgo/v2.(*ngen).tld(0xc4201f6000, 0xc420239d40)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:379 +0x237
-//			github.com/cznic/ccgo/v2.(*ngen).initDeclarator(0xc4201f6000, 0xc42023b020, 0xc4208818a7)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:770 +0xb5
-//			github.com/cznic/ccgo/v2.(*ngen).initDeclaratorList(0xc4201f6000, 0xc42023b050, 0xc4208818a7)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:743 +0x4a
-//			github.com/cznic/ccgo/v2.(*ngen).initDeclaratorListOpt(0xc4201f6000, 0xc42000d190, 0xc4208818a7)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:732 +0x47
-//			github.com/cznic/ccgo/v2.(*ngen).declaration(0xc4201f6000, 0xc4203c7440, 0xc4208818a7)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/decl.go:716 +0x43
-//			github.com/cznic/ccgo/v2.(*ngen).gen(0xc4201f6000, 0xc4201f6000, 0x767700)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/ccgo.go:358 +0x115
-//			github.com/cznic/ccgo/v2.Object(0x767700, 0xc4204ab7a0, 0x716a71, 0x5, 0x7169c2, 0x5, 0xc42026c2a0, 0x0, 0x0)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/link.go:122 +0x259
-//			github.com/cznic/ccgo/v2.TestTCC(0xc4203920f0)
-//				/home/jnml/src/github.com/cznic/ccgo/v2/all_test.go:782 +0x6cc
-//			testing.tRunner(0xc4203920f0, 0x72f770)
-//				/home/jnml/go/src/testing/testing.go:777 +0xd0
-//			created by testing.(*T).Run
-//				/home/jnml/go/src/testing/testing.go:824 +0x2e0
-//
-//			...
-//
-//		all_test.go:859: cc 51 ccgo 41 build 41 run 41 ok 41
+//	TCC	cc 51 ccgo 51 build 51 run 51 ok 51
 //	Other0	cc 18 ccgo 18 build 18 run 18 ok 18
 //	GCC0	cc 1109 ccgo 1090 build 1088 run 1088 ok 1088
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4546.03s)
-//		all_test.go:1745:
-//			Test cases:   261863
-//			Pass:         261067 (99.70%)
-//			Fail:            796 (0.30%)
+//	--- FAIL: TestTCL0 (4287.24s)
+//		all_test.go:1744:
+//			Test cases:   261833
+//			Pass:         261053 (99.70%)
+//			Fail:            780 (0.30%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -190,9 +157,9 @@ package ccgo
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:1753:
+//		all_test.go:1752:
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 336 ms"
+//			Last completed test file: "Time: selectC.test 1446 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -303,30 +270,22 @@ package ccgo
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (3.779329362s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (5.651641717s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (6.37253121s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (7.067907832s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (7.774156177s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (8.945513595s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (10.004043108s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (32.350740313s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (39.607181689s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (40.99502693s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (41.701105196s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (43.616333334s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (45.217951227s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (46.581359393s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (48.248836361s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (49.707074712s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (50.400959082s)
-//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (51.1036458s)
-//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (52.613992375s)
-//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (54.799095716s)
-//	CSmith0	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (1m1.580729487s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.762023418s)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.544875495s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.279115874s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (7.008324663s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (7.984187533s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (18.516925589s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (20.30852132s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (42.509461492s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (44.568281048s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (45.293180478s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (46.794874002s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (48.368586824s)
+//	CSmith0	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (1m2.608430242s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	5290.654s
+//	FAIL	github.com/cznic/ccgo/v2	5012.005s
 
 import (
 	"bufio"
@@ -636,16 +595,19 @@ func TestTCC0(t *testing.T) { //TODO-
 		re = regexp.MustCompile(s)
 	}
 
-	dir, err := ioutil.TempDir("", "test-ccgo-tcc-")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-tcc-"); err != nil {
 			t.Fatal(err)
 		}
-	}()
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
 
 	m, err := filepath.Glob(filepath.FromSlash("testdata/tcc-0.9.26/tests/tests2/*.c"))
 	if err != nil {

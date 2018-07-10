@@ -137,15 +137,16 @@ type prototype struct {
 // Linker produces Go files from object files.
 type Linker struct {
 	bss        int64
+	ds         []byte
 	errMu      sync.Mutex
 	errs       scanner.ErrorList
 	goarch     string
 	goos       string
 	helpers    map[string]int
 	num        int
-	nums       map[string]int
 	out        io.Writer
 	prototypes map[string]prototype
+	renamed    map[string]int
 	strings    map[int]int64
 	text       []int
 	tld        []string
@@ -170,9 +171,9 @@ func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
 		goarch:     goarch,
 		goos:       goos,
 		helpers:    map[string]int{},
-		nums:       map[string]int{},
 		out:        out,
 		prototypes: map[string]prototype{},
+		renamed:    map[string]int{},
 		strings:    map[int]int64{},
 	}
 	r.visitor.Linker = r
@@ -201,8 +202,8 @@ func (l *Linker) Link(fn string, obj io.Reader) (err error) {
 			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
 		}
 
-		for k := range l.nums {
-			delete(l.nums, k)
+		for k := range l.renamed {
+			delete(l.renamed, k)
 		}
 	}()
 
@@ -245,6 +246,26 @@ var (
 	bssInit [%d]byte
 `,
 		l.bss)
+	if n := len(l.ds); n != 0 {
+		if n < 16 {
+			l.ds = append(l.ds, make([]byte, 16-n)...)
+		}
+		l.w("\tds = %sDS(dsInit)\n", crt)
+		l.w("\tdsInit = []byte{")
+		if isTesting {
+			l.w("\n\t\t")
+		}
+		for i, v := range l.ds {
+			l.w("%#02x, ", v)
+			if isTesting && i&15 == 15 {
+				l.w("// %#x\n\t\t", i&^15)
+			}
+		}
+		if isTesting && len(l.ds)&15 != 0 {
+			l.w("// %#x\n\t", len(l.ds)&^15)
+		}
+		l.w("}\n")
+	}
 	if l.ts != 0 {
 		l.w("\tts      = %sTS(\"", crt)
 		for _, v := range l.text {
@@ -404,6 +425,7 @@ func (l *Linker) link(obj io.Reader) {
 				panic(fmt.Sprintf("%q", s))
 			}
 		case copy:
+			l.tld = append(l.tld, s)
 			if len(s) == 0 {
 				l.emit(w)
 				state = skipBlank
@@ -427,6 +449,9 @@ func (l *Linker) link(obj io.Reader) {
 	}
 	if err := sc.Err(); err != nil {
 		l.err(err.Error())
+	}
+	if len(l.tld) != 0 {
+		l.emit(w)
 	}
 }
 
@@ -512,14 +537,21 @@ func (l *Linker) pos() string {
 	return ""
 }
 
-func (l *Linker) rename(s string) string {
-	n := l.nums[s]
+func (l *Linker) rename(prefix, nm string) string {
+	n := l.renamed[nm]
 	if n == 0 {
 		l.num++
 		n = l.num
-		l.nums[s] = n
+		l.renamed[nm] = n
 	}
-	return fmt.Sprintf("_%d%s", n, s)
+	for {
+		if c := nm[0]; c < '0' || c > '9' {
+			break
+		}
+
+		nm = nm[1:]
+	}
+	return fmt.Sprintf("%s%d%s", prefix, n, nm)
 }
 
 type emitor struct {
@@ -565,7 +597,8 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 	case *ast.BinaryExpr:
 		switch x2 := x.X.(type) {
 		case *ast.Ident:
-			if x2.Name == "Lb" {
+			switch {
+			case x2.Name == "Lb":
 				rhs := x.Y.(*ast.BasicLit)
 				n, err := strconv.ParseInt(rhs.Value, 10, 63)
 				if err != nil {
@@ -575,6 +608,17 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				x2.Name = "bss"
 				rhs.Value = fmt.Sprint(v.bss)
 				v.bss += roundup(n, 8) // keep alignment
+				return nil
+			case x2.Name == "Ld":
+				rhs := x.Y.(*ast.BasicLit)
+				s, err := strconv.Unquote(rhs.Value)
+				if err != nil {
+					panic(err)
+				}
+
+				x2.Name = "ds"
+				rhs.Value = fmt.Sprint(v.allocDS(s))
+				return nil
 			}
 		}
 	case *ast.BasicLit:
@@ -589,14 +633,26 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 	case *ast.Ident:
 		switch {
 		case strings.HasPrefix(x.Name, "C"): // Enum constant
-			x.Name = v.rename(x.Name)
+			x.Name = v.rename("c", x.Name[1:])
 		case strings.HasPrefix(x.Name, "E"): // Tagged enum type
-			x.Name = v.rename(x.Name)
+			x.Name = v.rename("e", x.Name[1:])
 		case strings.HasPrefix(x.Name, "S"): // Tagged struct type
-			x.Name = v.rename(x.Name)
+			x.Name = v.rename("s", x.Name[1:])
+		case strings.HasPrefix(x.Name, "v"): // static
+			x.Name = v.rename("v", x.Name[1:])
 		case x.Name == "bool2int":
 			v.bool2int = true
 		}
 	}
 	return v
+}
+
+func (l *Linker) allocDS(s string) int64 {
+	up := roundup(int64(len(l.ds)), 8) // keep alignment
+	if n := up - int64(len(l.ds)); n != 0 {
+		l.ds = append(l.ds, make([]byte, n)...)
+	}
+	r := len(l.ds)
+	l.ds = append(l.ds, s...)
+	return int64(r)
 }

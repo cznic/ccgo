@@ -132,8 +132,9 @@ func strComment(sv *ir.StringValue) string { //TODO-
 }
 
 func strComment2(s []byte) string {
-	if len(s) > 32 {
-		s = append(append([]byte(nil), s[:32]...), []byte("...")...)
+	const max = 16
+	if len(s) > max {
+		s = append(append([]byte(nil), s[:max]...), []byte("...")...)
 	}
 	s = bytes.Replace(s, []byte("*/"), []byte(`*\x2f`), -1)
 	return fmt.Sprintf("/* %q */", s)

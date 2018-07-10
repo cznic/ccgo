@@ -123,6 +123,7 @@ type ngen struct { //TODO rename to gen
 	in                 *cc.TranslationUnit
 	model              cc.Model
 	nextLabel          int
+	num                int
 	nums               map[*cc.Declarator]int
 	out                io.Writer
 	out0               bytes.Buffer
@@ -213,7 +214,7 @@ func (g *ngen) enqueue(n interface{}) {
 			return
 		}
 
-		if x.DeclarationSpecifier.IsStatic() {
+		if x.Linkage == cc.LinkageInternal {
 			todo("", g.position(x))
 			//g.enqueueNumbered(x)
 			return
@@ -229,6 +230,16 @@ func (g *ngen) enqueue(n interface{}) {
 }
 
 func (g *gen) enqueueNumbered(n *cc.Declarator) {
+	if _, ok := g.nums[n]; ok {
+		return
+	}
+
+	g.num++
+	g.nums[n] = g.num
+	g.queue.PushBack(n)
+}
+
+func (g *ngen) enqueueNumbered(n *cc.Declarator) {
 	if _, ok := g.nums[n]; ok {
 		return
 	}
@@ -504,7 +515,7 @@ func (g ngen) escaped(n *cc.Declarator) bool {
 		return false
 	}
 
-	if n.IsTLD() || n.AddressTaken {
+	if n.AddressTaken || n.IsTLD() && n.Linkage == cc.LinkageExternal {
 		return true
 	}
 
