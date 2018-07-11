@@ -224,7 +224,6 @@ func (g *ngen) defineTaggedStructType(t *cc.TaggedStructType) {
 
 	switch {
 	case t.Type == nil:
-		todo("", t)
 		//TODO g.opaqueStructTags[t.Tag] = struct{}{}
 	default:
 		g.producedStructTags[t.Tag] = struct{}{}
@@ -351,6 +350,7 @@ func (g *gen) tld(n *cc.Declarator) {
 func (g *ngen) tld(n *cc.Declarator) {
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
+			return //TODO-
 			panic(err)
 		}
 
@@ -789,7 +789,7 @@ func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 
 	switch {
 	case d.IsTLD():
-		g.tld(d)
+		//g.tld(d)
 	default:
 		if d.DeclarationSpecifier.IsStatic() {
 			return

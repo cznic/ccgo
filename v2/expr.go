@@ -379,8 +379,7 @@ func (g *gen) void(n *cc.Expr) {
 
 func (g *ngen) void(n *cc.Expr) {
 	if n.Case == cc.ExprCast && n.Expr.Case == cc.ExprIdent && !isVaList(n.Expr.Operand.Type) {
-		todo("", g.position(n))
-		//TODO g.enqueue(n.Expr.Declarator)
+		g.enqueue(n.Expr.Declarator)
 		return
 	}
 
@@ -580,26 +579,26 @@ func (g *ngen) void(n *cc.Expr) {
 			g.void(n.Expr2)
 			g.w("}")
 		}
-	//TODO case cc.ExprLAnd: // Expr "&&" Expr
-	//TODO 	if n.Expr.IsZero() && g.voidCanIgnore(n.Expr) {
-	//TODO 		return
-	//TODO 	}
+	case cc.ExprLAnd: // Expr "&&" Expr
+		if n.Expr.IsZero() && g.voidCanIgnore(n.Expr) {
+			return
+		}
 
-	//TODO 	g.w("if ")
-	//TODO 	g.value(n.Expr, false)
-	//TODO 	g.w(" != 0 {")
-	//TODO 	g.void(n.Expr2)
-	//TODO 	g.w("}")
-	//TODO case cc.ExprLOr: // Expr "||" Expr
-	//TODO 	if n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr) {
-	//TODO 		return
-	//TODO 	}
+		g.w("if ")
+		g.value(n.Expr, false)
+		g.w(" != 0 {")
+		g.void(n.Expr2)
+		g.w("}")
+	case cc.ExprLOr: // Expr "||" Expr
+		if n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr) {
+			return
+		}
 
-	//TODO 	g.w("if ")
-	//TODO 	g.value(n.Expr, false)
-	//TODO 	g.w(" == 0 {")
-	//TODO 	g.void(n.Expr2)
-	//TODO 	g.w("}")
+		g.w("if ")
+		g.value(n.Expr, false)
+		g.w(" == 0 {")
+		g.void(n.Expr2)
+		g.w("}")
 	case cc.ExprIndex: // Expr '[' ExprList ']'
 		g.void(n.Expr)
 		if !g.voidCanIgnoreExprList(n.ExprList) {
@@ -1301,8 +1300,7 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 
 			// Enum const
 			g.w("%s(", g.typ(n.Operand.Type))
-			todo("", g.position(n))
-			//TODO g.constant(n)
+			g.constant(n)
 			g.w(")")
 		default:
 			switch {
@@ -1708,13 +1706,11 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 	case cc.ExprAddAssign: // Expr "+=" Expr
 		switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
 		case *cc.PointerType:
-			todo("", g.position(n))
-			//TODO g.needPreInc = true
-			//TODO g.w("preinc(")
-			//TODO g.lvalue(n.Expr)
-			//TODO g.w(", %d*uintptr(", g.model.Sizeof(x.Item))
-			//TODO g.value(n.Expr2, false)
-			//TODO g.w("))")
+			g.w("preinc(")
+			g.lvalue(n.Expr)
+			g.w(", %d*uintptr(", g.model.Sizeof(x.Item))
+			g.value(n.Expr2, false)
+			g.w("))")
 		case cc.TypeKind:
 			if x.IsArithmeticType() {
 				g.w("%s(", g.registerHelper("add%d", "+", g.typ(x)))
@@ -1743,81 +1739,81 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 		default:
 			todo("%v: %T", g.position(n), x)
 		}
-	//TODO case cc.ExprOrAssign: // Expr "|=" Expr
-	//TODO 	switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
-	//TODO 	case cc.TypeKind:
-	//TODO 		if x.IsIntegerType() {
-	//TODO 			switch op := n.Expr.Operand; {
-	//TODO 			case op.Bits() != 0:
-	//TODO 				fp := op.FieldProperties
-	//TODO 				g.w("%s(&", g.registerHelper("or%db", "|", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
-	//TODO 				g.value(n.Expr, true)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, n.Operand.Type)
-	//TODO 				g.w(")")
-	//TODO 			default:
-	//TODO 				g.w("%s(", g.registerHelper("or%d", "|", g.typ(x)))
-	//TODO 				g.lvalue(n.Expr)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, x)
-	//TODO 				g.w(")")
-	//TODO 			}
-	//TODO 			return
-	//TODO 		}
-	//TODO 		todo("", g.position0(n), x)
-	//TODO 	default:
-	//TODO 		todo("%v: %T", g.position0(n), x)
-	//TODO 	}
-	//TODO case cc.ExprAndAssign: // Expr "&=" Expr
-	//TODO 	switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
-	//TODO 	case cc.TypeKind:
-	//TODO 		if x.IsIntegerType() {
-	//TODO 			switch op := n.Expr.Operand; {
-	//TODO 			case op.Bits() != 0:
-	//TODO 				fp := op.FieldProperties
-	//TODO 				g.w("%s(&", g.registerHelper("and%db", "&", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
-	//TODO 				g.value(n.Expr, true)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, n.Operand.Type)
-	//TODO 				g.w(")")
-	//TODO 			default:
-	//TODO 				g.w("%s(", g.registerHelper("and%d", "&", g.typ(x)))
-	//TODO 				g.lvalue(n.Expr)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, x)
-	//TODO 				g.w(")")
-	//TODO 			}
-	//TODO 			return
-	//TODO 		}
-	//TODO 		todo("", g.position0(n), x)
-	//TODO 	default:
-	//TODO 		todo("%v: %T", g.position0(n), x)
-	//TODO 	}
-	//TODO case cc.ExprXorAssign: // Expr "^=" Expr
-	//TODO 	switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
-	//TODO 	case cc.TypeKind:
-	//TODO 		if x.IsIntegerType() {
-	//TODO 			switch op := n.Expr.Operand; {
-	//TODO 			case op.Bits() != 0:
-	//TODO 				fp := op.FieldProperties
-	//TODO 				g.w("%s(&", g.registerHelper("xor%db", "^", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
-	//TODO 				g.value(n.Expr, true)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, n.Operand.Type)
-	//TODO 				g.w(")")
-	//TODO 			default:
-	//TODO 				g.w("%s(", g.registerHelper("xor%d", "^", g.typ(x)))
-	//TODO 				g.lvalue(n.Expr)
-	//TODO 				g.w(", ")
-	//TODO 				g.convert(n.Expr2, x)
-	//TODO 				g.w(")")
-	//TODO 			}
-	//TODO 			return
-	//TODO 		}
-	//TODO 		todo("", g.position0(n), x)
-	//TODO 	default:
-	//TODO 		todo("%v: %T", g.position0(n), x)
-	//TODO 	}
+	case cc.ExprOrAssign: // Expr "|=" Expr
+		switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
+		case cc.TypeKind:
+			if x.IsIntegerType() {
+				switch op := n.Expr.Operand; {
+				case op.Bits() != 0:
+					fp := op.FieldProperties
+					g.w("%s(&", g.registerHelper("or%db", "|", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
+					g.value(n.Expr, true)
+					g.w(", ")
+					g.convert(n.Expr2, n.Operand.Type)
+					g.w(")")
+				default:
+					g.w("%s(", g.registerHelper("or%d", "|", g.typ(x)))
+					g.lvalue(n.Expr)
+					g.w(", ")
+					g.convert(n.Expr2, x)
+					g.w(")")
+				}
+				return
+			}
+			todo("", g.position(n), x)
+		default:
+			todo("%v: %T", g.position(n), x)
+		}
+	case cc.ExprAndAssign: // Expr "&=" Expr
+		switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
+		case cc.TypeKind:
+			if x.IsIntegerType() {
+				switch op := n.Expr.Operand; {
+				case op.Bits() != 0:
+					fp := op.FieldProperties
+					g.w("%s(&", g.registerHelper("and%db", "&", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
+					g.value(n.Expr, true)
+					g.w(", ")
+					g.convert(n.Expr2, n.Operand.Type)
+					g.w(")")
+				default:
+					g.w("%s(", g.registerHelper("and%d", "&", g.typ(x)))
+					g.lvalue(n.Expr)
+					g.w(", ")
+					g.convert(n.Expr2, x)
+					g.w(")")
+				}
+				return
+			}
+			todo("", g.position(n), x)
+		default:
+			todo("%v: %T", g.position(n), x)
+		}
+	case cc.ExprXorAssign: // Expr "^=" Expr
+		switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
+		case cc.TypeKind:
+			if x.IsIntegerType() {
+				switch op := n.Expr.Operand; {
+				case op.Bits() != 0:
+					fp := op.FieldProperties
+					g.w("%s(&", g.registerHelper("xor%db", "^", g.typ(op.Type), g.typ(fp.PackedType), g.model.Sizeof(op.Type)*8, fp.Bits, fp.Bitoff))
+					g.value(n.Expr, true)
+					g.w(", ")
+					g.convert(n.Expr2, n.Operand.Type)
+					g.w(")")
+				default:
+					g.w("%s(", g.registerHelper("xor%d", "^", g.typ(x)))
+					g.lvalue(n.Expr)
+					g.w(", ")
+					g.convert(n.Expr2, x)
+					g.w(")")
+				}
+				return
+			}
+			todo("", g.position(n), x)
+		default:
+			todo("%v: %T", g.position(n), x)
+		}
 	case cc.ExprPExprList: // '(' ExprList ')'
 		switch l := g.pexprList(n.ExprList); {
 		case len(l) == 1:
@@ -1877,31 +1873,32 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 		default:
 			todo("%v: %T", g.position(n), x)
 		}
-	//TODO case cc.ExprRshAssign: // Expr ">>=" Expr
-	//TODO 	switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
-	//TODO 	case cc.TypeKind:
-	//TODO 		if x.IsArithmeticType() {
-	//TODO 			g.w("%s(", g.registerHelper("rsh%d", ">>", g.typ(x), g.shiftMod(x)))
-	//TODO 			g.lvalue(n.Expr)
-	//TODO 			g.w(", ")
-	//TODO 			g.convert(n.Expr2, x)
-	//TODO 			g.w(")")
-	//TODO 			return
-	//TODO 		}
-	//TODO 		todo("", g.position0(n), x)
-	//TODO 	default:
-	//TODO 		todo("%v: %T", g.position0(n), x)
-	//TODO 	}
-	//TODO case cc.ExprUnaryPlus: // '+' Expr
-	//TODO 	g.convert(n.Expr, n.Operand.Type)
-	//TODO case
-	//TODO 	cc.ExprInt,        // INTCONST
-	//TODO 	cc.ExprSizeofExpr, // "sizeof" Expr
-	//TODO 	cc.ExprSizeofType, // "sizeof" '(' TypeName ')'
-	//TODO 	cc.ExprString:     // STRINGLITERAL
+	case cc.ExprRshAssign: // Expr ">>=" Expr
+		switch x := cc.UnderlyingType(n.Expr.Operand.Type).(type) {
+		case cc.TypeKind:
+			if x.IsArithmeticType() {
+				g.w("%s(", g.registerHelper("rsh%d", ">>", g.typ(x), g.shiftMod(x)))
+				g.lvalue(n.Expr)
+				g.w(", ")
+				g.convert(n.Expr2, x)
+				g.w(")")
+				return
+			}
+			todo("", g.position(n), x)
+		default:
+			todo("%v: %T", g.position(n), x)
+		}
+	case cc.ExprUnaryPlus: // '+' Expr
+		g.convert(n.Expr, n.Operand.Type)
+	case
+		cc.ExprInt,        // INTCONST
+		cc.ExprSizeofExpr, // "sizeof" Expr
+		cc.ExprSizeofType, // "sizeof" '(' TypeName ')'
+		cc.ExprString:     // STRINGLITERAL
 
-	//TODO 	g.constant(n)
+		g.constant(n)
 	default:
+		//println(n.Case.String())
 		todo("", g.position(n), n.Case) // value
 	}
 }
@@ -3117,8 +3114,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 				switch {
 				case d.Type.Kind() == cc.Ptr:
 					if g.escaped(d) {
-						todo("", g.position(n))
-						//TODO g.w("%s(*(*uintptr)(unsafe.Pointer(%s)))", g.registerHelper("fn%d", g.typ(ft)), g.mangleDeclarator(n.Declarator))
+						g.w("%s(*(*uintptr)(unsafe.Pointer(%s)))", g.registerHelper("fn%d", g.typ(ft)), g.mangleDeclarator(n.Declarator))
 						break
 					}
 
@@ -3141,8 +3137,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 				return
 			}
 
-			todo("", g.position(n))
-			//TODO g.w("%s(", g.registerHelper("fn%d", g.typ(ft)))
+			g.w("%s(", g.registerHelper("fn%d", g.typ(ft)))
 			g.value(n, false)
 			g.w(")")
 		default:

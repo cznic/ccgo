@@ -416,7 +416,7 @@ var (
 	re          *regexp.Regexp
 	searchPaths []string
 	crt0o       []byte
-	defCCGO     = cc.NewStringSource("<defines>", "#define __ccgo__ 1\n")
+	defCCGO     = cc.NewStringSource("<defines>", "#define __ccgo__ 1\n#define __FUNCTION__ __func__\n")
 )
 
 func init() {
@@ -1131,6 +1131,7 @@ func TestGCC0(t *testing.T) { //TODO-
 		"20010904-1.c":    {}, // __attribute__((aligned(32)))
 		"20010904-2.c":    {}, // __attribute__((aligned(32)))
 		"20021127-1.c":    {}, // non standard GCC behavior
+		"eeprof-1.c":      {}, // Need profiler code instrumentation
 		"pr23467.c":       {}, // __attribute__ ((aligned (8)))
 		"pr67037.c":       {}, // void f(); f(); f(42)
 		"pushpop_macro.c": {}, // #pragma push_macro("_")
@@ -1163,16 +1164,19 @@ func TestGCC0(t *testing.T) { //TODO-
 		re = regexp.MustCompile(s)
 	}
 
-	dir, err := ioutil.TempDir("", "test-ccgo-gcc-")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-gcc-"); err != nil {
 			t.Fatal(err)
 		}
-	}()
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
 
 	m, err := filepath.Glob(filepath.FromSlash("testdata/github.com/gcc-mirror/gcc/gcc/testsuite/gcc.c-torture/execute/*.c"))
 	if err != nil {
@@ -1305,7 +1309,10 @@ func TestGCC(t *testing.T) {
 
 	inc := []string{"@"}
 	tweaks := &cc.Tweaks{
-		EnableImplicitBuiltins: true,
+		EnableAnonymousStructFields: true,
+		EnableEmptyStructs:          true,
+		EnableImplicitBuiltins:      true,
+		EnableOmitFuncDeclSpec:      true,
 	}
 
 	mainSrc := fmt.Sprintf(`
@@ -1339,7 +1346,7 @@ const (
 		}
 		tu, err := cc.Translate(tweaks, inc, searchPaths, in...)
 		if err != nil {
-			t.Error(err)
+			t.Error(errString(err))
 			continue
 		}
 

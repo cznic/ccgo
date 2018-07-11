@@ -50,7 +50,7 @@ func objWrite(out io.Writer, goos, goarch string, binaryVersion uint64, magic []
 	w.Header.Extra = buf.Bytes()
 	w.Header.ModTime = time.Now()
 	w.Header.OS = 255 // Unknown OS.
-	if _, err := io.Copy(w, in); err != nil {
+	if _, err = io.Copy(w, in); err != nil {
 		return err
 	}
 
@@ -60,7 +60,7 @@ func objWrite(out io.Writer, goos, goarch string, binaryVersion uint64, magic []
 func objRead(out io.Writer, goos, goarch string, binaryVersion uint64, magic []byte, in io.Reader) (err error) {
 	r, err := gzip.NewReader(in)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading object file: %v", err)
 	}
 
 	if len(r.Header.Extra) < len(magic) || !bytes.Equal(r.Header.Extra[:len(magic)], magic) {
@@ -104,7 +104,10 @@ func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) (err err
 	defer func() {
 		e := recover()
 		if !returned && err == nil {
-			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
+			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
+		}
+		if e != nil && err == nil {
+			err = fmt.Errorf("%v", e)
 		}
 	}()
 
@@ -117,14 +120,26 @@ func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) (err err
 
 	}()
 
-	var buf bytes.Buffer
-	g := newNGen(&buf, in)
-	if err := g.gen(); err != nil {
-		returned = true
-		return err
-	}
+	r, w := io.Pipe()
+	g := newNGen(w, in)
 
-	err = objWrite(out, goos, goarch, objVersion, objMagic, &buf)
+	go func() {
+		defer func() {
+			if err := recover(); err != nil && g.err == nil {
+				g.err = fmt.Errorf("%v", err)
+			}
+			if err := w.Close(); err != nil && g.err == nil {
+				g.err = err
+			}
+		}()
+
+		g.gen()
+	}()
+
+	err = objWrite(out, goos, goarch, objVersion, objMagic, r)
+	if e := g.err; e != nil && err == nil {
+		err = e
+	}
 	returned = true
 	return err
 }
@@ -199,7 +214,10 @@ func (l *Linker) Link(fn string, obj io.Reader) (err error) {
 	defer func() {
 		e := recover()
 		if !returned && err == nil {
-			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
+			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
+		}
+		if e != nil && err == nil {
+			err = fmt.Errorf("%v", e)
 		}
 
 		for k := range l.renamed {
@@ -225,7 +243,10 @@ func (l *Linker) Close() (err error) {
 		l.out = nil
 		e := recover()
 		if !returned && err == nil {
-			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack())
+			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
+		}
+		if e != nil && err == nil {
+			err = fmt.Errorf("%v", e)
 		}
 	}()
 

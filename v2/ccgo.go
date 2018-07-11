@@ -48,34 +48,6 @@ func main() {
 	compactStack = 30
 )
 
-// Main implements a C compiler command.
-//
-// Example ccgo command
-//
-//	package main
-//
-//	import (
-//		"os"
-//
-//		"github.com/cznic/ccgo/v2"
-//	)
-//
-//	func main() { os.Exit(ccgo.Main(os.Args...)) }
-func Main(args ...string) (r int) {
-	returned := false
-
-	defer func() {
-		e := recover()
-		if !returned && r == 0 {
-			fmt.Fprintf(os.Stderr, "PANIC: %v\n%s", e, debugStack())
-		}
-	}()
-
-	panic("TODO")
-	returned = true
-	return r
-}
-
 type gen struct { //TODO-
 	bss                    int64
 	ds                     []byte
@@ -119,6 +91,7 @@ type gen struct { //TODO-
 type ngen struct { //TODO rename to gen
 	definedExterns     map[int]struct{}
 	enqueued           map[interface{}]struct{}
+	err                error
 	helpers            map[string]int
 	in                 *cc.TranslationUnit
 	model              cc.Model
@@ -210,18 +183,16 @@ func (g *ngen) enqueue(n interface{}) {
 	switch x := n.(type) {
 	case *cc.Declarator:
 		if x.Linkage == cc.LinkageNone {
-			todo("", g.position(x))
 			return
 		}
 
 		if x.Linkage == cc.LinkageInternal {
-			todo("", g.position(x))
-			//g.enqueueNumbered(x)
+			//TODO? g.enqueueNumbered(x)
 			return
 		}
 
 		if x.DeclarationSpecifier.IsExtern() {
-			todo("", g.position(x))
+			//TODO?
 			return
 		}
 	}
@@ -362,11 +333,25 @@ const %s = uintptr(0)
 }
 
 func (g *ngen) gen() (err error) {
+	defer func() {
+		if g.err == nil {
+			g.err = err
+		}
+	}()
+
 	for l := g.in.ExternalDeclarationList; l != nil; l = l.ExternalDeclarationList {
 		switch n := l.ExternalDeclaration; n.Case {
 		case cc.ExternalDeclarationDecl: // Declaration
-			f := false
-			g.declaration(n.Declaration, &f)
+			if o := n.Declaration.InitDeclaratorListOpt; o != nil {
+				for l := o.InitDeclaratorList; l != nil; l = l.InitDeclaratorList {
+					d := l.InitDeclarator.Declarator
+					if d.Referenced == 0 && !d.AddressTaken {
+						continue
+					}
+
+					g.tld(d)
+				}
+			}
 		case cc.ExternalDeclarationFunc: // FunctionDefinition
 			g.tld(n.FunctionDefinition.Declarator)
 		default:

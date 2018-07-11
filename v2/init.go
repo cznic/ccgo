@@ -241,6 +241,13 @@ func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 			if x.IsArithmeticType() {
 				return true
 			}
+		case *cc.UnionType:
+			switch x := op.Value.(type) {
+			case *ir.Int64Value:
+				return true
+			default:
+				todo("%v: %T %v %v", g.position(n), x, t, op)
+			}
 		default:
 			todo("%v: %T %v %v", g.position(n), x, t, op)
 		}
@@ -390,7 +397,9 @@ func (g *ngen) initializer(d *cc.Declarator) {
 
 	if g.isConstInitializer(d.Type, n) {
 		b := make([]byte, g.model.Sizeof(d.Type))
-		g.renderInitializer(b, d.Type, n)
+		if !g.isZeroInitializer(n) {
+			g.renderInitializer(b, d.Type, n)
+		}
 		switch {
 		case g.escaped(d):
 			g.w("\n%sCopy(%s, %q, %d)", crt, g.mangleDeclarator(d), b, len(b))
