@@ -7,7 +7,7 @@ package main
 
 /*
 
-jnml@r550:~/src/github.com/ossrs/librtmp> export GOARCH=amd64 ; make clean && make CC=ccgo
+jnml@4670:~/src/github.com/ossrs/librtmp> make clean && make CC=ccgo 
 rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
 /home/jnml/src/github.com/ossrs/librtmp/librtmp
 make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
@@ -22,36 +22,15 @@ ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o hashsw
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o parseurl.o parseurl.c
 ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
 ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz
-ccgo: error: unrecognized command line option "-shared"
-Makefile:92: recipe for target 'librtmp.so.1' failed
-make[1]: *** [librtmp.so.1] Error 2
+ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz 
+ln -sf librtmp.so.1 librtmp.so
 make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-Makefile:76: recipe for target 'librtmp/librtmp.a' failed
-make: *** [librtmp/librtmp.a] Error 2
-jnml@r550:~/src/github.com/ossrs/librtmp> export GOARCH=arm ; make clean && make CC=ccgo
-rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
-/home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-rm -f *.o *.a *.so *.so.1 librtmp.pc
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-/home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o rtmp.o rtmp.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o log.o log.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o amf.o amf.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o hashswf.o hashswf.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o parseurl.o parseurl.c
-ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
-ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz
-ccgo: error: unrecognized command line option "-shared"
-Makefile:92: recipe for target 'librtmp.so.1' failed
-make[1]: *** [librtmp.so.1] Error 2
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-Makefile:76: recipe for target 'librtmp/librtmp.a' failed
-make: *** [librtmp/librtmp.a] Error 2
-jnml@r550:~/src/github.com/ossrs/librtmp>
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
+ccgo -Wall  -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz  
+ccgo: error: unrecognized command line option "-Llibrtmp"
+Makefile:79: recipe for target 'rtmpdump' failed
+make: *** [rtmpdump] Error 2
+jnml@4670:~/src/github.com/ossrs/librtmp> 
 
 */
 
@@ -61,10 +40,10 @@ jnml@r550:~/src/github.com/ossrs/librtmp>
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"strings"
 
 	"github.com/cznic/cc/v2"
@@ -120,12 +99,10 @@ func main() {
 }
 
 type config struct {
-	D      []string // -D
-	Wl     []string // -Wl,
-	c      bool     // -c
-	l      []string // -l
-	o      string   // -o
-	shared bool     // -shared
+	D  []string // -D
+	Wl []string // -Wl,
+	l  []string // -l
+	o  string   // -o
 
 	arg0      string
 	args      []string
@@ -133,10 +110,14 @@ type config struct {
 	goos      string
 	incPaths  []string
 	linkOrder []string
+	objMap    map[string]string
 	objects   []string
 	osArgs    []string
 	remove    []string
 	sysPaths  []string
+
+	c      bool // -c
+	shared bool // -shared
 }
 
 func newConfig(args []string) (*config, error) {
@@ -149,6 +130,7 @@ func newConfig(args []string) (*config, error) {
 		goarch:   env("GOARCH", runtime.GOARCH),
 		goos:     env("GOOS", runtime.GOOS),
 		incPaths: []string{"@"},
+		objMap:   map[string]string{},
 		osArgs:   args,
 	}
 	args = args[1:]
@@ -174,7 +156,7 @@ func newConfig(args []string) (*config, error) {
 		case strings.HasPrefix(arg, "-l"):
 			s := arg[2:]
 			r.l = append(r.l, s)
-			r.linkOrder = append(r.linkOrder, s)
+			r.linkOrder = append(r.linkOrder, arg)
 		case strings.HasPrefix(arg, "-Wl,"):
 			r.Wl = strings.Split(arg[4:], ",")
 		case !strings.HasPrefix(arg, "-"):
@@ -200,7 +182,7 @@ func main1(args []string) (r int, err error) {
 	defer func() {
 		e := recover()
 		if !returned && r == 0 {
-			err = fmt.Errorf("PANIC: %v\n%s", e, debug.Stack())
+			err = fmt.Errorf("PANIC: %v #%s", e, debugStack2())
 		}
 	}()
 
@@ -233,6 +215,7 @@ compilation terminated`, c.arg0)
 			}
 		case ".o":
 			c.objects = append(c.objects, in)
+			c.objMap[in] = in
 		default:
 			return 1, fmt.Errorf("%s: file not recognized", in)
 		}
@@ -267,11 +250,101 @@ compilation terminated`, c.arg0)
 }
 
 func (c *config) linkShared() (err error) {
-	return nil //TODO
+	var soname string
+	switch {
+	case len(c.Wl) == 2 && c.Wl[0] == "-soname":
+		soname = c.Wl[1]
+	default:
+		return fmt.Errorf("unknown/unsupported linker options: %q", c.Wl)
+	}
+
+	var fn string
+	if c.o != "" {
+		fn = c.o
+	}
+	if fn == "" && soname != "" {
+		fn = soname
+	}
+	if fn == "" {
+		fn = "a.so"
+	}
+
+	f, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if e := f.Close(); e != nil && err == nil {
+			err = e
+		}
+	}()
+
+	b := bufio.NewWriter(f)
+
+	defer func() {
+		if e := b.Flush(); e != nil && err == nil {
+			err = e
+		}
+	}()
+
+	r, w := io.Pipe()
+	var e2 error
+
+	go func() {
+		defer func() {
+			if err := recover(); err != nil && e2 == nil {
+				e2 = fmt.Errorf("%v", err)
+			}
+			if err := w.Close(); err != nil && e2 == nil {
+				e2 = err
+			}
+		}()
+
+		if soname != "" {
+			if _, e2 = fmt.Fprintf(w, "const Lsoname = %q\n\n", soname); e2 != nil {
+				return
+			}
+		}
+
+		for _, v := range c.linkOrder {
+			switch {
+			case strings.HasPrefix(v, "-l"):
+				//TODO
+			default:
+				fn := c.objMap[v]
+				if fn == "" {
+					e2 = fmt.Errorf("internal error: missing object for %q", v)
+					return
+				}
+
+				if _, e2 = fmt.Fprintf(w, "\n\nconst Lsofile = %q\n\n", fn); e2 != nil {
+					return
+				}
+
+				f, err := os.Open(fn)
+				if err != nil {
+					e2 = err
+					return
+				}
+
+				b := bufio.NewReader(f)
+				if e2 = ccgo.ReadObject(w, c.goos, c.goarch, b); e2 != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	err = ccgo.NewSharedObject(b, c.goos, c.goarch, r)
+	if err == nil {
+		err = e2
+	}
+	return err
 }
 
 func (c *config) link() (err error) {
-	if err = c.compileSource(toExt(crt0c, ".o"), cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
+	if err = c.compileSource(toExt(crt0c, ".o"), crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
 		return err
 	}
 
@@ -311,7 +384,7 @@ func (c *config) link() (err error) {
 		}
 	}()
 
-	for _, fn := range c.objects {
+	for _, fn := range c.objects { //TODO use linkOrder
 		var f *os.File
 		if f, err = os.Open(fn); err != nil {
 			return err
@@ -341,11 +414,12 @@ func (c *config) compile(in string) (err error) {
 		return err
 	}
 
-	return c.compileSource(out, src)
+	return c.compileSource(out, in, src)
 }
 
-func (c *config) compileSource(out string, src cc.Source) (err error) {
+func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 	c.objects = append(c.objects, out)
+	c.objMap[in] = out
 	if !c.c {
 		c.remove = append(c.remove, out)
 	}
@@ -399,5 +473,5 @@ func (c *config) compileSource(out string, src cc.Source) (err error) {
 		}
 	}()
 
-	return ccgo.Object(b, c.goos, c.goarch, tu)
+	return ccgo.NewObject(b, c.goos, c.goarch, src.Name(), tu)
 }

@@ -5,14 +5,21 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/scanner"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 
 	"github.com/cznic/sortutil"
+)
+
+var (
+	bNL    = []byte{'\n'}
+	bPanic = []byte("panic")
 )
 
 func env(key, value string) string {
@@ -38,3 +45,18 @@ func expandError(err error) error {
 }
 
 func toExt(nm, new string) string { return nm[:len(nm)-len(filepath.Ext(nm))] + new }
+
+func debugStack2() []byte {
+	b := debug.Stack()
+	b = b[bytes.Index(b, bPanic)+1:]
+	b = b[bytes.Index(b, bPanic):]
+	b = b[bytes.Index(b, bNL)+1:]
+	a := bytes.SplitN(b, bNL, 3)
+	if len(a) > 2 {
+		a = a[:2]
+	}
+	if len(a) > 1 {
+		a = a[1:]
+	}
+	return bytes.Join(a, bNL)
+}

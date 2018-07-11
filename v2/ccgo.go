@@ -101,6 +101,7 @@ type ngen struct { //TODO rename to gen
 	out                io.Writer
 	out0               bytes.Buffer
 	producedEnumTags   map[int]struct{}
+	file               string
 	producedStructTags map[int]struct{}
 	queue              list.List
 	tCache             map[tCacheKey]string
@@ -111,10 +112,11 @@ type ngen struct { //TODO rename to gen
 	needNZ64   bool //TODO -> crt
 }
 
-func newNGen(out io.Writer, in *cc.TranslationUnit) *ngen { //TODO rename to newGen
+func newNGen(out io.Writer, in *cc.TranslationUnit, file string) *ngen { //TODO rename to newGen
 	return &ngen{
 		definedExterns:     map[int]struct{}{},
 		enqueued:           map[interface{}]struct{}{},
+		file:               file,
 		helpers:            map[string]int{},
 		in:                 in,
 		model:              in.Model,
@@ -344,12 +346,7 @@ func (g *ngen) gen() (err error) {
 		case cc.ExternalDeclarationDecl: // Declaration
 			if o := n.Declaration.InitDeclaratorListOpt; o != nil {
 				for l := o.InitDeclaratorList; l != nil; l = l.InitDeclaratorList {
-					d := l.InitDeclarator.Declarator
-					if d.Referenced == 0 && !d.AddressTaken {
-						continue
-					}
-
-					g.tld(d)
+					g.tld(l.InitDeclarator.Declarator)
 				}
 			}
 		case cc.ExternalDeclarationFunc: // FunctionDefinition

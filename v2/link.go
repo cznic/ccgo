@@ -97,8 +97,8 @@ func objRead(out io.Writer, goos, goarch string, binaryVersion uint64, magic []b
 	return r.Close()
 }
 
-// Object writes a linker object file produced from in to out.
-func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) (err error) {
+// ReadObject reads an object file from in and writes it to out.
+func ReadObject(out io.Writer, goos, goarch string, in io.Reader) (err error) {
 	returned := false
 
 	defer func() {
@@ -121,7 +121,96 @@ func Object(out io.Writer, goos, goarch string, in *cc.TranslationUnit) (err err
 	}()
 
 	r, w := io.Pipe()
-	g := newNGen(w, in)
+	var e2 error
+
+	go func() {
+		defer func() {
+			if err := w.Close(); err != nil && e2 == nil {
+				e2 = err
+			}
+		}()
+
+		_, e2 = io.Copy(w, in)
+	}()
+
+	err = objRead(out, goos, goarch, objVersion, objMagic, r)
+	if e2 != nil && err == nil {
+		err = e2
+	}
+	returned = true
+	return err
+}
+
+// NewSharedObject writes shared object files from in to out.
+func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err error) {
+	returned := false
+
+	defer func() {
+		e := recover()
+		if !returned && err == nil {
+			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
+		}
+		if e != nil && err == nil {
+			err = fmt.Errorf("%v", e)
+		}
+	}()
+
+	defer func() {
+		if x, ok := out.(*bufio.Writer); ok {
+			if e := x.Flush(); e != nil && err == nil {
+				err = e
+			}
+		}
+
+	}()
+
+	r, w := io.Pipe()
+	var e2 error
+
+	go func() {
+		defer func() {
+			if err := w.Close(); err != nil && e2 == nil {
+				e2 = err
+			}
+		}()
+
+		_, e2 = io.Copy(w, in)
+	}()
+
+	err = objWrite(out, goos, goarch, objVersion, objMagic, r)
+	if e2 != nil && err == nil {
+		err = e2
+	}
+	returned = true
+	return err
+}
+
+// NewObject writes a linker object file produced from in that comes from file to
+// out.
+func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit) (err error) {
+	returned := false
+
+	defer func() {
+		e := recover()
+		if !returned && err == nil {
+			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
+		}
+		if e != nil && err == nil {
+			err = fmt.Errorf("%v", e)
+		}
+	}()
+
+	defer func() {
+		if x, ok := out.(*bufio.Writer); ok {
+			if e := x.Flush(); e != nil && err == nil {
+				err = e
+			}
+		}
+
+	}()
+
+	r, w := io.Pipe()
+	g := newNGen(w, in, file)
 
 	go func() {
 		defer func() {

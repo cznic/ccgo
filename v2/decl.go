@@ -348,9 +348,13 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
+	pos := g.position(n)
+	if pos.Filename != g.file {
+		return
+	}
+
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
-			return //TODO-
 			panic(err)
 		}
 
@@ -375,7 +379,6 @@ func (g *ngen) tld(n *cc.Declarator) {
 	//TODO-? }
 
 	g.definedExterns[n.Name()] = struct{}{}
-	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
 	if !isTesting {
 		pos.Filename = filepath.Base(pos.Filename)
