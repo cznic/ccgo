@@ -15,6 +15,8 @@ import (
 	"go/scanner"
 	"go/token"
 	"io"
+	"io/ioutil"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,23 +24,36 @@ import (
 	"time"
 
 	"github.com/cznic/cc/v2"
+	"github.com/cznic/sortutil"
 )
 
 /*
 
-Lb + n					bss + m
-const Lp<mangled name> = "type"		function prototype
-const Lh<helper><num> = "args"		helper function
 
+-------------------------------------------------------------------------------
+Linker constants (const Lx = "value")
+-------------------------------------------------------------------------------
+
+Ld<mangled name>	Defintion with external linkage. Value: type.
+Lf			Translation unit boundary. Value: file name.
+
+-------------------------------------------------------------------------------
+Linker magic names
+-------------------------------------------------------------------------------
+
+Lb + n			-> bss + off
+Ld + "foo"		-> dss + off
 
 */
 
 const (
-	objVersion = 1
+	lConstPrefix = "const L"
+	objVersion   = 1
 )
 
 var (
-	objMagic = []byte{0xc6, 0x1f, 0xd0, 0xb5, 0xc4, 0x39, 0xad, 0x56}
+	objMagic     = []byte{0xc6, 0x1f, 0xd0, 0xb5, 0xc4, 0x39, 0xad, 0x56}
+	traceLConsts bool
 )
 
 func objWrite(out io.Writer, goos, goarch string, binaryVersion uint64, magic []byte, in io.Reader) (err error) {
@@ -233,29 +248,27 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit)
 	return err
 }
 
-type prototype struct {
-	pos string
-	typ string
-}
-
 // Linker produces Go files from object files.
 type Linker struct {
-	bss        int64
-	ds         []byte
-	errMu      sync.Mutex
-	errs       scanner.ErrorList
-	goarch     string
-	goos       string
-	helpers    map[string]int
-	num        int
-	out        io.Writer
-	prototypes map[string]prototype
-	renamed    map[string]int
-	strings    map[int]int64
-	text       []int
-	tld        []string
-	ts         int64
-	visitor
+	bss            int64
+	definedExterns map[string]string // name: type
+	ds             []byte
+	errs           scanner.ErrorList
+	errsMu         sync.Mutex
+	goarch         string
+	goos           string
+	header         string
+	helpers        map[string]int
+	num            int
+	out            *bufio.Writer
+	renamed        map[string]int
+	strings        map[int]int64
+	tempFile       *os.File
+	text           []int
+	tld            []string
+	ts             int64
+	visitor        visitor
+	wout           *bufio.Writer
 
 	bool2int bool
 }
@@ -263,37 +276,61 @@ type Linker struct {
 // NewLinker returns a newly created Linker writing to out. The header argument
 // is written prior to any other linker's output, which does not include the
 // package clause.
+//
+// The Linker must be eventually closed to prevent resource leaks.
 func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
-	header = strings.TrimSpace(header)
-	if header != "" {
-		if _, err := fmt.Fprintln(out, header); err != nil {
-			return nil, err
-		}
+	bin, ok := out.(*bufio.Writer)
+	if !ok {
+		bin = bufio.NewWriter(out)
+	}
+
+	tempFile, err := ioutil.TempFile("", "ccgo-linker-")
+	if err != nil {
+		return nil, err
 	}
 
 	r := &Linker{
-		goarch:     goarch,
-		goos:       goos,
-		helpers:    map[string]int{},
-		out:        out,
-		prototypes: map[string]prototype{},
-		renamed:    map[string]int{},
-		strings:    map[int]int64{},
+		definedExterns: map[string]string{},
+		goarch:         goarch,
+		goos:           goos,
+		header:         header,
+		helpers:        map[string]int{},
+		out:            bin,
+		renamed:        map[string]int{},
+		strings:        map[int]int64{},
+		tempFile:       tempFile,
+		wout:           bufio.NewWriter(tempFile),
 	}
-	r.visitor.Linker = r
+	r.visitor = visitor{r}
 	return r, nil
 }
 
 func (l *Linker) w(s string, args ...interface{}) {
-	if _, err := fmt.Fprintf(l.out, s, args...); err != nil {
+	if _, err := fmt.Fprintf(l.wout, s, args...); err != nil {
 		panic(err)
 	}
 }
 
 func (l *Linker) err(msg string, args ...interface{}) {
-	l.errMu.Lock()
+	l.errsMu.Lock()
 	l.errs.Add(token.Position{}, fmt.Sprintf(msg, args...))
-	l.errMu.Unlock()
+	l.errsMu.Unlock()
+}
+
+func (l *Linker) error() error {
+	l.errsMu.Lock()
+
+	defer l.errsMu.Unlock()
+
+	if len(l.errs) == 0 {
+		return nil
+	}
+
+	var a []string
+	for _, v := range l.errs {
+		a = append(a, v.Error())
+	}
+	return fmt.Errorf("%s", strings.Join(a[:sortutil.Dedupe(sort.StringSlice(a))], "\n"))
 }
 
 // Link incerementaly links objects files.
@@ -308,20 +345,102 @@ func (l *Linker) Link(fn string, obj io.Reader) (err error) {
 		if e != nil && err == nil {
 			err = fmt.Errorf("%v", e)
 		}
+	}()
 
-		for k := range l.renamed {
-			delete(l.renamed, k)
+	if err := l.link(fn, obj); err != nil {
+		l.err("%v", err)
+	}
+	err = l.error()
+	returned = true
+	return err
+}
+
+func (l *Linker) link(fn string, obj io.Reader) error {
+	r, w := io.Pipe()
+
+	go func() {
+		defer func() {
+			if err := w.Close(); err != nil {
+				l.err(err.Error())
+			}
+		}()
+
+		if err := objRead(w, l.goos, l.goarch, objVersion, objMagic, obj); err != nil {
+			l.err("%v", err)
 		}
 	}()
 
-	l.w("\n// linking %s\n", fn)
-	l.link(obj)
-	if len(l.errs) != 0 {
-		err = l.errs
+	l.w("\nconst Lf = %q\n", fn)
+
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		s := sc.Text()
+		switch {
+		case strings.HasPrefix(s, lConstPrefix):
+			l.lConst(s[len(lConstPrefix):])
+		default:
+			l.w("%s\n", s)
+		}
+	}
+	return sc.Err()
+}
+
+func (l *Linker) lConst(s string) { // x<name> = "value"
+	if traceLConsts {
+		l.w("\n// const L%s\n", s)
+	}
+	a := strings.SplitN(s, " ", 3)
+	nm := a[0]
+	arg, err := strconv.Unquote(a[2])
+	if err != nil {
+		panic(err)
 	}
 
-	returned = true
-	return err
+	switch {
+	case strings.HasPrefix(nm, "d"):
+		nm = nm[1:]
+		if _, ok := l.definedExterns[nm]; ok {
+			l.err("external symbol redefined: %s", nm)
+			break
+		}
+
+		l.definedExterns[nm] = arg
+		nm = nm[1:]
+		if _, ok := l.definedExterns[nm]; ok {
+			l.err("external symbol redefined: %s", nm)
+			break
+		}
+
+		l.definedExterns[nm] = arg
+	case strings.HasPrefix(nm, "h"): // helper
+		_, id := l.parseID(nm[1:])
+		if x, ok := l.helpers[arg]; ok {
+			_ = x
+			_ = id
+			panic("TODO")
+			return
+		}
+
+		l.helpers[arg] = id
+	default:
+		todo("%s", s)
+		panic("unreachable")
+	}
+}
+
+func (l *Linker) parseID(s string) (string, int) {
+	for i := len(s) - 1; i >= 0; i-- {
+		if c := s[i]; c < '0' || c > '9' {
+			i++
+			n, err := strconv.ParseInt(s[i:], 10, 31)
+			if err != nil {
+				panic(err)
+			}
+
+			return s[:i], int(n)
+		}
+	}
+	panic("TODO") // missing helper local ID
 }
 
 // Close finihes the linking.
@@ -329,7 +448,6 @@ func (l *Linker) Close() (err error) {
 	returned := false
 
 	defer func() {
-		l.out = nil
 		e := recover()
 		if !returned && err == nil {
 			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
@@ -339,16 +457,119 @@ func (l *Linker) Close() (err error) {
 		}
 	}()
 
-	defer func() {
-		if x, ok := l.out.(*bufio.Writer); ok {
-			if e := x.Flush(); e != nil && err == nil {
-				err = e
-			}
-		}
+	if err := l.close(); err != nil {
+		l.err("%v", err)
+	}
+	err = l.error()
+	returned = true
+	return err
+}
 
+func (l *Linker) close() (err error) {
+	if err = l.wout.Flush(); err != nil {
+		return err
+	}
+
+	if _, err = l.tempFile.Seek(0, os.SEEK_SET); err != nil {
+		return err
+	}
+
+	l.wout = l.out
+	l.w("%s\n", strings.TrimSpace(l.header))
+
+	defer func() {
+		if e := l.wout.Flush(); e != nil && err == nil {
+			err = e
+		}
 	}()
 
-	//TODO format the final part
+	const (
+		skipBlank = iota
+		collectComments
+		copy
+		copyFunc
+		copyParen
+	)
+
+	sc := bufio.NewScanner(l.tempFile)
+	state := skipBlank
+	for l.scan(sc) {
+		s := sc.Text()
+		switch state {
+		case skipBlank:
+			if len(s) == 0 {
+				break
+			}
+
+			l.tld = l.tld[:0]
+			state = collectComments
+			fallthrough
+		case collectComments:
+			if s == "" {
+				l.emit()
+				state = skipBlank
+				break
+			}
+
+			l.tld = append(l.tld, s)
+			if strings.HasPrefix(s, "//") {
+				break
+			}
+
+			switch {
+			case strings.HasPrefix(s, "const ("):
+				state = copyParen
+			case strings.HasPrefix(s, "var"):
+				state = copy
+			case strings.HasPrefix(s, "func"):
+				if strings.HasSuffix(s, "}") {
+					l.emit()
+					state = skipBlank
+					break
+				}
+
+				state = copyFunc
+			case strings.HasPrefix(s, "type"):
+				if !strings.HasSuffix(s, "{") {
+					l.emit()
+					state = skipBlank
+					break
+				}
+
+				state = copyFunc
+			default:
+				panic(fmt.Sprintf("%q", s))
+			}
+		case copy:
+			l.tld = append(l.tld, s)
+			if len(s) == 0 {
+				l.emit()
+				state = skipBlank
+				break
+			}
+		case copyFunc:
+			l.tld = append(l.tld, s)
+			if s == "}" {
+				l.emit()
+				state = skipBlank
+			}
+		case copyParen:
+			l.tld = append(l.tld, s)
+			if s == ")" {
+				l.emit()
+				state = skipBlank
+			}
+		default:
+			panic(state)
+		}
+	}
+
+	if err = sc.Err(); err != nil {
+		return err
+	}
+	if len(l.tld) != 0 {
+		l.emit()
+	}
 
 	l.genHelpers()
 
@@ -386,8 +607,7 @@ var (
 		l.w("\")")
 	}
 	l.w("\n)\n")
-	returned = true
-	return err
+	return nil
 }
 
 func (l *Linker) genHelpers() {
@@ -458,115 +678,13 @@ func bool2int(b bool) int32 {
 	if b {
 		return 1
 	}
-
 	return 0
 }
 `)
 	}
 }
 
-func (l *Linker) link(obj io.Reader) {
-	r, w := io.Pipe()
-
-	go func() {
-		defer func() {
-			if err := w.Close(); err != nil {
-				l.err(err.Error())
-			}
-		}()
-
-		if err := objRead(w, l.goos, l.goarch, objVersion, objMagic, obj); err != nil {
-			l.err("%v", err)
-		}
-	}()
-
-	sc := bufio.NewScanner(r)
-
-	const (
-		skipBlank = iota
-		collectComments
-		copy
-		copyFunc
-		copyParen
-	)
-
-	state := skipBlank
-	for sc.Scan() {
-		s := sc.Text()
-		switch state {
-		case skipBlank:
-			if len(s) == 0 {
-				break
-			}
-
-			l.tld = l.tld[:0]
-			state = collectComments
-			fallthrough
-		case collectComments:
-			l.tld = append(l.tld, s)
-			if strings.HasPrefix(s, "//") {
-				break
-			}
-
-			switch {
-			case strings.HasPrefix(s, "const ("):
-				state = copyParen
-			case strings.HasPrefix(s, "const L"):
-				l.lConst(s)
-				state = skipBlank
-			case strings.HasPrefix(s, "var"):
-				state = copy
-			case strings.HasPrefix(s, "func"):
-				if strings.HasSuffix(s, "}") {
-					l.emit(w)
-					state = skipBlank
-					break
-				}
-
-				state = copyFunc
-			case strings.HasPrefix(s, "type"):
-				if !strings.HasSuffix(s, "{") {
-					l.emit(w)
-					state = skipBlank
-					break
-				}
-
-				state = copyFunc
-			default:
-				panic(fmt.Sprintf("%q", s))
-			}
-		case copy:
-			l.tld = append(l.tld, s)
-			if len(s) == 0 {
-				l.emit(w)
-				state = skipBlank
-				break
-			}
-		case copyFunc:
-			l.tld = append(l.tld, s)
-			if s == "}" {
-				l.emit(w)
-				state = skipBlank
-			}
-		case copyParen:
-			l.tld = append(l.tld, s)
-			if s == ")" {
-				l.emit(w)
-				state = skipBlank
-			}
-		default:
-			panic(state)
-		}
-	}
-	if err := sc.Err(); err != nil {
-		l.err(err.Error())
-	}
-	if len(l.tld) != 0 {
-		l.emit(w)
-	}
-}
-
-func (l *Linker) emit(w *io.PipeWriter) (err error) {
+func (l *Linker) emit() (err error) {
 	s := strings.Join(l.tld, "\n")
 	fset := token.NewFileSet()
 	in := io.MultiReader(bytes.NewBufferString("package p\n"), bytes.NewBufferString(s))
@@ -576,124 +694,11 @@ func (l *Linker) emit(w *io.PipeWriter) (err error) {
 	}
 
 	ast.Walk(&l.visitor, file)
-	e := emitor{out: l.out}
+	e := emitor{out: l.wout}
 	format.Node(&e, fset, file)
 
 	l.tld = l.tld[:0]
 	return nil
-}
-
-func (l *Linker) lConst(s string) {
-	// ex `const LpX__builtin_exit = "func(crt.TLS, int32)"`
-	a := strings.SplitN(s, " ", 4)
-	nm := a[1][1:]
-	arg, err := strconv.Unquote(a[3])
-	if err != nil {
-		panic(err)
-	}
-
-	switch {
-	case strings.HasPrefix(nm, "h"): // helper
-		_, id := l.parseID(nm[1:])
-		if x, ok := l.helpers[arg]; ok {
-			_ = x
-			_ = id
-			panic("TODO")
-			return
-		}
-
-		l.helpers[arg] = id
-	case strings.HasPrefix(nm, "p"): // prototype
-		nm = nm[1:]
-		if x, ok := l.prototypes[nm]; ok {
-			if arg == x.typ { // consistent
-				return
-			}
-
-			todo("%q %q", arg, x.typ)
-			return
-		}
-
-		l.prototypes[nm] = prototype{pos: l.pos(), typ: arg}
-	default:
-		panic(fmt.Sprintf("%s\n%q %q", strings.Join(l.tld, "\n"), nm, arg))
-	}
-}
-
-func (l *Linker) parseID(s string) (string, int) {
-	for i := len(s) - 1; i >= 0; i-- {
-		if c := s[i]; c < '0' || c > '9' {
-			i++
-			n, err := strconv.ParseInt(s[i:], 10, 31)
-			if err != nil {
-				panic(err)
-			}
-
-			return s[:i], int(n)
-		}
-	}
-	panic("TODO") // missing helper local ID
-}
-
-func (l *Linker) pos() string {
-	if len(l.tld) != 1 {
-		return ""
-	}
-
-	s := l.tld[0]
-	if strings.HasPrefix(s, "// ") {
-		return s[3:]
-	}
-
-	return ""
-}
-
-func (l *Linker) rename(prefix, nm string) string {
-	n := l.renamed[nm]
-	if n == 0 {
-		l.num++
-		n = l.num
-		l.renamed[nm] = n
-	}
-	for {
-		if c := nm[0]; c < '0' || c > '9' {
-			break
-		}
-
-		nm = nm[1:]
-	}
-	return fmt.Sprintf("%s%d%s", prefix, n, nm)
-}
-
-type emitor struct {
-	out  io.Writer
-	gate bool
-}
-
-func (e *emitor) Write(b []byte) (int, error) {
-	if e.gate {
-		return e.out.Write(b)
-	}
-
-	if i := bytes.IndexByte(b, '\n'); i >= 0 {
-		e.gate = true
-		n, err := e.out.Write(b[i+1:])
-		return n + i, err
-	}
-
-	return len(b), nil
-}
-
-func (l *Linker) allocString(s int) int64 {
-	if n, ok := l.strings[s]; ok {
-		return n
-	}
-
-	r := l.ts
-	l.strings[s] = r
-	l.ts += int64(len(dict.S(s))) + 1
-	l.text = append(l.text, s)
-	return r
 }
 
 type visitor struct {
@@ -743,6 +748,10 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 		}
 	case *ast.Ident:
 		switch {
+		case strings.HasPrefix(x.Name, "X"):
+			if _, ok := v.definedExterns[x.Name]; !ok {
+				x.Name = fmt.Sprintf("%s%s", crt, x.Name)
+			}
 		case strings.HasPrefix(x.Name, "C"): // Enum constant
 			x.Name = v.rename("c", x.Name[1:])
 		case strings.HasPrefix(x.Name, "E"): // Tagged enum type
@@ -766,4 +775,82 @@ func (l *Linker) allocDS(s string) int64 {
 	r := len(l.ds)
 	l.ds = append(l.ds, s...)
 	return int64(r)
+}
+
+func (l *Linker) rename(prefix, nm string) string {
+	n := l.renamed[nm]
+	if n == 0 {
+		l.num++
+		n = l.num
+		l.renamed[nm] = n
+	}
+	for {
+		if c := nm[0]; c < '0' || c > '9' {
+			break
+		}
+
+		nm = nm[1:]
+	}
+	return fmt.Sprintf("%s%d%s", prefix, n, nm)
+}
+
+func (l *Linker) allocString(s int) int64 {
+	if n, ok := l.strings[s]; ok {
+		return n
+	}
+
+	r := l.ts
+	l.strings[s] = r
+	l.ts += int64(len(dict.S(s))) + 1
+	l.text = append(l.text, s)
+	return r
+}
+
+type emitor struct {
+	out  io.Writer
+	gate bool
+}
+
+func (e *emitor) Write(b []byte) (int, error) {
+	if e.gate {
+		return e.out.Write(b)
+	}
+
+	if i := bytes.IndexByte(b, '\n'); i >= 0 {
+		e.gate = true
+		n, err := e.out.Write(b[i+1:])
+		return n + i, err
+	}
+
+	return len(b), nil
+}
+
+func (l *Linker) scan(sc *bufio.Scanner) bool {
+	for {
+		if !sc.Scan() {
+			return false
+		}
+
+		if s := sc.Text(); strings.HasPrefix(s, lConstPrefix) {
+			l.lConst2(s[len(lConstPrefix):])
+			continue
+		}
+
+		return true
+	}
+}
+
+func (l *Linker) lConst2(s string) { // x<name> = "value"
+	if traceLConsts {
+		l.w("\n// const L%s\n", s)
+	}
+	switch {
+	case strings.HasPrefix(s, "f"):
+		for k := range l.renamed {
+			delete(l.renamed, k)
+		}
+	default:
+		todo("%s", s)
+		panic("unreachable")
+	}
 }

@@ -7,7 +7,7 @@ package main
 
 /*
 
-jnml@4670:~/src/github.com/ossrs/librtmp> make clean && make CC=ccgo 
+jnml@4670:~/src/github.com/ossrs/librtmp> make clean && make CC=ccgo
 rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
 /home/jnml/src/github.com/ossrs/librtmp/librtmp
 make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
@@ -22,15 +22,15 @@ ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o hashsw
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o parseurl.o parseurl.c
 ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
 ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz 
+ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz
 ln -sf librtmp.so.1 librtmp.so
 make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
-ccgo -Wall  -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz  
+ccgo -Wall  -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz
 ccgo: error: unrecognized command line option "-Llibrtmp"
 Makefile:79: recipe for target 'rtmpdump' failed
 make: *** [rtmpdump] Error 2
-jnml@4670:~/src/github.com/ossrs/librtmp> 
+jnml@4670:~/src/github.com/ossrs/librtmp>
 
 */
 
@@ -344,60 +344,61 @@ func (c *config) linkShared() (err error) {
 }
 
 func (c *config) link() (err error) {
-	if err = c.compileSource(toExt(crt0c, ".o"), crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
-		return err
-	}
-
-	fn := "a.out"
-	if c.o != "" {
-		fn = c.o
-	}
-
-	f, err := os.Create(fn)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if e := f.Close(); e != nil && err == nil {
-			err = e
-		}
-	}()
-
-	b := bufio.NewWriter(f)
-
-	defer func() {
-		if e := b.Flush(); e != nil && err == nil {
-			err = e
-		}
-	}()
-
-	header := fmt.Sprintf(mainHeader, strings.Join(c.osArgs, " "), "crt.")
-	l, err := ccgo.NewLinker(b, header, c.goos, c.goarch)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if e := l.Close(); e != nil && err == nil {
-			err = e
-		}
-	}()
-
-	for _, fn := range c.objects { //TODO use linkOrder
-		var f *os.File
-		if f, err = os.Open(fn); err != nil {
-			return err
-		}
-
-		defer f.Close()
-
-		if err = l.Link(fn, bufio.NewReader(f)); err != nil {
-			return fmt.Errorf("%s: %v", fn, err)
-		}
-	}
-
-	return nil
+	panic("TODO")
+	//TODO	if err = c.compileSource(toExt(crt0c, ".o"), crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
+	//TODO		return err
+	//TODO	}
+	//TODO
+	//TODO	fn := "a.out"
+	//TODO	if c.o != "" {
+	//TODO		fn = c.o
+	//TODO	}
+	//TODO
+	//TODO	f, err := os.Create(fn)
+	//TODO	if err != nil {
+	//TODO		return err
+	//TODO	}
+	//TODO
+	//TODO	defer func() {
+	//TODO		if e := f.Close(); e != nil && err == nil {
+	//TODO			err = e
+	//TODO		}
+	//TODO	}()
+	//TODO
+	//TODO	b := bufio.NewWriter(f)
+	//TODO
+	//TODO	defer func() {
+	//TODO		if e := b.Flush(); e != nil && err == nil {
+	//TODO			err = e
+	//TODO		}
+	//TODO	}()
+	//TODO
+	//TODO	header := fmt.Sprintf(mainHeader, strings.Join(c.osArgs, " "), "crt.")
+	//TODO	l, err := ccgo.NewLinker(b, header, c.goos, c.goarch)
+	//TODO	if err != nil {
+	//TODO		return err
+	//TODO	}
+	//TODO
+	//TODO	defer func() {
+	//TODO		if e := l.Close(); e != nil && err == nil {
+	//TODO			err = e
+	//TODO		}
+	//TODO	}()
+	//TODO
+	//TODO	for _, fn := range c.objects { //TODO use linkOrder
+	//TODO		var f *os.File
+	//TODO		if f, err = os.Open(fn); err != nil {
+	//TODO			return err
+	//TODO		}
+	//TODO
+	//TODO		defer f.Close()
+	//TODO
+	//TODO		if err = l.Link(fn, bufio.NewReader(f)); err != nil {
+	//TODO			return fmt.Errorf("%s: %v", fn, err)
+	//TODO		}
+	//TODO	}
+	//TODO
+	//TODO	return nil
 }
 
 func (c *config) compile(in string) (err error) {

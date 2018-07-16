@@ -73,24 +73,24 @@ func (g *ngen) defineQueued() {
 			switch y := x.Value.(type) {
 			case *cc.Declarator:
 				g.tld(y)
-			//TOOD case *cc.EnumType:
-			//TOOD 	g.defineEnumType(y)
-			case *cc.NamedType:
-				// nop ATM, probably needed later
+			//TODO case *cc.EnumType:
+			//TODO 	g.defineEnumType(y)
+			//TODO case *cc.NamedType:
+			//TODO 	// nop ATM, probably needed later
 			case *cc.TaggedEnumType:
 				g.defineTaggedEnumType(y)
 			case *cc.TaggedStructType:
 				g.defineTaggedStructType(y)
-			//TOOD case *cc.TaggedUnionType:
-			//TOOD 	g.defineTaggedUnionType(y)
-			//TOOD case
-			//TOOD 	*cc.ArrayType,
-			//TOOD 	*cc.PointerType,
-			//TOOD 	*cc.StructType,
-			//TOOD 	cc.TypeKind,
-			//TOOD 	*cc.UnionType:
+			//TODO case *cc.TaggedUnionType:
+			//TODO 	g.defineTaggedUnionType(y)
+			//TODO case
+			//TODO 	*cc.ArrayType,
+			//TODO 	*cc.PointerType,
+			//TODO 	*cc.StructType,
+			//TODO 	cc.TypeKind,
+			//TODO 	*cc.UnionType:
 
-			//TOOD 	// nop
+			//TODO 	// nop
 			default:
 				todo("%T", y)
 			}
@@ -251,8 +251,8 @@ func (g *ngen) defineTaggedStructType(t *cc.TaggedStructType) {
 					continue
 				}
 
-				g.w("\nif n := unsafe.Offsetof(S%s{}.%s); n != %d { panic(n) }", dict.S(t.Tag), mangleIdent(fields[i].Name, true), v.Offset)
-				g.w("\nif n := unsafe.Sizeof(S%s{}.%s); n != %d { panic(n) }", dict.S(t.Tag), mangleIdent(fields[i].Name, true), v.Size)
+				g.w("\nif n := unsafe.Offsetof(S%s{}.F%s); n != %d { panic(n) }", dict.S(t.Tag), dict.S(fields[i].Name), v.Offset)
+				g.w("\nif n := unsafe.Sizeof(S%s{}.F%s); n != %d { panic(n) }", dict.S(t.Tag), dict.S(fields[i].Name), v.Size)
 			}
 			g.w("\nif n := unsafe.Sizeof(S%s{}); n != %d { panic(n) }", dict.S(t.Tag), g.model.Sizeof(t))
 			g.w("\n}\n")
@@ -348,11 +348,6 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
-	pos := g.position(n)
-	if pos.Filename != g.file {
-		return
-	}
-
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
 			panic(err)
@@ -369,19 +364,17 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
-	//TODO-? switch x := n.Type.(type) {
-	//TODO-? case
-	//TODO-? 	*cc.NamedType,
-	//TODO-? 	*cc.TaggedStructType,
-	//TODO-? 	*cc.TaggedUnionType:
+	if n.Referenced == 0 && !n.AddressTaken {
+		return
+	}
 
-	//TODO-? 	g.enqueue(x)
-	//TODO-? }
-
-	g.definedExterns[n.Name()] = struct{}{}
+	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
 	if !isTesting {
 		pos.Filename = filepath.Base(pos.Filename)
+	}
+	if n.Linkage == cc.LinkageExternal {
+		g.w("\n\nconst Ld%s = %q", g.mangleDeclarator(n), n.Type)
 	}
 	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
 	if g.isZeroInitializer(n.Initializer) {
@@ -561,11 +554,13 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
 	if n.FunctionDefinition == nil {
-		g.w("\n\n// %s\nconst Lp%s = %q", pos, mangleIdent(n.Name(), n.Linkage == cc.LinkageExternal), g.typ(n.Type))
+		//TODO- g.w("\n\n// %s\nconst Lp%s = %q", pos, mangleIdent(n.Name(), n.Linkage == cc.LinkageExternal), g.typ(n.Type))
 		return
 	}
 
-	g.definedExterns[n.Name()] = struct{}{}
+	if n.Linkage == cc.LinkageExternal {
+		g.w("\n\nconst Ld%s = %q", g.mangleDeclarator(n), n.Type)
+	}
 	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
 	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
 	names := n.ParameterNames()
@@ -695,10 +690,6 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.Linkage == cc.LinkageExternal {
-		if _, ok := g.definedExterns[nm]; n.IsBuiltin || !ok && g.isCRT(n) {
-			return crt + mangleIdent(nm, true)
-		}
-
 		return mangleIdent(nm, true)
 	}
 

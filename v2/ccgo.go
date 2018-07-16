@@ -89,7 +89,6 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
-	definedExterns     map[int]struct{}
 	enqueued           map[interface{}]struct{}
 	err                error
 	helpers            map[string]int
@@ -114,7 +113,6 @@ type ngen struct { //TODO rename to gen
 
 func newNGen(out io.Writer, in *cc.TranslationUnit, file string) *ngen { //TODO rename to newGen
 	return &ngen{
-		definedExterns:     map[int]struct{}{},
 		enqueued:           map[interface{}]struct{}{},
 		file:               file,
 		helpers:            map[string]int{},

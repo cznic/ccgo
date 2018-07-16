@@ -791,7 +791,7 @@ func (g *gen) value(n *cc.Expr, packedField bool) {
 			default:
 				if n.Expr.Case == cc.ExprCall {
 					g.value(n.Expr, false)
-					g.w(".%s", mangleIdent(n.Token2.Val, true))
+					g.w(".F%s", dict.S(n.Token2.Val))
 					return
 				}
 
@@ -1417,7 +1417,7 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 			default:
 				if n.Expr.Case == cc.ExprCall {
 					g.value(n.Expr, false)
-					g.w(".%s", mangleIdent(n.Token2.Val, true))
+					g.w(".F%s", dict.S(n.Token2.Val))
 					return
 				}
 

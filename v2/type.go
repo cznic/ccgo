@@ -305,7 +305,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 			case v.Name == 0:
 				fmt.Fprintf(&buf, "_ ")
 			default:
-				fmt.Fprintf(&buf, "%s ", mangleIdent(v.Name, true))
+				fmt.Fprintf(&buf, "F%s ", dict.S(v.Name))
 			}
 			fmt.Fprintf(&buf, "%s;", g.ptyp(v.Type, ptr2uintptr, lvl+1))
 			if lvl == 0 && ptr2uintptr && v.Type.Kind() == cc.Ptr {
@@ -362,9 +362,9 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 		sz := g.model.Sizeof(x)
 		switch {
 		case al == sz:
-			return fmt.Sprintf("struct{X int%d}", 8*sz)
+			return fmt.Sprintf("struct{F int%d}", 8*sz)
 		default:
-			return fmt.Sprintf("struct{X int%d; _ [%d]byte}", 8*al, sz-al) //TODO use precomputed padding from model layout?
+			return fmt.Sprintf("struct{F int%d; _ [%d]byte}", 8*al, sz-al) //TODO use precomputed padding from model layout?
 		}
 	default:
 		todo("%v %T %v\n%v", t, x, ptr2uintptr, pretty(x))
