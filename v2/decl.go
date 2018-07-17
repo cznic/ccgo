@@ -348,6 +348,11 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
+	ds := n.DeclarationSpecifier
+	if ds.IsExtern() || ds.IsTypedef() {
+		return
+	}
+
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
 			panic(err)
@@ -361,10 +366,6 @@ func (g *ngen) tld(n *cc.Declarator) {
 	t := cc.UnderlyingType(n.Type)
 	if t.Kind() == cc.Function {
 		g.functionDefinition(n)
-		return
-	}
-
-	if n.Referenced == 0 && !n.AddressTaken {
 		return
 	}
 
@@ -776,21 +777,34 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 }
 
 func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
+	//TODO- d := n.Declarator
+	//TODO- if d.Referenced == 0 && !d.AddressTaken && (d.Initializer == nil || d.IsTLD()) {
+	//TODO- 	return
+	//TODO- }
+
+	//TODO- switch {
+	//TODO- case d.IsTLD():
+	//TODO- 	//g.tld(d)
+	//TODO- default:
+	//TODO- 	if d.DeclarationSpecifier.IsStatic() {
+	//TODO- 		return
+	//TODO- 	}
+
+	//TODO- 	if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
+	//TODO- 		g.initializer(d)
+	//TODO- 	}
+	//TODO- }
 	d := n.Declarator
-	if d.Referenced == 0 && !d.AddressTaken && (d.Initializer == nil || d.IsTLD()) {
+	ds := d.DeclarationSpecifier
+	if ds.IsExtern() {
 		return
 	}
 
-	switch {
-	case d.IsTLD():
-		//g.tld(d)
-	default:
-		if d.DeclarationSpecifier.IsStatic() {
-			return
-		}
-
-		if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
-			g.initializer(d)
-		}
+	if ds.IsStatic() {
+		g.enqueue(d)
+		return
+	}
+	if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
+		g.initializer(d)
 	}
 }

@@ -866,7 +866,7 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 				}
 				if !g.isZeroInitializer(l.Initializer) {
 					d := fields[fld]
-					g.w("%s: ", mangleIdent(d.Name, true))
+					g.w("F%s: ", dict.S(d.Name))
 					g.literal(d.Type, l.Initializer)
 					g.w(", ")
 					g.initializerListNL(n.InitializerList)

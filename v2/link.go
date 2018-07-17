@@ -250,35 +250,36 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit)
 
 // Linker produces Go files from object files.
 type Linker struct {
-	bss            int64
-	definedExterns map[string]string // name: type
-	ds             []byte
-	errs           scanner.ErrorList
-	errsMu         sync.Mutex
-	goarch         string
-	goos           string
-	header         string
-	helpers        map[string]int
-	num            int
-	out            *bufio.Writer
-	renamed        map[string]int
-	strings        map[int]int64
-	tempFile       *os.File
-	text           []int
-	tld            []string
-	ts             int64
-	visitor        visitor
-	wout           *bufio.Writer
+	bss             int64
+	definedExterns  map[string]string // name: type
+	ds              []byte
+	errs            scanner.ErrorList
+	errsMu          sync.Mutex
+	goarch          string
+	goos            string
+	helpers         map[string]int
+	num             int
+	out             *bufio.Writer
+	producedExterns map[string]struct{} // name: -
+	renamed         map[string]int
+	renamedHelpers  map[string]string
+	strings         map[int]int64
+	tempFile        *os.File
+	text            []int
+	tld             []string
+	ts              int64
+	visitor         visitor
+	wout            *bufio.Writer
 
-	bool2int bool
+	Main      bool // Seen external definition of main.
+	bool2int  bool
+	doNotEmit bool
 }
 
-// NewLinker returns a newly created Linker writing to out. The header argument
-// is written prior to any other linker's output, which does not include the
-// package clause.
+// NewLinker returns a newly created Linker writing to out.
 //
 // The Linker must be eventually closed to prevent resource leaks.
-func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
+func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 	bin, ok := out.(*bufio.Writer)
 	if !ok {
 		bin = bufio.NewWriter(out)
@@ -290,16 +291,17 @@ func NewLinker(out io.Writer, header, goos, goarch string) (*Linker, error) {
 	}
 
 	r := &Linker{
-		definedExterns: map[string]string{},
-		goarch:         goarch,
-		goos:           goos,
-		header:         header,
-		helpers:        map[string]int{},
-		out:            bin,
-		renamed:        map[string]int{},
-		strings:        map[int]int64{},
-		tempFile:       tempFile,
-		wout:           bufio.NewWriter(tempFile),
+		definedExterns:  map[string]string{},
+		goarch:          goarch,
+		goos:            goos,
+		helpers:         map[string]int{},
+		out:             bin,
+		producedExterns: map[string]struct{}{},
+		renamed:         map[string]int{},
+		renamedHelpers:  map[string]string{},
+		strings:         map[int]int64{},
+		tempFile:        tempFile,
+		wout:            bufio.NewWriter(tempFile),
 	}
 	r.visitor = visitor{r}
 	return r, nil
@@ -399,29 +401,22 @@ func (l *Linker) lConst(s string) { // x<name> = "value"
 	switch {
 	case strings.HasPrefix(nm, "d"):
 		nm = nm[1:]
-		if _, ok := l.definedExterns[nm]; ok {
-			l.err("external symbol redefined: %s", nm)
-			break
+		if nm == "Xmain" {
+			l.Main = true
+		}
+		if ex, ok := l.definedExterns[nm]; ok {
+			if ex != arg {
+				l.err("external symbol %s type mismatch: %s vs %s", nm, ex, arg)
+				break
+			}
 		}
 
 		l.definedExterns[nm] = arg
-		nm = nm[1:]
-		if _, ok := l.definedExterns[nm]; ok {
-			l.err("external symbol redefined: %s", nm)
-			break
-		}
-
-		l.definedExterns[nm] = arg
+		l.w("\nconst L%s\n", s)
 	case strings.HasPrefix(nm, "h"): // helper
-		_, id := l.parseID(nm[1:])
-		if x, ok := l.helpers[arg]; ok {
-			_ = x
-			_ = id
-			panic("TODO")
-			return
-		}
-
-		l.helpers[arg] = id
+		l.num++
+		l.helpers[arg] = l.num
+		l.w("\nconst L%s\n", s)
 	default:
 		todo("%s", s)
 		panic("unreachable")
@@ -443,8 +438,9 @@ func (l *Linker) parseID(s string) (string, int) {
 	panic("TODO") // missing helper local ID
 }
 
-// Close finihes the linking.
-func (l *Linker) Close() (err error) {
+// Close finihes the linking. The header argument is written prior to any other
+// linker's own output, which does not include the package clause.
+func (l *Linker) Close(header string) (err error) {
 	returned := false
 
 	defer func() {
@@ -457,7 +453,7 @@ func (l *Linker) Close() (err error) {
 		}
 	}()
 
-	if err := l.close(); err != nil {
+	if err := l.close(header); err != nil {
 		l.err("%v", err)
 	}
 	err = l.error()
@@ -465,7 +461,7 @@ func (l *Linker) Close() (err error) {
 	return err
 }
 
-func (l *Linker) close() (err error) {
+func (l *Linker) close(header string) (err error) {
 	if err = l.wout.Flush(); err != nil {
 		return err
 	}
@@ -475,7 +471,7 @@ func (l *Linker) close() (err error) {
 	}
 
 	l.wout = l.out
-	l.w("%s\n", strings.TrimSpace(l.header))
+	l.w("%s\n", strings.TrimSpace(header))
 
 	defer func() {
 		if e := l.wout.Flush(); e != nil && err == nil {
@@ -685,6 +681,12 @@ func bool2int(b bool) int32 {
 }
 
 func (l *Linker) emit() (err error) {
+	if l.doNotEmit {
+		l.doNotEmit = false
+		l.tld = l.tld[:0]
+		return
+	}
+
 	s := strings.Join(l.tld, "\n")
 	fset := token.NewFileSet()
 	in := io.MultiReader(bytes.NewBufferString("package p\n"), bytes.NewBufferString(s))
@@ -747,6 +749,11 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 			x.Value = fmt.Sprintf("ts+%d %s", v.allocString(dict.SID(s)), strComment2([]byte(s)))
 		}
 	case *ast.Ident:
+		if nm, ok := v.renamedHelpers[x.Name]; ok {
+			x.Name = nm
+			break
+		}
+
 		switch {
 		case strings.HasPrefix(x.Name, "X"):
 			if _, ok := v.definedExterns[x.Name]; !ok {
@@ -844,11 +851,34 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 	if traceLConsts {
 		l.w("\n// const L%s\n", s)
 	}
+	a := strings.SplitN(s, " ", 3)
+	nm := a[0]
+	arg, err := strconv.Unquote(a[2])
+	if err != nil {
+		panic(err)
+	}
 	switch {
+	case strings.HasPrefix(nm, "d"):
+		nm = nm[1:]
+		if _, ok := l.producedExterns[nm]; ok {
+			l.doNotEmit = true
+			break
+		}
+
+		l.producedExterns[nm] = struct{}{}
 	case strings.HasPrefix(s, "f"):
 		for k := range l.renamed {
 			delete(l.renamed, k)
 		}
+		for k := range l.renamedHelpers {
+			delete(l.renamedHelpers, k)
+		}
+	case strings.HasPrefix(nm, "h"): // helper
+		_, id := l.parseID(nm[1:])
+		h := strings.SplitN(arg, "$", 2)[0]
+		old := fmt.Sprintf(h, id)
+		new := fmt.Sprintf(h, l.helpers[arg])
+		l.renamedHelpers[old] = new
 	default:
 		todo("%s", s)
 		panic("unreachable")
