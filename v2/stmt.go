@@ -148,7 +148,7 @@ func (g *ngen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map
 				continue
 			}
 
-			if v.DeclarationSpecifier.IsStatic() {
+			if v.DeclarationSpecifier.IsStatic() || v.DeclarationSpecifier.IsExtern() {
 				g.enqueueNumbered(v)
 				continue
 			}

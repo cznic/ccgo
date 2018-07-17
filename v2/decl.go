@@ -673,6 +673,10 @@ func (g *gen) mangleDeclarator(n *cc.Declarator) string {
 
 func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	nm := n.Name()
+	if n.Linkage == cc.LinkageExternal {
+		return mangleIdent(nm, true)
+	}
+
 	if n.Linkage == cc.LinkageInternal {
 		return fmt.Sprintf("v%s", dict.S(nm))
 	}
@@ -687,10 +691,6 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.IsField {
-		return mangleIdent(nm, true)
-	}
-
-	if n.Linkage == cc.LinkageExternal {
 		return mangleIdent(nm, true)
 	}
 
@@ -777,23 +777,6 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 }
 
 func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
-	//TODO- d := n.Declarator
-	//TODO- if d.Referenced == 0 && !d.AddressTaken && (d.Initializer == nil || d.IsTLD()) {
-	//TODO- 	return
-	//TODO- }
-
-	//TODO- switch {
-	//TODO- case d.IsTLD():
-	//TODO- 	//g.tld(d)
-	//TODO- default:
-	//TODO- 	if d.DeclarationSpecifier.IsStatic() {
-	//TODO- 		return
-	//TODO- 	}
-
-	//TODO- 	if n.Case == cc.InitDeclaratorInit { // Declarator '=' Initializer
-	//TODO- 		g.initializer(d)
-	//TODO- 	}
-	//TODO- }
 	d := n.Declarator
 	ds := d.DeclarationSpecifier
 	if ds.IsExtern() {

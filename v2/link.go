@@ -586,11 +586,11 @@ var (
 		for i, v := range l.ds {
 			l.w("%#02x, ", v)
 			if isTesting && i&15 == 15 {
-				l.w("// %#x\n\t\t", i&^15)
+				l.w("// %#x\n\t", i&^15)
 			}
 		}
 		if isTesting && len(l.ds)&15 != 0 {
-			l.w("// %#x\n\t", len(l.ds)&^15)
+			l.w("// %#x\n", len(l.ds)&^15)
 		}
 		l.w("}")
 	}
