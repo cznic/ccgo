@@ -81,8 +81,8 @@ func (g *ngen) defineQueued() {
 				g.defineTaggedEnumType(y)
 			case *cc.TaggedStructType:
 				g.defineTaggedStructType(y)
-			//TODO case *cc.TaggedUnionType:
-			//TODO 	g.defineTaggedUnionType(y)
+			case *cc.TaggedUnionType:
+				g.defineTaggedUnionType(y)
 			//TODO case
 			//TODO 	*cc.ArrayType,
 			//TODO 	*cc.PointerType,
@@ -261,6 +261,20 @@ func (g *ngen) defineTaggedStructType(t *cc.TaggedStructType) {
 }
 
 func (g *gen) defineTaggedUnionType(t *cc.TaggedUnionType) {
+	if _, ok := g.producedStructTags[t.Tag]; ok {
+		return
+	}
+
+	g.producedStructTags[t.Tag] = struct{}{}
+	g.w("\ntype U%s %s\n", dict.S(t.Tag), g.typ(t.Type))
+	if isTesting {
+		g.w("\n\nfunc init() {")
+		g.w("\nif n := unsafe.Sizeof(U%s{}); n != %d { panic(n) }", dict.S(t.Tag), g.model.Sizeof(t))
+		g.w("\n}\n")
+	}
+}
+
+func (g *ngen) defineTaggedUnionType(t *cc.TaggedUnionType) {
 	if _, ok := g.producedStructTags[t.Tag]; ok {
 		return
 	}

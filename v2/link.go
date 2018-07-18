@@ -614,7 +614,7 @@ func (l *Linker) genHelpers() {
 	sort.Strings(a)
 	for _, k := range a {
 		a := strings.Split(k, "$")
-		l.w("\n\nfunc "+a[0], l.helpers[k])
+		l.w("\nfunc "+a[0], l.helpers[k])
 		switch a[0] {
 		case "add%d", "and%d", "div%d", "mod%d", "mul%d", "or%d", "sub%d", "xor%d":
 			// eg.: [0: "add%d" 1: op "+" 2: operand type "uint32"]
@@ -765,7 +765,9 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 			x.Name = v.rename("e", x.Name[1:])
 		case strings.HasPrefix(x.Name, "S"): // Tagged struct type
 			x.Name = v.rename("s", x.Name[1:])
-		case strings.HasPrefix(x.Name, "v"): // static
+		case strings.HasPrefix(x.Name, "U"): // Tagged union type
+			x.Name = v.rename("u", x.Name[1:])
+		case strings.HasPrefix(x.Name, "v") && x.Name != "v": // static
 			x.Name = v.rename("v", x.Name[1:])
 		case x.Name == "bool2int":
 			v.bool2int = true
@@ -867,6 +869,7 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 
 		l.producedExterns[nm] = struct{}{}
 	case strings.HasPrefix(s, "f"):
+		l.w("\n// linking %s\n", arg)
 		for k := range l.renamed {
 			delete(l.renamed, k)
 		}

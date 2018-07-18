@@ -60,3 +60,10 @@ func debugStack2() []byte {
 	}
 	return bytes.Join(a, bNL)
 }
+
+func errs(out, in error) error {
+	if out == nil {
+		out = in
+	}
+	return out
+}

@@ -327,6 +327,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 		g.enqueue(x)
 		return fmt.Sprintf("S%s", dict.S(x.Tag))
 	case *cc.TaggedUnionType:
+		g.enqueue(x)
 		return fmt.Sprintf("U%s", dict.S(x.Tag))
 	case cc.TypeKind:
 		switch x {
