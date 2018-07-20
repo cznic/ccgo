@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
@@ -709,13 +708,6 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	return mangleIdent(nm, false)
-}
-
-var crtDetect = filepath.Join("src", filepath.FromSlash(cc.ImportPath()), "headers")
-
-func (g *ngen) isCRT(n cc.Node) bool {
-	p := g.position(n)
-	return strings.Contains(p.Filename, crtDetect)
 }
 
 func (g *gen) normalizeDeclarator(n *cc.Declarator) *cc.Declarator {

@@ -1,10 +1,10 @@
-# Copyright 2018 The CCGO Authors. All rights reserved.
+# Copyright 2017 The CCGO Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
 .PHONY:	all clean cover cpu editor internalError later mem nuke todo edit
 
-grep=--include=*.go --include=*.l --include=*.y --include=*.yy --include=README.md
+grep=--include=*.go --include=*.l --include=*.y --include=*.yy
 ngrep='TODOOK\|parser\.go\|scanner\.go\|.*_string\.go'
 
 all: editor
@@ -25,7 +25,8 @@ cover:
 	t=$(shell mktemp) ; go test -coverprofile $$t && go tool cover -html $$t && unlink $$t
 
 cpu: clean
-	go test -run @ -bench . -cpuprofile cpu.out
+	# go test -run @ -bench . -cpuprofile cpu.out
+	go test -run TCL -todo -cpuprofile cpu.out
 	go tool pprof -lines *.test cpu.out
 
 edit:
@@ -33,15 +34,14 @@ edit:
 
 editor:
 	gofmt -l -s -w *.go
-	GOOS=linux GOARCH=arm go build -o /dev/null
-	GOOS=linux GOARCH=386 go build -o /dev/null
-	GOOS=linux GOARCH=amd64 go build -o /dev/null
-	GOOS=windows GOARCH=386 go build -o /dev/null
-	GOOS=windows GOARCH=amd64 go build -o /dev/null
+	GOOS=linux GOARCH=arm go build
+	GOOS=linux GOARCH=386 go build
+	GOOS=linux GOARCH=amd64 go build
+	GOOS=windows GOARCH=386 go build
+	GOOS=windows GOARCH=amd64 go build
 	go test -i
-	touch log
-	cp log log0
-	go test 2>&1 | tee log
+	cp log log0 || true
+	go test -timeout 24h 2>&1 | tee log
 	go install
 
 internalError:
@@ -52,7 +52,8 @@ later:
 	@grep -n $(grep) MAYBE * || true
 
 mem: clean
-	go test -run @ -bench . -memprofile mem.out -memprofilerate 1 -timeout 24h
+	#go test -run @ -bench . -memprofile mem.out -memprofilerate 1 -timeout 24h
+	go test -run TCL -todo -memprofile mem.out -memprofilerate 1 -timeout 24h
 	go tool pprof -lines -web -alloc_space *.test mem.out
 
 nuke: clean

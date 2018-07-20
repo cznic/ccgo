@@ -157,14 +157,15 @@ func strComment2(s []byte) string {
 
 func todo(msg string, args ...interface{}) {
 	_, f, l, _ := runtime.Caller(1)
-	if msg == "" {
-		msg = strings.Repeat("%v ", len(args))
+	s := msg
+	if s == "" {
+		s = strings.Repeat("%v ", len(args))
 	}
 	if traceTODO {
-		fmt.Fprintf(os.Stderr, "\n\n%v:%d: TODO\n\n%s\n", f, l, fmt.Sprintf(msg, args...)) //TODOOK
+		fmt.Fprintf(os.Stderr, "\n\n%v:%d: TODO\n\n%s\n", f, l, fmt.Sprintf(s, args...)) //TODOOK
 		os.Exit(1)
 	}
-	panic(fmt.Errorf("\n\n%v:%d: TODO\n\n%s", f, l, fmt.Sprintf(msg, args...))) //TODOOK
+	panic(fmt.Errorf("\n\n%v:%d: TODO\n\n%s", f, l, fmt.Sprintf(s, args...))) //TODOOK
 }
 
 func isFnPtr(t cc.Type, out *cc.Type) bool {

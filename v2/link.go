@@ -7,7 +7,6 @@ package ccgo
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -21,9 +20,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/cznic/cc/v2"
+	"github.com/cznic/ccgo/v2/internal/object"
 	"github.com/cznic/sortutil"
 )
 
@@ -43,120 +42,19 @@ Linker magic names
 
 Lb + n			-> bss + off
 Ld + "foo"		-> dss + off
+Lw + "foo"		-> ts + off wchar_t string
 
 */
 
 const (
 	lConstPrefix = "const L"
-	objVersion   = 1
 )
 
 var (
-	objMagic     = []byte{0xc6, 0x1f, 0xd0, 0xb5, 0xc4, 0x39, 0xad, 0x56}
 	traceLConsts bool
 )
 
-func objWrite(out io.Writer, goos, goarch string, binaryVersion uint64, magic []byte, in io.Reader) (err error) {
-	w := gzip.NewWriter(out)
-	w.Header.Comment = "ccgo object file"
-	var buf bytes.Buffer
-	buf.Write(magic)
-	fmt.Fprintf(&buf, "%s|%s|%v", goos, goarch, binaryVersion)
-	w.Header.Extra = buf.Bytes()
-	w.Header.ModTime = time.Now()
-	w.Header.OS = 255 // Unknown OS.
-	if _, err = io.Copy(w, in); err != nil {
-		return err
-	}
-
-	return w.Close()
-}
-
-func objRead(out io.Writer, goos, goarch string, binaryVersion uint64, magic []byte, in io.Reader) (err error) {
-	r, err := gzip.NewReader(in)
-	if err != nil {
-		return fmt.Errorf("error reading object file: %v", err)
-	}
-
-	if len(r.Header.Extra) < len(magic) || !bytes.Equal(r.Header.Extra[:len(magic)], magic) {
-		return fmt.Errorf("unrecognized file format")
-	}
-
-	buf := r.Header.Extra[len(magic):]
-	a := bytes.Split(buf, []byte{'|'})
-	if len(a) != 3 {
-		return fmt.Errorf("corrupted file")
-	}
-
-	if s := string(a[0]); s != goos {
-		return fmt.Errorf("invalid platform %q", s)
-	}
-
-	if s := string(a[1]); s != goarch {
-		return fmt.Errorf("invalid architecture %q", s)
-	}
-
-	v, err := strconv.ParseUint(string(a[2]), 10, 64)
-	if err != nil {
-		return err
-	}
-
-	if v != binaryVersion {
-		return fmt.Errorf("invalid version number %v", v)
-	}
-
-	if _, err := io.Copy(out, r); err != nil {
-		return err
-	}
-
-	return r.Close()
-}
-
-// ReadObject reads an object file from in and writes it to out.
-func ReadObject(out io.Writer, goos, goarch string, in io.Reader) (err error) {
-	returned := false
-
-	defer func() {
-		e := recover()
-		if !returned && err == nil {
-			err = fmt.Errorf("PANIC: %v\n%s", e, debugStack2())
-		}
-		if e != nil && err == nil {
-			err = fmt.Errorf("%v", e)
-		}
-	}()
-
-	defer func() {
-		if x, ok := out.(*bufio.Writer); ok {
-			if e := x.Flush(); e != nil && err == nil {
-				err = e
-			}
-		}
-
-	}()
-
-	r, w := io.Pipe()
-	var e2 error
-
-	go func() {
-		defer func() {
-			if err := w.Close(); err != nil && e2 == nil {
-				e2 = err
-			}
-		}()
-
-		_, e2 = io.Copy(w, in)
-	}()
-
-	err = objRead(out, goos, goarch, objVersion, objMagic, r)
-	if e2 != nil && err == nil {
-		err = e2
-	}
-	returned = true
-	return err
-}
-
-// NewSharedObject writes shared object files from in to out.
+// NewSharedObject writes shared linker object files from in to out.
 func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err error) {
 	returned := false
 
@@ -192,7 +90,7 @@ func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err erro
 		_, e2 = io.Copy(w, in)
 	}()
 
-	err = objWrite(out, goos, goarch, objVersion, objMagic, r)
+	err = object.Encode(out, goos, goarch, object.ObjVersion, object.ObjMagic, r)
 	if e2 != nil && err == nil {
 		err = e2
 	}
@@ -200,8 +98,8 @@ func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err erro
 	return err
 }
 
-// NewObject writes a linker object file produced from in that comes from file to
-// out.
+// NewObject writes a linker object file produced from in that comes from file
+// to out.
 func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit) (err error) {
 	returned := false
 
@@ -240,7 +138,7 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit)
 		g.gen()
 	}()
 
-	err = objWrite(out, goos, goarch, objVersion, objMagic, r)
+	err = object.Encode(out, goos, goarch, object.ObjVersion, object.ObjMagic, r)
 	if e := g.err; e != nil && err == nil {
 		err = e
 	}
@@ -367,7 +265,7 @@ func (l *Linker) link(fn string, obj io.Reader) error {
 			}
 		}()
 
-		if err := objRead(w, l.goos, l.goarch, objVersion, objMagic, obj); err != nil {
+		if err := object.Decode(w, l.goos, l.goarch, object.ObjVersion, object.ObjMagic, obj); err != nil {
 			l.err("%v", err)
 		}
 	}()
@@ -599,6 +497,9 @@ var (
 		for _, v := range l.text {
 			s := fmt.Sprintf("%q", dict.S(v))
 			l.w("%s\\x00", s[1:len(s)-1])
+			for n := len(dict.S(v)) + 1; n%4 != 0; n++ {
+				l.w("\\x00")
+			}
 		}
 		l.w("\")")
 	}
@@ -737,6 +638,16 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				x2.Name = "ds"
 				rhs.Value = fmt.Sprint(v.allocDS(s))
 				return nil
+			case x2.Name == "Lw":
+				rhs := x.Y.(*ast.BasicLit)
+				s, err := strconv.Unquote(rhs.Value)
+				if err != nil {
+					panic(err)
+				}
+
+				x2.Name = "ts"
+				rhs.Value = fmt.Sprint(v.allocString(dict.SID(s)))
+				return nil
 			}
 		}
 	case *ast.BasicLit:
@@ -811,6 +722,9 @@ func (l *Linker) allocString(s int) int64 {
 	r := l.ts
 	l.strings[s] = r
 	l.ts += int64(len(dict.S(s))) + 1
+	for l.ts%4 != 0 {
+		l.ts++
+	}
 	l.text = append(l.text, s)
 	return r
 }

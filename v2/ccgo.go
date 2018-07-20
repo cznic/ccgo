@@ -2,7 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//TODO add go1.11 build tag after it's released.
+
 // Package ccgo translates C99 ASTs to Go source code. Work In Progress. API unstable.
+//
+// Note: Requires Go 1.11 or later.
 package ccgo
 
 import (
@@ -128,11 +132,11 @@ func newNGen(out io.Writer, in *cc.TranslationUnit, file string) *ngen { //TODO 
 
 func newGen(out io.Writer, in []*cc.TranslationUnit) *gen { //TODO-
 	return &gen{
-		enqueued:  map[interface{}]struct{}{},
-		externs:   map[int]*cc.Declarator{},
-		filenames: map[string]struct{}{},
-		helpers:   map[string]int{},
-		in:        in,
+		enqueued:               map[interface{}]struct{}{},
+		externs:                map[int]*cc.Declarator{},
+		filenames:              map[string]struct{}{},
+		helpers:                map[string]int{},
+		in:                     in,
 		incompleteExternArrays: map[int]*cc.Declarator{},
 		initializedExterns:     map[int]struct{}{},
 		nums:                   map[*cc.Declarator]int{},

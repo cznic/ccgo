@@ -4,7 +4,7 @@
 
 .PHONY:	all clean cover cpu editor internalError later mem nuke todo edit
 
-grep=--include=*.go --include=*.l --include=*.y --include=*.yy
+grep=--include=*.go --include=*.l --include=*.y --include=*.yy --include=README.md
 ngrep='TODOOK\|parser\.go\|scanner\.go\|.*_string\.go'
 
 all: editor

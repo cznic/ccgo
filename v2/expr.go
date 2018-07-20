@@ -9,6 +9,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	"github.com/cznic/cc/v2"
 	"github.com/cznic/ir"
@@ -2236,6 +2237,8 @@ func (g *ngen) voidCanIgnore(n *cc.Expr) bool {
 		cc.ExprFloat,       // FLOATCONST
 		cc.ExprIdent,       // IDENTIFIER
 		cc.ExprInt,         // INTCONST
+		cc.ExprLChar,       // LONGCHARCONST
+		cc.ExprLString,     // LONGSTRINGLITERAL
 		cc.ExprSizeofExpr,  // "sizeof" Expr
 		cc.ExprSizeofType,  // "sizeof" '(' TypeName ')'
 		cc.ExprString:      // STRINGLITERAL
@@ -2642,6 +2645,20 @@ func (g *ngen) constant(n *cc.Expr) {
 		}
 	case *ir.StringValue:
 		g.w(" %q", dict.S(int(x.StringID)))
+	case *ir.WideStringValue:
+		wsz := int(g.model.Sizeof(n.Operand.Type.(*cc.PointerType).Item))
+		b := make([]byte, len(x.Value)*wsz)
+		for i, v := range x.Value {
+			switch wsz {
+			case 2:
+				*(*int16)(unsafe.Pointer(uintptr(unsafe.Pointer(&b[0])) + uintptr(i*wsz))) = int16(v)
+			case 4:
+				*(*rune)(unsafe.Pointer(uintptr(unsafe.Pointer(&b[0])) + uintptr(i*wsz))) = v
+			default:
+				todo("", g.position(n))
+			}
+		}
+		g.w(" Lw +%q", b)
 	case *ir.AddressValue:
 		if x == cc.Null {
 			g.w("%s", null)
