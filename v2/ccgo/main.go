@@ -593,11 +593,6 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 		defs = append(defs, fmt.Sprintf("#define %s", v))
 	}
 
-	builtin, err := cc.Builtin()
-	if err != nil {
-		return err
-	}
-
 	tweaks := &cc.Tweaks{
 		// TrackExpand:   func(s string) { fmt.Print(s) },
 		// TrackIncludes: func(s string) { fmt.Printf("[#include %s]\n", s) },
@@ -608,13 +603,23 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 		EnableReturnExprInVoidFunc:  true,
 		InjectFinalNL:               true,
 	}
+
+	sources := []cc.Source{cc.NewStringSource("<defines>", strings.Join(defs, "\n"))}
+	builtin, err := cc.Builtin()
+	if err != nil {
+		return err
+	}
+
+	sources = append(sources, builtin)
+
 	if c.E {
-		prev := "\n"
-		last := "\n"
-		tweaks.TrackExpand = func(s string) {
-			ts := strings.TrimSpace(s)
-			switch {
-			case c.dM:
+		switch {
+		case c.dM:
+			prev := "\n"
+			last := "\n"
+			tweaks.PreprocessOnly = true
+			tweaks.TrackExpand = func(s string) {
+				ts := strings.TrimSpace(s)
 				if !strings.HasPrefix(ts, "#") {
 					return
 				}
@@ -624,28 +629,37 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 					return
 				}
 				s += "\n"
-				log("%s", s)
-			default:
+				if s == "\n" && last == "\n" && prev == "\n" {
+					return
+				}
+
+				fmt.Print(s)
+				prev = last
+				last = s
+			}
+		default:
+			prev := "\n"
+			last := "\n"
+			tweaks.PreprocessOnly = true
+			tweaks.TrackExpand = func(s string) {
+				ts := strings.TrimSpace(s)
 				if strings.HasPrefix(ts, "#") {
 					return
 				}
+
+				if s == "\n" && last == "\n" && prev == "\n" {
+					return
+				}
+
+				fmt.Print(s)
+				prev = last
+				last = s
+
 			}
-
-			if s == "\n" && last == "\n" && prev == "\n" {
-				return
-			}
-
-			fmt.Print(s)
-			prev = last
-			last = s
-
 		}
 	}
-	tu, err := cc.Translate(tweaks, c.incPaths, c.sysPaths, []cc.Source{
-		cc.NewStringSource("<defines>", strings.Join(defs, "\n")),
-		builtin,
-		src,
-	}...)
+	sources = append(sources, src)
+	tu, err := cc.Translate(tweaks, c.incPaths, c.sysPaths, sources...)
 	if err != nil {
 		return err
 	}
