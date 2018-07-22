@@ -725,13 +725,13 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 		todo("", g.position0(n), x)
 	case *cc.UnionType:
 		// *(*struct{ X int32 })(unsafe.Pointer(&struct{int32}{int32(1)})),
-		if n.Expr != nil {
-			todo("", g.position0(n), x)
+		if g.isZeroInitializer(n) {
+			g.w("%s{}", g.typ(t))
 			return
 		}
 
-		if g.isZeroInitializer(n) {
-			g.w("%s{}", g.typ(t))
+		if n.Expr != nil {
+			todo("", g.position0(n), x)
 			return
 		}
 
@@ -892,13 +892,13 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 		todo("", g.position(n), x)
 	case *cc.UnionType:
 		// *(*struct{ X int32 })(unsafe.Pointer(&struct{int32}{int32(1)})),
-		if n.Expr != nil {
-			todo("", g.position(n), x)
+		if g.isZeroInitializer(n) {
+			g.w("%s{}", g.typ(t))
 			return
 		}
 
-		if g.isZeroInitializer(n) {
-			g.w("%s{}", g.typ(t))
+		if n.Expr != nil {
+			todo("", g.position(n), x)
 			return
 		}
 

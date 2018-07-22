@@ -63,7 +63,7 @@ func (g *ngen) defineQueued() {
 		func() {
 			defer func() {
 				if err := newNOpt().do(g.out, &g.out0, testFn); err != nil {
-					panic(err)
+					todo("", err)
 				}
 
 				g.out0.Reset()
@@ -368,7 +368,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 
 	defer func() {
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
-			panic(err)
+			todo("", err)
 		}
 
 		g.tldPreamble.Reset()

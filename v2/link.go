@@ -207,7 +207,7 @@ func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 
 func (l *Linker) w(s string, args ...interface{}) {
 	if _, err := fmt.Fprintf(l.wout, s, args...); err != nil {
-		panic(err)
+		todo("", err)
 	}
 }
 
@@ -293,7 +293,7 @@ func (l *Linker) lConst(s string) { // x<name> = "value"
 	nm := a[0]
 	arg, err := strconv.Unquote(a[2])
 	if err != nil {
-		panic(err)
+		todo("", err)
 	}
 
 	switch {
@@ -327,13 +327,14 @@ func (l *Linker) parseID(s string) (string, int) {
 			i++
 			n, err := strconv.ParseInt(s[i:], 10, 31)
 			if err != nil {
-				panic(err)
+				todo("", err)
 			}
 
 			return s[:i], int(n)
 		}
 	}
-	panic("TODO") // missing helper local ID
+	todo("missing helper local ID")
+	panic("unreachable")
 }
 
 // Close finihes the linking. The header argument is written prior to any other
@@ -348,6 +349,9 @@ func (l *Linker) Close(header string) (err error) {
 		}
 		if e != nil && err == nil {
 			err = fmt.Errorf("%v", e)
+		}
+		if e := os.Remove(l.tempFile.Name()); e != nil && err == nil {
+			err = e
 		}
 	}()
 
@@ -432,7 +436,7 @@ func (l *Linker) close(header string) (err error) {
 
 				state = copyFunc
 			default:
-				panic(fmt.Sprintf("%q", s))
+				todo("%q", s)
 			}
 		case copy:
 			l.tld = append(l.tld, s)
@@ -454,13 +458,14 @@ func (l *Linker) close(header string) (err error) {
 				state = skipBlank
 			}
 		default:
-			panic(state)
+			todo("", state)
 		}
 	}
 
 	if err = sc.Err(); err != nil {
 		return err
 	}
+
 	if len(l.tld) != 0 {
 		l.emit()
 	}
@@ -621,7 +626,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				rhs := x.Y.(*ast.BasicLit)
 				n, err := strconv.ParseInt(rhs.Value, 10, 63)
 				if err != nil {
-					panic(err)
+					todo("", err)
 				}
 
 				x2.Name = "bss"
@@ -632,7 +637,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				rhs := x.Y.(*ast.BasicLit)
 				s, err := strconv.Unquote(rhs.Value)
 				if err != nil {
-					panic(err)
+					todo("", err)
 				}
 
 				x2.Name = "ds"
@@ -642,7 +647,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				rhs := x.Y.(*ast.BasicLit)
 				s, err := strconv.Unquote(rhs.Value)
 				if err != nil {
-					panic(err)
+					todo("", err)
 				}
 
 				x2.Name = "ts"
@@ -654,7 +659,7 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 		if x.Kind == token.STRING {
 			s, err := strconv.Unquote(x.Value)
 			if err != nil {
-				panic(err)
+				todo("", err)
 			}
 
 			x.Value = fmt.Sprintf("ts+%d %s", v.allocString(dict.SID(s)), strComment2([]byte(s)))
@@ -771,7 +776,7 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 	nm := a[0]
 	arg, err := strconv.Unquote(a[2])
 	if err != nil {
-		panic(err)
+		todo("", err)
 	}
 	switch {
 	case strings.HasPrefix(nm, "d"):

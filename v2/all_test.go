@@ -131,18 +131,9 @@
 //	exit status 1
 //	FAIL	github.com/cznic/ccgo/v2	481.539s
 
-// linux_amd64
-//
-//	crt @428ddf3401f2e0c04df0c03b1fb620232bae1338
-//	cc  @2898c8797d504e2c50ad0c1e4f02c8375b001a2a
-//
-// go version devel +c814ac44c0 Thu Jul 19 21:30:27 2018 +0000 linux/amd64
-//
-// The Go 1.11 beta 2 seems to fix some bug which caused the TCL SQLite test
-// suite mysteriously drop the number of passed cases by ~85% when ccgo code
-// was just moved around or a plain function was turned into a method (causing
-// code move as well). Just a hypothesis, of course. But Go 1.11 is due soon so
-// I guess it would be acceptable to support CCGO only on Go 1.11 or later.
+//	go version go1.10.3 linux/amd64
+//	crt @9501e524804d8cea296981670a561dbad5de3f31
+//	cc  @483213ba8744985d14db1a6a6ad89e7befd0cfa5
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
@@ -150,174 +141,169 @@
 //	Other	cc 18 ccgo 18 build 18 run 18 ok 18 n 18
 //	GCC0	cc 1118 ccgo 1096 build 1092 run 1092 ok 1092
 //	GCC	cc 1070 ccgo 1070 build 1065 run 1065 ok 1065 n 1408
-//	--- FAIL: TestGCC (709.90s)
+//	--- FAIL: TestGCC (249.36s)
 //		...
-//	        exit status 1
+//			exit status 1
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4620.71s)
-//	    all_test.go:1956:
-//	        Test cases:   261817
-//	        Pass:         261066 (99.71%)
-//	        Fail:            751 (0.29%)
-//	        ! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
-//	        ! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
-//	        ! auth3-2.2 expected: [1]
-//	        ! auth3-2.2 got:      [0]
-//	        ! autovacuum-1.1.3 expected: [4]
-//	        ! autovacuum-1.1.3 got:      [16]
-//	        ! autovacuum-1.2.3 expected: [4]
-//	        ! autovacuum-1.2.3 got:      [16]
-//	        ! autovacuum-1.3.3 expected: [4]
-//	        ! autovacuum-1.3.3 got:      [16]
-//	        ... too many fails
-//	    all_test.go:1964:
-//	        Test binary exit error: exit status 1
-//	        Last completed test file: "Time: selectC.test 357 ms"
-//	        Last passed test: "no_optimization.selectC-5.3... Ok"
-//	        Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
-//	        Blacklisted test files: 107
-//	        btreefault.test
-//	        cffault.test
-//	        collate1.test
-//	        collate2.test
-//	        collate3.test
-//	        collate4.test
-//	        collate5.test
-//	        collate6.test
-//	        collate9.test
-//	        corruptC.test
-//	        crash.test
-//	        crash2.test
-//	        crash3.test
-//	        crash4.test
-//	        crash6.test
-//	        crash7.test
-//	        date.test
-//	        e_createtable.test
-//	        e_delete.test
-//	        e_insert.test
-//	        e_reindex.test
-//	        e_select.test
-//	        e_update.test
-//	        e_walauto.test
-//	        exists.test
-//	        func4.test
-//	        fuzz.test
-//	        fuzzerfault.test
-//	        ieee754.test
-//	        incrcorrupt.test
-//	        incrvacuum_ioerr.test
-//	        ioerr3.test
-//	        journal3.test
-//	        lock.test
-//	        lock4.test
-//	        lock5.test
-//	        malloc.test
-//	        minmax.test
-//	        misc1.test
-//	        misc3.test
-//	        misc7.test
-//	        mjournal.test
-//	        mmap1.test
-//	        mmap4.test
-//	        multiplex2.test
-//	        nan.test
-//	        pager1.test
-//	        pager4.test
-//	        pagerfault.test
-//	        pagerfault2.test
-//	        pagerfault3.test
-//	        pragma.test
-//	        printf.test
-//	        quota2.test
-//	        rbu.test
-//	        reindex.test
-//	        rollbackfault.test
-//	        rowallock.test
-//	        savepoint.test
-//	        savepoint4.test
-//	        savepointfault.test
-//	        schema3.test
-//	        select9.test
-//	        shared2.test
-//	        shared9.test
-//	        sharedA.test
-//	        sort2.test
-//	        sort3.test
-//	        sort4.test
-//	        sortfault.test
-//	        speed4.test
-//	        speed4p.test
-//	        statfault.test
-//	        superlock.test
-//	        symlink.test
-//	        syscall.test
-//	        tempfault.test
-//	        thread001.test
-//	        thread002.test
-//	        thread003.test
-//	        thread004.test
-//	        thread005.test
-//	        thread1.test
-//	        thread2.test
-//	        tkt-5d863f876e.test
-//	        tkt-fc62af4523.test
-//	        tkt3838.test
-//	        tkt3997.test
-//	        trans.test
-//	        unionvtabfault.test
-//	        unixexcl.test
-//	        vacuum2.test
-//	        vtabH.test
-//	        wal.test
-//	        wal2.test
-//	        wal3.test
-//	        wal4.test
-//	        wal5.test
-//	        walcrash.test
-//	        walcrash2.test
-//	        walcrash4.test
-//	        walro.test
-//	        walslow.test
-//	        walthread.test
-//	        where.test
-//	        whereD.test
-//	        writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (2.536159899s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.372201361s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.221485813s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (7.014385609s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (8.453324989s)
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (10.602277251s)
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (12.044513197s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (13.7734332s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (15.592302249s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (17.060993327s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (19.024010803s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (20.579795355s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (22.014431171s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (22.832173284s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (24.545679632s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (26.673465973s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (29.002147986s)
-//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (30.535223158s)
-//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (32.350497565s)
-//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (41.035553675s)
-//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (42.629517585s)
-//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (43.409393824s)
-//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (44.211617982s)
-//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (45.413607633s)
-//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (46.668261154s)
-//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (47.461356103s)
-//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (48.884613202s)
-//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (50.346589888s)
-//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (51.144956375s)
-//	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (59.063026233s)
-//	CSmith0	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (1m5.349378265s)
+//	--- FAIL: TestTCL0 (2144.29s)
+//		all_test.go:1953:
+//			Test cases:   248341
+//			Pass:         247651 (99.72%)
+//			Fail:            690 (0.28%)
+//			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
+//			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
+//			! auth3-2.2 expected: [1]
+//			! auth3-2.2 got:      [0]
+//			! autovacuum-1.1.3 expected: [4]
+//			! autovacuum-1.1.3 got:      [16]
+//			! autovacuum-1.2.3 expected: [4]
+//			! autovacuum-1.2.3 got:      [16]
+//			! autovacuum-1.3.3 expected: [4]
+//			! autovacuum-1.3.3 got:      [16]
+//			... too many fails
+//		all_test.go:1961:
+//			Test binary exit error: exit status 1
+//			Last completed test file: "Time: walcrash3.test 7200 ms"
+//			Last passed test: "walfault-1-oom-persistent.30... Ok"
+//			Last line written to stdout: "walfault-1-oom-persistent.30... Ok"
+//			Blacklisted test files: 107
+//			btreefault.test
+//			cffault.test
+//			collate1.test
+//			collate2.test
+//			collate3.test
+//			collate4.test
+//			collate5.test
+//			collate6.test
+//			collate9.test
+//			corruptC.test
+//			crash.test
+//			crash2.test
+//			crash3.test
+//			crash4.test
+//			crash6.test
+//			crash7.test
+//			date.test
+//			e_createtable.test
+//			e_delete.test
+//			e_insert.test
+//			e_reindex.test
+//			e_select.test
+//			e_update.test
+//			e_walauto.test
+//			exists.test
+//			func4.test
+//			fuzz.test
+//			fuzzerfault.test
+//			ieee754.test
+//			incrcorrupt.test
+//			incrvacuum_ioerr.test
+//			ioerr3.test
+//			journal3.test
+//			lock.test
+//			lock4.test
+//			lock5.test
+//			malloc.test
+//			minmax.test
+//			misc1.test
+//			misc3.test
+//			misc7.test
+//			mjournal.test
+//			mmap1.test
+//			mmap4.test
+//			multiplex2.test
+//			nan.test
+//			pager1.test
+//			pager4.test
+//			pagerfault.test
+//			pagerfault2.test
+//			pagerfault3.test
+//			pragma.test
+//			printf.test
+//			quota2.test
+//			rbu.test
+//			reindex.test
+//			rollbackfault.test
+//			rowallock.test
+//			savepoint.test
+//			savepoint4.test
+//			savepointfault.test
+//			schema3.test
+//			select9.test
+//			shared2.test
+//			shared9.test
+//			sharedA.test
+//			sort2.test
+//			sort3.test
+//			sort4.test
+//			sortfault.test
+//			speed4.test
+//			speed4p.test
+//			statfault.test
+//			superlock.test
+//			symlink.test
+//			syscall.test
+//			tempfault.test
+//			thread001.test
+//			thread002.test
+//			thread003.test
+//			thread004.test
+//			thread005.test
+//			thread1.test
+//			thread2.test
+//			tkt-5d863f876e.test
+//			tkt-fc62af4523.test
+//			tkt3838.test
+//			tkt3997.test
+//			trans.test
+//			unionvtabfault.test
+//			unixexcl.test
+//			vacuum2.test
+//			vtabH.test
+//			wal.test
+//			wal2.test
+//			wal3.test
+//			wal4.test
+//			wal5.test
+//			walcrash.test
+//			walcrash2.test
+//			walcrash4.test
+//			walro.test
+//			walslow.test
+//			walthread.test
+//			where.test
+//			whereD.test
+//			writecrash.test
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (775.875373ms)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (8.392397395s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (9.015987776s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (9.365614821s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (9.678823197s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (10.327207387s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (18.048569273s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (18.796987702s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (19.707691871s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (20.413891947s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (21.026902067s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (22.231874563s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (23.297124976s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (23.910690698s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (24.76406889s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (25.480039645s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (25.7961517s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (26.528327783s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (27.499858747s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (28.187480465s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (28.708686661s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (29.675174403s)
+//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (36.839914652s)
+//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (44.189628427s)
+//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (57.527204269s)
+//	CSmith0	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (1m3.744613885s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	6233.351s
+//	FAIL	github.com/cznic/ccgo/v2	2747.491s
 
 package ccgo
 

@@ -354,7 +354,7 @@ func (g *ngen) gen() (err error) {
 		case cc.ExternalDeclarationFunc: // FunctionDefinition
 			g.tld(n.FunctionDefinition.Declarator)
 		default:
-			panic(fmt.Errorf("unexpected %v", n.Case))
+			todo("unexpected %v", n.Case)
 		}
 	}
 	g.defineQueued()
@@ -379,7 +379,7 @@ func (g *ngen) position(n cc.Node) token.Position {
 
 func (g *gen) w(s string, args ...interface{}) {
 	if _, err := fmt.Fprintf(&g.out0, s, args...); err != nil {
-		panic(err)
+		todo("", err)
 	}
 
 	if traceWrites {
@@ -389,7 +389,7 @@ func (g *gen) w(s string, args ...interface{}) {
 
 func (g *ngen) w(s string, args ...interface{}) {
 	if _, err := fmt.Fprintf(&g.out0, s, args...); err != nil {
-		panic(err)
+		todo("", err)
 	}
 
 	if traceWrites {
@@ -399,7 +399,7 @@ func (g *ngen) w(s string, args ...interface{}) {
 
 func (g *ngen) wPreamble(s string, args ...interface{}) {
 	if _, err := fmt.Fprintf(&g.tldPreamble, s, args...); err != nil {
-		panic(err)
+		todo("", err)
 	}
 }
 

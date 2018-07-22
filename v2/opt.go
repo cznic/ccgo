@@ -267,7 +267,7 @@ func (o *opt) stmt(n *ast.Stmt) {
 			case nil:
 				// ok
 			default:
-				panic(fmt.Errorf("%T", y))
+				todo("%T", y)
 			}
 			x.Else = nil
 		}
@@ -726,7 +726,7 @@ func (o *nopt) stmt(n *ast.Stmt) {
 			case nil:
 				// ok
 			default:
-				panic(fmt.Errorf("%T", y))
+				todo("%T", y)
 			}
 			x.Else = nil
 		}

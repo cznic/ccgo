@@ -40,8 +40,12 @@ func Decode(out io.Writer, goos, goarch string, version uint64, magic []byte, in
 		return fmt.Errorf("error reading object file: %v", err)
 	}
 
-	if len(r.Header.Extra) < len(magic) || !bytes.Equal(r.Header.Extra[:len(magic)], magic) {
-		return fmt.Errorf("unrecognized file format")
+	if g, e := len(r.Header.Extra), len(magic); g < e {
+		return fmt.Errorf("Decode: got file magic length %v, expected %v", g, e)
+	}
+
+	if g, e := r.Header.Extra[:len(magic)], magic; !bytes.Equal(g, e) {
+		return fmt.Errorf("Decode: unrecognized file format: expected magic |% x| got |% x|", g, e)
 	}
 
 	buf := r.Header.Extra[len(magic):]

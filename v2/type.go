@@ -403,9 +403,9 @@ func prefer(d *cc.Declarator) bool {
 				return true
 			}
 
-			panic(x)
+			todo("", x)
 		default:
-			panic(x)
+			todo("", x)
 		}
 	}
 }
@@ -472,10 +472,10 @@ func underlyingType(t cc.Type, enums bool) cc.Type {
 
 				return x
 			default:
-				panic(fmt.Errorf("%v", x))
+				todo("%v", x)
 			}
 		default:
-			panic(fmt.Errorf("%T", x))
+			todo("%T", x)
 		}
 	}
 }

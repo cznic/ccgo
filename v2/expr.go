@@ -69,9 +69,7 @@ func (g *ngen) exprList(n *cc.ExprList, void bool) {
 		default:
 			g.w("func() %v {", g.typ(n.Operand.Type))
 			for _, v := range l[:len(l)-1] {
-				todo("", g.position(n))
-				_ = v
-				//TODO g.void(v)
+				g.void(v)
 				g.w(";")
 			}
 			g.w("return ")
@@ -423,7 +421,7 @@ func (g *ngen) void(n *cc.Expr) {
 				g.w(" = nil")
 				return
 			}
-			panic(fmt.Errorf("%v: %v = %v", g.position(n), n.Expr.Operand, n.Expr2.Operand))
+			todo("%v: %v = %v", g.position(n), n.Expr.Operand, n.Expr2.Operand)
 		}
 
 		g.w("*")
@@ -441,7 +439,7 @@ func (g *ngen) void(n *cc.Expr) {
 					return
 				}
 			}
-			panic(g.position(n))
+			todo("", g.position(n))
 		}
 
 		g.convert(n.Expr2, n.Expr.Operand.Type)
@@ -1376,18 +1374,7 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 			params = nil
 		}
 		switch np := len(params); {
-		case len(args) > np && !ft.Variadic:
-			for _, v := range args[np:] {
-				if !g.voidCanIgnore(v) {
-					todo("", g.position(v))
-				}
-			}
-			args = args[:np]
-			fallthrough
-		case
-			len(args) > np && ft.Variadic,
-			len(args) == np:
-
+		case len(args) >= np:
 			g.convert(n.Expr, ft)
 			g.w("(tls")
 			for i, v := range args {
