@@ -5,6 +5,7 @@
 package ccgo
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"go/scanner"
@@ -333,4 +334,33 @@ func fixMain(n *cc.Declarator) bool {
 	}
 
 	return false
+}
+
+type lineScanner struct {
+	err  error
+	line []byte
+	r    *bufio.Reader
+}
+
+func newLineScanner(r io.Reader) *lineScanner { return &lineScanner{r: bufio.NewReader(r)} }
+
+func (s *lineScanner) Err() error   { return s.err }
+func (s *lineScanner) Text() string { return string(s.line) }
+
+func (s *lineScanner) Scan() bool {
+	s.line = s.line[:0]
+	for {
+		line, isPrefix, err := s.r.ReadLine()
+		if err != nil {
+			if err != io.EOF {
+				s.err = err
+			}
+			return false
+		}
+
+		s.line = append(s.line, line...)
+		if !isPrefix {
+			return true
+		}
+	}
 }

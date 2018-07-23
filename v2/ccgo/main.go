@@ -7,14 +7,14 @@ package main
 
 /*
 
-jnml@4670:~/src/github.com/ossrs/librtmp> make clean && make CC=ccgo
+jnml@r550:~/src/github.com/ossrs/librtmp> rm -f log-ccgo ; make clean && make CC=ccgo XLDFLAGS=--ccgo-go |& tee log
 rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
 /home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
+make[1]: Vstupuje se do adresáře „/home/jnml/src/github.com/ossrs/librtmp/librtmp“
 rm -f *.o *.a *.so *.so.1 librtmp.pc
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
+make[1]: Opouští se adresář „/home/jnml/src/github.com/ossrs/librtmp/librtmp“
 /home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
+make[1]: Vstupuje se do adresáře „/home/jnml/src/github.com/ossrs/librtmp/librtmp“
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o rtmp.o rtmp.c
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o log.o log.c
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o amf.o amf.c
@@ -22,19 +22,32 @@ ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o hashsw
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o parseurl.o parseurl.c
 ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
 ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1  -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz
+ccgo -shared -Wl,-soname,librtmp.so.1 --ccgo-go -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz 
 ln -sf librtmp.so.1 librtmp.so
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
+make[1]: Opouští se adresář „/home/jnml/src/github.com/ossrs/librtmp/librtmp“
 ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
-ccgo -Wall  -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz
-ccgo: error: unrecognized command line option "-Llibrtmp"
-Makefile:79: recipe for target 'rtmpdump' failed
-make: *** [rtmpdump] Error 2
-jnml@4670:~/src/github.com/ossrs/librtmp>
+ccgo -Wall --ccgo-go -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz  
+/tmp/ccgo-linker-641597109/main.go
+# command-line-arguments
+/tmp/ccgo-linker-641597109/main.go:105:27: undefined: crt.XRTMP_ctrlC
+/tmp/ccgo-linker-641597109/main.go:106:2: undefined: crt.XRTMP_LogPrintf
+/tmp/ccgo-linker-641597109/main.go:289:43: undefined: crt.Xftello64
+/tmp/ccgo-linker-641597109/main.go:300:2: undefined: crt.XRTMP_Log
+/tmp/ccgo-linker-641597109/main.go:308:2: undefined: crt.XRTMP_Log
+/tmp/ccgo-linker-641597109/main.go:316:2: undefined: crt.XRTMP_Log
+/tmp/ccgo-linker-641597109/main.go:320:16: undefined: crt.XAMF_DecodeInt32
+/tmp/ccgo-linker-641597109/main.go:326:2: undefined: crt.XRTMP_Log
+/tmp/ccgo-linker-641597109/main.go:330:17: undefined: crt.XAMF_DecodeInt32
+/tmp/ccgo-linker-641597109/main.go:335:2: undefined: crt.XRTMP_Log
+/tmp/ccgo-linker-641597109/main.go:335:2: too many errors
+
+exit status 2
+Makefile:79: návod pro cíl „rtmpdump“ selhal
+make: *** [rtmpdump] Chyba 1
+jnml@r550:~/src/github.com/ossrs/librtmp> 
 
 */
 
-//TODO must be able to handle libssl, libcrypto and libz (zlib?)
 
 import (
 	"bufio"
@@ -146,6 +159,7 @@ type config struct {
 	E      bool // -E
 	c      bool // -c
 	dM     bool // -dM
+	keepGo bool // --ccgo-go
 	m64    bool // -m64
 	shared bool // -shared
 }
@@ -181,6 +195,8 @@ func newConfig(args []string) (*config, error) {
 
 			c.o = args[1]
 			args = args[1:]
+		case arg == "--ccgo-go": // keep the .go file when linking a main program
+			c.keepGo = true
 		case arg == "-dM":
 			c.dM = true
 		case arg == "-m64":
@@ -334,7 +350,8 @@ compilation terminated`, c.arg0)
 		}
 	}()
 
-	if err := c.link(); err != nil {
+	if err := c.linkExecutable(); err != nil {
+		returned = true
 		return 1, err
 	}
 
@@ -356,6 +373,14 @@ func newLinkerConfig(args []string) (*linkerConfig, error) {
 		switch arg := args[0]; {
 		case arg == "--export-dynamic":
 			c.exportDynamic = true
+		case arg == "-soname":
+			if len(args) < 2 {
+				return nil, fmt.Errorf("missing -soname argument")
+			}
+
+			c.sonames = append(c.sonames, args[1])
+			c.soname = args[1]
+			args = args[1:]
 		case arg == "-rpath":
 			if len(args) < 2 {
 				return nil, fmt.Errorf("missing -rpath argument")
@@ -455,7 +480,7 @@ func (c *config) linkShared() (err error) {
 	return err
 }
 
-func (c *config) link() (err error) {
+func (c *config) linkExecutable() (err error) {
 	fn := "a.out"
 	if c.goos == "windows" {
 		fn = "a.exe"
@@ -473,9 +498,17 @@ func (c *config) link() (err error) {
 		return err
 	}
 
-	defer func() { err = errs(err, os.RemoveAll(dir)) }()
-
 	src := filepath.Join(dir, "main.go")
+
+	defer func() {
+		if c.keepGo {
+			fmt.Fprintf(os.Stderr, "%s\n", src)
+			return
+		}
+
+		err = errs(err, os.RemoveAll(dir))
+	}()
+
 	if err := c.linkGo(src); err != nil {
 		return err
 	}

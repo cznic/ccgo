@@ -272,7 +272,7 @@ func (l *Linker) link(fn string, obj io.Reader) error {
 
 	l.w("\nconst Lf = %q\n", fn)
 
-	sc := bufio.NewScanner(r)
+	sc := newLineScanner(r)
 	for sc.Scan() {
 		s := sc.Text()
 		switch {
@@ -389,7 +389,7 @@ func (l *Linker) close(header string) (err error) {
 		copyParen
 	)
 
-	sc := bufio.NewScanner(l.tempFile)
+	sc := newLineScanner(l.tempFile)
 	state := skipBlank
 	for l.scan(sc) {
 		s := sc.Text()
@@ -753,7 +753,7 @@ func (e *emitor) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (l *Linker) scan(sc *bufio.Scanner) bool {
+func (l *Linker) scan(sc *lineScanner) bool {
 	for {
 		if !sc.Scan() {
 			return false
