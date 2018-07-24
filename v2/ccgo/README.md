@@ -10,7 +10,37 @@ Command ccgo is a C compiler targeting Go.
 
 ### Usage
 
-TODO
+    $ ccgo [options] [files]
+    
+      -c                          Compile and assemble, but do not link
+      -dM                         With -E: generate a list of ‘#define’ directives
+                                  for all the macros defined during the execution
+                                  of the preprocessor, including predefined macros.
+      -D<macro>[=<val>]           Define a <macro> with <val> as its value.  If
+                                  just <macro> is given, <val> is taken to be 1
+      -E                          Preprocess only; do not compile, assemble or link
+      --help                      Display this information
+      -h FILENAME, -soname FILENAME
+                                  Set internal name of shared library
+      -I <dir>                    Add <dir> to the end of the main include path
+      -l LIBNAME, --library LIBNAME
+                                  Search for library LIBNAME
+      -L DIRECTORY, --library-path DIRECTORY
+                                  Add DIRECTORY to library search path
+      -m64                        Generate 64bit x86-64 code
+      -o <file>                   Place the output into <file>. Use .go extension
+                                  to produce a Go source file instead of a binary.
+      -rpath PATH                 Set runtime shared library search path
+      -shared                     Create a shared library
+      --warn-go-build             Report 'go build' errors as warning
+      --warn-unresolved-libs      Report unresolved libraries as warnings
+      --warn-unresolved-symbols   Report unresolved symbols as warnings
+      -Wl,<options>               Pass comma-separated <options> on to the linker
+    
+      --ccgo-full-paths           Keep full source code positions instead of
+                                  basenames
+      --ccgo-go                   Do not remove the Go source file used to link the
+                                  executable file and print its path
 
 ### Installation
 

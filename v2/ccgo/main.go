@@ -159,7 +159,8 @@ const (
   -L DIRECTORY, --library-path DIRECTORY
                               Add DIRECTORY to library search path
   -m64                        Generate 64bit x86-64 code
-  -o <file>                   Place the output into <file>
+  -o <file>                   Place the output into <file>. Use .go extension
+                              to produce a Go source file instead of a binary.
   -rpath PATH                 Set runtime shared library search path
   -shared                     Create a shared library
   --warn-go-build             Report 'go build' errors as warning
