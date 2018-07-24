@@ -95,6 +95,7 @@ type gen struct { //TODO-
 type ngen struct { //TODO rename to gen
 	enqueued           map[interface{}]struct{}
 	err                error
+	file               string
 	helpers            map[string]int
 	in                 *cc.TranslationUnit
 	model              cc.Model
@@ -104,18 +105,18 @@ type ngen struct { //TODO rename to gen
 	out                io.Writer
 	out0               bytes.Buffer
 	producedEnumTags   map[int]struct{}
-	file               string
 	producedStructTags map[int]struct{}
 	queue              list.List
 	tCache             map[tCacheKey]string
 	tldPreamble        bytes.Buffer
+	tweaks             NewObjectTweaks
 
 	needAlloca bool
 	needNZ32   bool //TODO -> crt
 	needNZ64   bool //TODO -> crt
 }
 
-func newNGen(out io.Writer, in *cc.TranslationUnit, file string) *ngen { //TODO rename to newGen
+func newNGen(out io.Writer, in *cc.TranslationUnit, file string, tweaks *NewObjectTweaks) *ngen { //TODO rename to newGen
 	return &ngen{
 		enqueued:           map[interface{}]struct{}{},
 		file:               file,
@@ -127,6 +128,7 @@ func newNGen(out io.Writer, in *cc.TranslationUnit, file string) *ngen { //TODO 
 		producedEnumTags:   map[int]struct{}{},
 		producedStructTags: map[int]struct{}{},
 		tCache:             map[tCacheKey]string{},
+		tweaks:             *tweaks,
 	}
 }
 

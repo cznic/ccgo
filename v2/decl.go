@@ -384,7 +384,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
-	if !isTesting {
+	if !isTesting && !g.tweaks.FullTLDPaths {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
 	if n.Linkage == cc.LinkageExternal {
@@ -564,7 +564,7 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 	g.nextLabel = 1
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
-	if !isTesting {
+	if !isTesting && !g.tweaks.FullTLDPaths {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
 	if n.FunctionDefinition == nil {

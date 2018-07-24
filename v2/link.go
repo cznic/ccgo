@@ -33,7 +33,7 @@ import (
 Linker constants (const Lx = "value")
 -------------------------------------------------------------------------------
 
-Ld<mangled name>	Defintion with external linkage. Value: type.
+Ld<mangled name>	Definition with external linkage. Value: type.
 Lf			Translation unit boundary. Value: file name.
 
 -------------------------------------------------------------------------------
@@ -98,9 +98,14 @@ func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err erro
 	return err
 }
 
+// NewObjectTweaks amend NewObject behavior.
+type NewObjectTweaks struct {
+	FullTLDPaths bool
+}
+
 // NewObject writes a linker object file produced from in that comes from file
 // to out.
-func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit) (err error) {
+func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit, tweaks *NewObjectTweaks) (err error) {
 	returned := false
 
 	defer func() {
@@ -123,7 +128,7 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit)
 	}()
 
 	r, w := io.Pipe()
-	g := newNGen(w, in, file)
+	g := newNGen(w, in, file, tweaks)
 
 	go func() {
 		defer func() {
@@ -146,6 +151,27 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit)
 	return err
 }
 
+type unit struct { // Translation unit
+	provides map[string]struct{} // key: mangled declarator name with external linkage
+	requires map[string]struct{} // key: mangled declarator name with external linkage
+}
+
+func newUnit() *unit { return &unit{} }
+
+func (u *unit) provide(nm string) {
+	if u.provides == nil {
+		u.provides = map[string]struct{}{}
+	}
+	u.provides[nm] = struct{}{}
+}
+
+func (u *unit) require(nm string) {
+	if u.requires == nil {
+		u.requires = map[string]struct{}{}
+	}
+	u.requires[nm] = struct{}{}
+}
+
 // Linker produces Go files from object files.
 type Linker struct {
 	bss             int64
@@ -166,6 +192,8 @@ type Linker struct {
 	text            []int
 	tld             []string
 	ts              int64
+	unit            *unit
+	units           []*unit
 	visitor         visitor
 	wout            *bufio.Writer
 
@@ -271,6 +299,8 @@ func (l *Linker) link(fn string, obj io.Reader) error {
 	}()
 
 	l.w("\nconst Lf = %q\n", fn)
+	l.unit = newUnit()
+	l.units = append(l.units, l.unit)
 
 	sc := newLineScanner(r)
 	for sc.Scan() {
@@ -314,6 +344,11 @@ func (l *Linker) lConst(s string) { // x<name> = "value"
 	case strings.HasPrefix(nm, "h"): // helper
 		l.num++
 		l.helpers[arg] = l.num
+		l.w("\nconst L%s\n", s)
+	case
+		strings.HasPrefix(s, "sofile "),
+		strings.HasPrefix(s, "soname "):
+
 		l.w("\nconst L%s\n", s)
 	default:
 		todo("%s", s)
@@ -787,7 +822,11 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 		}
 
 		l.producedExterns[nm] = struct{}{}
-	case strings.HasPrefix(s, "f"):
+	case
+		strings.HasPrefix(s, "f"),
+		strings.HasPrefix(s, "sofile "),
+		strings.HasPrefix(s, "soname "):
+
 		l.w("\n// linking %s\n", arg)
 		for k := range l.renamed {
 			delete(l.renamed, k)
