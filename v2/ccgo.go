@@ -2,11 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//TODO add go1.11 build tag after it's released.
-
 // Package ccgo translates C99 ASTs to Go source code. Work In Progress. API unstable.
-//
-// Note: Requires Go 1.11 or later.
 package ccgo
 
 import (
