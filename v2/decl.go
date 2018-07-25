@@ -367,9 +367,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 	}
 
 	defer func() {
-		b := g.out0.Bytes() //TODO- DBG
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
-			log("====\n%s\n----\n%s", b, debugStack0()) //TODO- DBG
 			todo("", err)
 		}
 
