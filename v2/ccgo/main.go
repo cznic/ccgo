@@ -5,9 +5,9 @@
 // Command ccgo is a C compiler targeting Go.
 //
 // Usage
-// 
+//
 //     $ ccgo [options] [files]
-//     
+//
 //       -c                          Compile and assemble, but do not link
 //       -dM                         With -E: generate a list of ‘#define’ directives
 //                                   for all the macros defined during the execution
@@ -32,22 +32,22 @@
 //       --warn-unresolved-libs      Report unresolved libraries as warnings
 //       --warn-unresolved-symbols   Report unresolved symbols as warnings
 //       -Wl,<options>               Pass comma-separated <options> on to the linker
-//     
+//
 //       --ccgo-full-paths           Keep full source code positions instead of
 //                                   basenames
 //       --ccgo-go                   Do not remove the Go source file used to link the
 //                                   executable file and print its path
-// 
+//
 // Installation
-// 
+//
 // To install or update ccgo and its accompanying tools
-// 
+//
 //      $ go get [-u] github.com/cznic/ccgo/v2/...
-// 
+//
 // Online documentation: [godoc.org/github.com/cznic/ccgo/v2/ccgo](http://godoc.org/github.com/cznic/ccgo/v2/ccgo)
-// 
+//
 // Changelog
-// 
+//
 // TODO
 package main
 
@@ -238,6 +238,7 @@ const (
 
 var (
 	_ = math.Pi
+	_ = os.DevNull
 	_ = unsafe.Pointer(null)
 
 	nz32 float32
