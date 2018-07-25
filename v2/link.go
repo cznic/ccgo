@@ -509,9 +509,11 @@ func (l *Linker) close(header string) (err error) {
 
 	l.w(`
 var (
-	bss     = crt.BSS(&bssInit[0])
-	bssInit [%d]byte`,
-		l.bss)
+`)
+	if l.bss != 0 {
+		l.w(`bss     = crt.BSS(&bssInit[0])
+	bssInit [%d]byte`, l.bss)
+	}
 	if n := len(l.ds); n != 0 {
 		if n < 16 {
 			l.ds = append(l.ds, make([]byte, 16-n)...)

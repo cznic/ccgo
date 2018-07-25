@@ -53,118 +53,128 @@ package main
 
 /*
 
-jnml@r550:~/src/github.com/ossrs/librtmp> make clean && time ( make CC=ccgo XCFLAGS='--ccgo-go' XLDFLAGS='--ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build' && echo done )
+	crt @284fd94c188533890dd731b1ab890af2ebcb99f3
+	cc  @aae6c0dabbc72b112fcf5cb7ba5228da1fc3a63c
+
+jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> make clean && make GOARCH=arm CC=ccgo XLDFLAGS='--warn-unresolved-libs --warn-go-build' && echo done
 rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
-/home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
+/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp
+make[1]: Entering directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
 rm -f *.o *.a *.so *.so.1 librtmp.pc
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-/home/jnml/src/github.com/ossrs/librtmp/librtmp
-make[1]: Entering directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o rtmp.o rtmp.c
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o log.o log.c
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o amf.o amf.c
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o hashswf.o hashswf.c
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\" -DUSE_OPENSSL  -O2 -fPIC   -c -o parseurl.o parseurl.c
+make[1]: Leaving directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
+/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp
+make[1]: Entering directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o rtmp.o rtmp.c
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o log.o log.c
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o amf.o amf.c
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o hashswf.o hashswf.c
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o parseurl.o parseurl.c
 ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
 ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1 --ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o  -lssl -lcrypto -lz
+ccgo -shared -Wl,-soname,librtmp.so.1 --warn-unresolved-libs --warn-go-build -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o
 ln -sf librtmp.so.1 librtmp.so
-make[1]: Leaving directory '/home/jnml/src/github.com/ossrs/librtmp/librtmp'
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
-ccgo -Wall --ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz
+make[1]: Leaving directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
+ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz
 warning: cannot find -lssl
 warning: cannot find -lcrypto
 warning: cannot find -lz
 warning: go build rtmpdump
 # command-line-arguments
-/tmp/ccgo-linker-210291637/main.go:289:43: undefined: crt.Xftello64
-/tmp/ccgo-linker-210291637/main.go:344:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:373:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:449:16: undefined: crt.Xftello64
-/tmp/ccgo-linker-210291637/main.go:473:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:501:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:525:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:552:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-210291637/main.go:570:16: undefined: crt.Xftello64
-/tmp/ccgo-linker-210291637/main.go:1164:17: undefined: crt.Xgetopt_long
-/tmp/ccgo-linker-210291637/main.go:1164:17: too many errors
+/tmp/ccgo-linker-159648652/main.go:289:43: undefined: crt.Xftello64
+/tmp/ccgo-linker-159648652/main.go:344:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:373:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:449:16: undefined: crt.Xftello64
+/tmp/ccgo-linker-159648652/main.go:473:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:501:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:525:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:552:2: undefined: crt.Xfseeko64
+/tmp/ccgo-linker-159648652/main.go:570:16: undefined: crt.Xftello64
+/tmp/ccgo-linker-159648652/main.go:1164:17: undefined: crt.Xgetopt_long
+/tmp/ccgo-linker-159648652/main.go:1164:17: too many errors
 
 exit status 2
-/tmp/ccgo-linker-210291637/main.go
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpgw.o rtmpgw.c
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o thread.o thread.c
-ccgo -Wall --ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build -o rtmpgw rtmpgw.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpgw.o rtmpgw.c
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o thread.o thread.c
+ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpgw rtmpgw.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
 warning: cannot find -lpthread
 warning: cannot find -lssl
 warning: cannot find -lcrypto
 warning: cannot find -lz
 warning: go build rtmpgw
 # command-line-arguments
-/tmp/ccgo-linker-427153724/main.go:131:44: undefined: crt.Xstrtod
-/tmp/ccgo-linker-427153724/main.go:201:44: undefined: crt.Xstrtod
-/tmp/ccgo-linker-427153724/main.go:306:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-427153724/main.go:574:48: undefined: crt.Xsnprintf
-/tmp/ccgo-linker-427153724/main.go:770:98: cannot use *(*s37in_addr)(unsafe.Pointer(_addr + 4)) (type s37in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-427153724/main.go:804:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-427153724/main.go:1049:14: undefined: crt.Xatol
-/tmp/ccgo-linker-427153724/main.go:1434:18: undefined: crt.Xgetopt_long
-/tmp/ccgo-linker-427153724/main.go:1491:5: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-427153724/main.go:1491:52: undefined: crt.Xoptarg
-/tmp/ccgo-linker-427153724/main.go:1491:52: too many errors
+/tmp/ccgo-linker-438951737/main.go:306:14: undefined: crt.Xgetchar
+/tmp/ccgo-linker-438951737/main.go:770:98: cannot use *(*s31in_addr)(unsafe.Pointer(_addr + 4)) (type s31in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
+/tmp/ccgo-linker-438951737/main.go:804:42: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-438951737/main.go:1049:14: undefined: crt.Xatol
+/tmp/ccgo-linker-438951737/main.go:1434:17: undefined: crt.Xgetopt_long
+/tmp/ccgo-linker-438951737/main.go:1491:5: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-438951737/main.go:1491:52: undefined: crt.Xoptarg
+/tmp/ccgo-linker-438951737/main.go:1495:92: undefined: crt.Xoptarg
+/tmp/ccgo-linker-438951737/main.go:1499:52: undefined: crt.Xoptarg
+/tmp/ccgo-linker-438951737/main.go:1504:52: undefined: crt.Xoptarg
+/tmp/ccgo-linker-438951737/main.go:1504:52: too many errors
 
 exit status 2
-/tmp/ccgo-linker-427153724/main.go
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsrv.o rtmpsrv.c
-ccgo -Wall --ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build -o rtmpsrv rtmpsrv.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsrv.o rtmpsrv.c
+ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpsrv rtmpsrv.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
 warning: cannot find -lpthread
 warning: cannot find -lssl
 warning: cannot find -lcrypto
 warning: cannot find -lz
 warning: go build rtmpsrv
 # command-line-arguments
-/tmp/ccgo-linker-960079215/main.go:1633:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-960079215/main.go:1792:97: cannot use *(*s80in_addr)(unsafe.Pointer(_addr + 4)) (type s80in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-960079215/main.go:1829:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-960079215/main.go:2208:8: undefined: crt.XBN_new
-/tmp/ccgo-linker-960079215/main.go:2212:2: undefined: crt.XBN_set_word
-/tmp/ccgo-linker-960079215/main.go:2213:5: undefined: crt.XBN_cmp
-/tmp/ccgo-linker-960079215/main.go:2222:2: undefined: crt.XBN_copy
-/tmp/ccgo-linker-960079215/main.go:2223:2: undefined: crt.XBN_sub_word
-/tmp/ccgo-linker-960079215/main.go:2224:5: undefined: crt.XBN_cmp
-/tmp/ccgo-linker-960079215/main.go:2238:9: undefined: crt.XBN_CTX_new
-/tmp/ccgo-linker-960079215/main.go:2238:9: too many errors
+/tmp/ccgo-linker-090196493/main.go:1633:14: undefined: crt.Xgetchar
+/tmp/ccgo-linker-090196493/main.go:1792:97: cannot use *(*s74in_addr)(unsafe.Pointer(_addr + 4)) (type s74in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
+/tmp/ccgo-linker-090196493/main.go:1829:42: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-090196493/main.go:3662:45: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-090196493/main.go:7671:60: undefined: crt.Xrand
+/tmp/ccgo-linker-090196493/main.go:7705:41: undefined: crt.Xntohl
+/tmp/ccgo-linker-090196493/main.go:7770:60: undefined: crt.Xrand
+/tmp/ccgo-linker-090196493/main.go:7790:40: undefined: crt.Xntohl
+/tmp/ccgo-linker-090196493/main.go:8641:5: undefined: crt.Xstrncasecmp
+/tmp/ccgo-linker-090196493/main.go:11773:5: undefined: crt.Xstrncasecmp
+/tmp/ccgo-linker-090196493/main.go:11773:5: too many errors
 
 exit status 2
-/tmp/ccgo-linker-960079215/main.go
-ccgo -Wall --ccgo-go  -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsuck.o rtmpsuck.c
-ccgo -Wall --ccgo-go -Wl,--warn-unresolved-symbols,--warn-unresolved-libs,--warn-go-build -o rtmpsuck rtmpsuck.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
+ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsuck.o rtmpsuck.c
+ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpsuck rtmpsuck.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
 warning: cannot find -lpthread
 warning: cannot find -lssl
 warning: cannot find -lcrypto
 warning: cannot find -lz
 warning: go build rtmpsuck
 # command-line-arguments
-/tmp/ccgo-linker-554621827/main.go:1354:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-554621827/main.go:1874:97: cannot use *(*s69in_addr)(unsafe.Pointer(_addr + 4)) (type s69in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-554621827/main.go:2563:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-554621827/main.go:2889:8: undefined: crt.XBN_new
-/tmp/ccgo-linker-554621827/main.go:2893:2: undefined: crt.XBN_set_word
-/tmp/ccgo-linker-554621827/main.go:2894:5: undefined: crt.XBN_cmp
-/tmp/ccgo-linker-554621827/main.go:2903:2: undefined: crt.XBN_copy
-/tmp/ccgo-linker-554621827/main.go:2904:2: undefined: crt.XBN_sub_word
-/tmp/ccgo-linker-554621827/main.go:2905:5: undefined: crt.XBN_cmp
-/tmp/ccgo-linker-554621827/main.go:2919:9: undefined: crt.XBN_CTX_new
-/tmp/ccgo-linker-554621827/main.go:2919:9: too many errors
+/tmp/ccgo-linker-271014455/main.go:1354:14: undefined: crt.Xgetchar
+/tmp/ccgo-linker-271014455/main.go:1874:97: cannot use *(*s63in_addr)(unsafe.Pointer(_addr + 4)) (type s63in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
+/tmp/ccgo-linker-271014455/main.go:2563:42: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-271014455/main.go:4343:45: undefined: crt.Xinet_addr
+/tmp/ccgo-linker-271014455/main.go:8352:60: undefined: crt.Xrand
+/tmp/ccgo-linker-271014455/main.go:8386:41: undefined: crt.Xntohl
+/tmp/ccgo-linker-271014455/main.go:8451:60: undefined: crt.Xrand
+/tmp/ccgo-linker-271014455/main.go:8471:40: undefined: crt.Xntohl
+/tmp/ccgo-linker-271014455/main.go:9322:5: undefined: crt.Xstrncasecmp
+/tmp/ccgo-linker-271014455/main.go:12454:5: undefined: crt.Xstrncasecmp
+/tmp/ccgo-linker-271014455/main.go:12454:5: too many errors
 
 exit status 2
-/tmp/ccgo-linker-554621827/main.go
 done
-
-real	0m5.865s
-user	0m6.593s
-sys	0m0.734s
-jnml@r550:~/src/github.com/ossrs/librtmp>
+jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c>
+jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> GOARCH=arm ccgo -o ~/src/tmp/rtmp.go librtmp/librtmp.a
+jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> go build ~/src/tmp/rtmp.go
+# command-line-arguments
+/home/jnml/src/tmp/rtmp.go:95:16: invalid operation: crt.Xtimes(tls, _t) * int32(1000) (mismatched types int64 and int32)
+/home/jnml/src/tmp/rtmp.go:126:32: cannot use uint32(1) (type uint32) as type uint64 in argument to crt.Xcalloc
+/home/jnml/src/tmp/rtmp.go:126:43: cannot use _nSize + uint32(18) (type uint32) as type uint64 in argument to crt.Xcalloc
+/home/jnml/src/tmp/rtmp.go:183:32: cannot use uint32(1) (type uint32) as type uint64 in argument to crt.Xcalloc
+/home/jnml/src/tmp/rtmp.go:183:43: cannot use uint32(16792) (type uint32) as type uint64 in argument to crt.Xcalloc
+/home/jnml/src/tmp/rtmp.go:193:39: cannot use uint32(16792) (type uint32) as type uint64 in argument to crt.Xmemset
+/home/jnml/src/tmp/rtmp.go:1283:5: cannot use crt.Xstrtol(tls, *(*uintptr)(unsafe.Pointer(_arg)), null, int32(0)) (type int64) as type int32 in assignment
+/home/jnml/src/tmp/rtmp.go:1491:74: cannot use uint32(_len) (type uint32) as type uint64 in argument to crt.Xmalloc
+/home/jnml/src/tmp/rtmp.go:1492:128: cannot use uint32(_len) (type uint32) as type uint64 in argument to crt.Xsnprintf
+/home/jnml/src/tmp/rtmp.go:1544:37: cannot use uint32(*(*int32)(unsafe.Pointer(_host + 4)) + int32(1)) (type uint32) as type uint64 in argument to crt.Xmalloc
+/home/jnml/src/tmp/rtmp.go:1544:37: too many errors
+jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c>
 
 */
 
@@ -213,6 +223,8 @@ const (
   --warn-unresolved-libs      Report unresolved libraries as warnings
   --warn-unresolved-symbols   Report unresolved symbols as warnings
   -Wl,<options>               Pass comma-separated <options> on to the linker
+  -x <language>               Specify the language of the following input files
+                              Permissible languages include: c.
 
   --ccgo-full-paths           Keep full source code positions instead of
                               basenames
@@ -220,9 +232,11 @@ const (
                               executable file and print its path
 `
 
-	pkgHeader = `// Code generated by '%s', DO NOT EDIT.
+	pkgHeader = `// Code generated by '%[1]s', DO NOT EDIT.
 
-package %s
+/` + `/ +build %[4]s,%[5]s
+
+package %[2]s
 
 import (
 	"math"
@@ -333,6 +347,7 @@ func newConfig(args []string) (*config, error) {
 		objMap:   map[string]string{},
 		osArgs:   args,
 	}
+	log("goos=%v goarch=%v", c.goos, c.goarch)
 	args = args[1:]
 	for len(args) != 0 {
 		switch arg := args[0]; {
@@ -372,6 +387,8 @@ func newConfig(args []string) (*config, error) {
 			args = args[1:]
 		case strings.HasPrefix(arg, "-I"):
 			c.I = append(c.I, arg[2:])
+		case strings.HasPrefix(arg, "-x"):
+			c.args = append(c.args, arg)
 		case arg == "-L", arg == "--library-path":
 			if len(args) < 2 {
 				return nil, fmt.Errorf("-L option requires an argument")
@@ -389,6 +406,13 @@ func newConfig(args []string) (*config, error) {
 			c.linkOrder = append(c.linkOrder, arg)
 		case strings.HasPrefix(arg, "-Wl,"):
 			c.Wl = append(c.Wl, strings.Split(arg[4:], ",")...)
+		case arg == "-":
+			if len(args) > 1 {
+				return nil, fmt.Errorf("no arguments allowed after -")
+			}
+
+			c.args = append(c.args, "") // stdin
+			c.linkOrder = append(c.linkOrder, "<stdin>")
 		case
 			arg == "-g",
 			arg == "-pthread",
@@ -400,6 +424,29 @@ func newConfig(args []string) (*config, error) {
 		case !strings.HasPrefix(arg, "-"):
 			c.args = append(c.args, arg)
 			c.linkOrder = append(c.linkOrder, arg)
+
+		// Linker flags -----------------------------------------------
+		case arg == "-rpath":
+			if len(args) < 2 {
+				return nil, fmt.Errorf("missing -rpath argument")
+			}
+
+			c.Wl = append(c.Wl, arg, args[1])
+			args = args[1:]
+		case arg == "-soname", arg == "-h":
+			if len(args) < 2 {
+				return nil, fmt.Errorf("missing -soname argument")
+			}
+
+			c.Wl = append(c.Wl, arg, args[1])
+			args = args[1:]
+		case
+			arg == "--export-dynamic",
+			arg == "--warn-go-build",
+			arg == "--warn-unresolved-libs",
+			arg == "--warn-unresolved-symbols":
+
+			c.Wl = append(c.Wl, arg)
 		default:
 			return nil, fmt.Errorf("%s: error: unrecognized command line option %q %v", c.arg0, arg, args)
 		}
@@ -523,6 +570,16 @@ func main1(args []string) (r int, err error) {
 		return 2, fmt.Errorf("%s", help[1:])
 	}
 
+	nin := 0
+	for _, v := range c.args {
+		if !strings.HasPrefix(v, "-") {
+			nin++
+		}
+	}
+	if c.c && c.o != "" && nin > 1 {
+		return 2, fmt.Errorf("-o cannot be used with -c and multiple input files")
+	}
+
 	if len(c.args) == 0 {
 		return 2, fmt.Errorf(`
 %s: fatal error: no input files
@@ -541,9 +598,34 @@ compilation terminated`, c.arg0)
 
 	c.sysPaths = append(c.sysPaths, localSysPaths...)
 	c.sysPaths = append(c.sysPaths, sysPaths...)
+	var forceExt string
 	for _, in := range c.args {
-		switch ext := filepath.Ext(in); ext {
+		if strings.HasPrefix(in, "-xc") {
+			forceExt = ".c"
+			continue
+		}
+
+		ext := filepath.Ext(in)
+		if forceExt != "" {
+			ext = forceExt
+		}
+		switch ext {
 		case ".c":
+			if in == "" {
+				arg := "<stdin>"
+				b, err := ioutil.ReadAll(bufio.NewReader(os.Stdin))
+				if err != nil {
+					return 1, err
+				}
+
+				log("stdin\n%s\n----", b)
+				if err = c.compileSource("stdin.o", arg, cc.NewStringSource("stdin", string(b))); err != nil {
+					return 1, err
+				}
+
+				continue
+			}
+
 			if err = c.compile(in); err != nil {
 				return 1, err
 			}
@@ -731,7 +813,7 @@ func (c *config) linkGo(fn string) (err error) {
 		return err
 	}
 
-	header := fmt.Sprintf(pkgHeader, strings.Join(c.osArgs, " "), pkgName, crt)
+	header := fmt.Sprintf(pkgHeader, strings.Join(c.osArgs, " "), pkgName, crt, c.goos, c.goarch)
 
 	defer func() { err = errs(err, l.Close(header)) }()
 
@@ -769,7 +851,7 @@ func (c *config) linkGo(fn string) (err error) {
 		}
 	}
 	if l.Main {
-		header = fmt.Sprintf(pkgHeader+mainHeader, strings.Join(c.osArgs, " "), "main", crt)
+		header = fmt.Sprintf(pkgHeader+mainHeader, strings.Join(c.osArgs, " "), "main", crt, c.goos, c.goarch)
 		crt0o := toExt(crt0c, ".o")
 		if err = c.compileSource(crt0o, crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
 			return err
@@ -840,10 +922,6 @@ func (c *config) linkFile(l *ccgo.Linker, fn string) (err error) {
 func (c *config) compile(in string) (err error) {
 	out := filepath.Base(toExt(in, ".o"))
 	if c.c && c.o != "" {
-		if len(c.args) > 1 {
-			return fmt.Errorf("-o cannot be used with -c and multiple input files")
-		}
-
 		out = c.o
 	}
 	if log != nil {

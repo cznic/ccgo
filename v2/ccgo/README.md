@@ -36,6 +36,8 @@ Command ccgo is a C compiler targeting Go.
       --warn-unresolved-libs      Report unresolved libraries as warnings
       --warn-unresolved-symbols   Report unresolved symbols as warnings
       -Wl,<options>               Pass comma-separated <options> on to the linker
+      -x <language>               Specify the language of the following input files
+                                  Permissible languages include: c.
     
       --ccgo-full-paths           Keep full source code positions instead of
                                   basenames

@@ -74,6 +74,8 @@ func compact(s string, maxLines int) string {
 	return strings.Join(a, "\n")
 }
 
+func debugStack0() []byte { return debug.Stack() }
+
 func debugStack() []byte {
 	b := debug.Stack()
 	b = b[bytes.Index(b, bPanic)+1:]
@@ -162,6 +164,7 @@ func todo(msg string, args ...interface{}) {
 	if s == "" {
 		s = strings.Repeat("%v ", len(args))
 	}
+	log("%v:%d: TODO: %s", f, l, fmt.Sprintf(s, args...)) //TODOOK
 	if traceTODO {
 		fmt.Fprintf(os.Stderr, "\n\n%v:%d: TODO\n\n%s\n", f, l, fmt.Sprintf(s, args...)) //TODOOK
 		os.Exit(1)

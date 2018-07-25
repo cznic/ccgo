@@ -1284,6 +1284,88 @@ func TestSQLiteShell0(t *testing.T) { //TODO-
 	}
 }
 
+func TestSQLiteShell(t *testing.T) {
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-sqlite-shell-"); err != nil {
+			t.Fatal(err)
+		}
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
+
+	compiler, err := compileCCGO(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	root, err := filepath.Abs(filepath.FromSlash("testdata/_sqlite/sqlite-amalgamation-3210000"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	var c, ccgo, build, run, ok, n int
+	for {
+		n++
+		out, err := exec.Command(compiler, filepath.Join(root, "shell.c"), filepath.Join(root, "sqlite3.c")).CombinedOutput()
+		if err != nil {
+			t.Logf("%s: %s\n%v", dir, out, err)
+			break
+		}
+
+		os.Remove(compiler)
+		c++
+		ccgo++
+		build++
+		m, err := filepath.Glob(filepath.Join(dir, "*"))
+		if err != nil {
+			t.Log(err)
+			break
+
+		}
+
+		if len(m) != 1 {
+			t.Fatal(len(m))
+		}
+
+		if out, err = exec.Command(m[0], "foo", "create table t(i)").CombinedOutput(); err != nil {
+			t.Logf("%s\n%v", out, err)
+			break
+		}
+
+		run++
+		ok++
+		break
+	}
+	if c != n || ccgo != n || build != n || run != n || ok != n {
+		t.Fatalf("Shell cc %v ccgo %v build %v run %v ok %v n %v", c, ccgo, build, run, ok, n)
+	}
+
+	if *oEdit {
+		fmt.Printf("Shell\tcc %v ccgo %v build %v run %v ok %v n %v\n", c, ccgo, build, run, ok, n)
+	}
+}
+
 func TestTCL0(t *testing.T) { //TODO-
 	cc.FlushCache()
 	const (

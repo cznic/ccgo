@@ -22,7 +22,31 @@ import (
 
 var (
 	isTesting bool // Test hook
+	log       = func(string, ...interface{}) {}
+	logging   bool
 )
+
+func init() {
+	if fn := os.Getenv("CCGOLOG"); fn != "" {
+		logging = true
+		f, err := os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_SYNC, 0644)
+		if err != nil {
+			panic(err)
+		}
+
+		pid := fmt.Sprintf("[pid %v] ", os.Getpid())
+
+		log = func(s string, args ...interface{}) {
+			s = fmt.Sprintf(pid+s, args...)
+			switch {
+			case len(s) != 0 && s[len(s)-1] == '\n':
+				fmt.Fprint(f, s)
+			default:
+				fmt.Fprintln(f, s)
+			}
+		}
+	}
+}
 
 const (
 	mainSrc = `
