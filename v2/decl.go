@@ -691,13 +691,13 @@ func (g *ngen) mangleDeclarator(n *cc.Declarator) string {
 	}
 
 	if n.Linkage == cc.LinkageInternal {
-		return fmt.Sprintf("v%s", dict.S(nm))
+		return fmt.Sprintf("x%s", dict.S(nm))
 	}
 
 	if num, ok := g.nums[n]; ok {
 		switch {
 		case n.DeclarationSpecifier.IsStatic():
-			return fmt.Sprintf("v%d%s", num, dict.S(nm))
+			return fmt.Sprintf("x%d%s", num, dict.S(nm))
 		default:
 			return fmt.Sprintf("_%d%s", num, dict.S(nm))
 		}

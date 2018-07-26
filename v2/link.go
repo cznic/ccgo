@@ -187,6 +187,7 @@ type Linker struct {
 	producedExterns map[string]struct{} // name: -
 	renamed         map[string]int
 	renamedHelpers  map[string]string
+	renamedNum      map[string]int
 	strings         map[int]int64
 	tempFile        *os.File
 	text            []int
@@ -225,6 +226,7 @@ func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 		producedExterns: map[string]struct{}{},
 		renamed:         map[string]int{},
 		renamedHelpers:  map[string]string{},
+		renamedNum:      map[string]int{},
 		strings:         map[int]int64{},
 		tempFile:        tempFile,
 		wout:            bufio.NewWriter(tempFile),
@@ -511,7 +513,7 @@ func (l *Linker) close(header string) (err error) {
 var (
 `)
 	if l.bss != 0 {
-		l.w(`bss     = crt.BSS(&bssInit[0])
+		l.w(`	bss     = crt.BSS(&bssInit[0])
 	bssInit [%d]byte`, l.bss)
 	}
 	if n := len(l.ds); n != 0 {
@@ -713,15 +715,15 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 				x.Name = fmt.Sprintf("%s%s", crt, x.Name)
 			}
 		case strings.HasPrefix(x.Name, "C"): // Enum constant
-			x.Name = v.rename("c", x.Name[1:])
+			x.Name = v.rename("C", x.Name[1:])
 		case strings.HasPrefix(x.Name, "E"): // Tagged enum type
-			x.Name = v.rename("e", x.Name[1:])
+			x.Name = v.rename("E", x.Name[1:])
 		case strings.HasPrefix(x.Name, "S"): // Tagged struct type
-			x.Name = v.rename("s", x.Name[1:])
+			x.Name = v.rename("S", x.Name[1:])
 		case strings.HasPrefix(x.Name, "U"): // Tagged union type
-			x.Name = v.rename("u", x.Name[1:])
-		case strings.HasPrefix(x.Name, "v") && x.Name != "v": // static
-			x.Name = v.rename("v", x.Name[1:])
+			x.Name = v.rename("U", x.Name[1:])
+		case strings.HasPrefix(x.Name, "x") && x.Name != "x": // Static linkage
+			x.Name = v.rename("x", x.Name[1:])
 		case x.Name == "bool2int":
 			v.bool2int = true
 		}
@@ -740,20 +742,42 @@ func (l *Linker) allocDS(s string) int64 {
 }
 
 func (l *Linker) rename(prefix, nm string) string {
-	n := l.renamed[nm]
-	if n == 0 {
-		l.num++
-		n = l.num
-		l.renamed[nm] = n
-	}
-	for {
-		if c := nm[0]; c < '0' || c > '9' {
-			break
+	switch c := nm[0]; {
+	case c >= '0' && c <= '9':
+		n := l.renamed[nm]
+		if n == 0 {
+			l.num++
+			n = l.num
+			l.renamed[nm] = n
+		}
+		for {
+			if c := nm[0]; c < '0' || c > '9' {
+				break
+			}
+
+			nm = nm[1:]
+		}
+		return fmt.Sprintf("%s%d%s", prefix, n, nm)
+	default:
+		n, ok := l.renamed[nm]
+		if !ok {
+			n = l.renamedNum[nm]
+			l.renamed[nm] = n
+			l.renamedNum[nm]++
+		}
+		for {
+			if c := nm[0]; c < '0' || c > '9' {
+				break
+			}
+
+			nm = nm[1:]
+		}
+		if n == 0 {
+			return fmt.Sprintf("%s%s", prefix, nm)
 		}
 
-		nm = nm[1:]
+		return fmt.Sprintf("%s%d%s", prefix, n, nm)
 	}
-	return fmt.Sprintf("%s%d%s", prefix, n, nm)
 }
 
 func (l *Linker) allocString(s int) int64 {
