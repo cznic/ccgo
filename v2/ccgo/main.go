@@ -15,7 +15,9 @@
 //       -D<macro>[=<val>]           Define a <macro> with <val> as its value.  If
 //                                   just <macro> is given, <val> is taken to be 1
 //       -E                          Preprocess only; do not compile, assemble or link
+//       -fPIC                       Generate position-independent code if possible
 //       --help                      Display this information
+//       -g --gen-debug              generate debugging information (ignored)
 //       -h FILENAME, -soname FILENAME
 //                                   Set internal name of shared library
 //       -I <dir>                    Add <dir> to the end of the main include path
@@ -26,12 +28,18 @@
 //       -m64                        Generate 64bit x86-64 code
 //       -o <file>                   Place the output into <file>. Use .go extension
 //                                   to produce a Go source file instead of a binary.
+//       -O                          Optimize output file (ignored)
 //       -rpath PATH                 Set runtime shared library search path
 //       -shared                     Create a shared library
+//       -v                          Display the programs invoked by the compiler
+//       --version                   Display compiler version information
 //       --warn-go-build             Report 'go build' errors as warning
 //       --warn-unresolved-libs      Report unresolved libraries as warnings
 //       --warn-unresolved-symbols   Report unresolved symbols as warnings
+//       -Wall                       Enable most warning messages (ignored)
 //       -Wl,<options>               Pass comma-separated <options> on to the linker
+//       -x <language>               Specify the language of the following input files.
+//                                   Permissible languages include: c.
 //
 //       --ccgo-full-paths           Keep full source code positions instead of
 //                                   basenames
@@ -51,133 +59,6 @@
 // TODO
 package main
 
-/*
-
-	crt @284fd94c188533890dd731b1ab890af2ebcb99f3
-	cc  @aae6c0dabbc72b112fcf5cb7ba5228da1fc3a63c
-
-jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> make clean && make GOARCH=arm CC=ccgo XLDFLAGS='--warn-unresolved-libs --warn-go-build' && echo done
-rm -f *.o rtmpdump rtmpgw rtmpsrv rtmpsuck
-/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp
-make[1]: Entering directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
-rm -f *.o *.a *.so *.so.1 librtmp.pc
-make[1]: Leaving directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
-/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp
-make[1]: Entering directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o rtmp.o rtmp.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o log.o log.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o amf.o amf.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o hashswf.o hashswf.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\" -DNO_CRYPTO  -O2 -fPIC   -c -o parseurl.o parseurl.c
-ar rs librtmp.a rtmp.o log.o amf.o hashswf.o parseurl.o
-ar: creating librtmp.a
-ccgo -shared -Wl,-soname,librtmp.so.1 --warn-unresolved-libs --warn-go-build -o librtmp.so.1 rtmp.o log.o amf.o hashswf.o parseurl.o
-ln -sf librtmp.so.1 librtmp.so
-make[1]: Leaving directory '/home/jnml/src/bitbucket.org/ausocean/av/rtmp/rtmp_c/librtmp'
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpdump.o rtmpdump.c
-ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpdump rtmpdump.o -Llibrtmp -lrtmp -lssl -lcrypto -lz
-warning: cannot find -lssl
-warning: cannot find -lcrypto
-warning: cannot find -lz
-warning: go build rtmpdump
-# command-line-arguments
-/tmp/ccgo-linker-159648652/main.go:289:43: undefined: crt.Xftello64
-/tmp/ccgo-linker-159648652/main.go:344:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:373:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:449:16: undefined: crt.Xftello64
-/tmp/ccgo-linker-159648652/main.go:473:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:501:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:525:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:552:2: undefined: crt.Xfseeko64
-/tmp/ccgo-linker-159648652/main.go:570:16: undefined: crt.Xftello64
-/tmp/ccgo-linker-159648652/main.go:1164:17: undefined: crt.Xgetopt_long
-/tmp/ccgo-linker-159648652/main.go:1164:17: too many errors
-
-exit status 2
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpgw.o rtmpgw.c
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o thread.o thread.c
-ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpgw rtmpgw.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
-warning: cannot find -lpthread
-warning: cannot find -lssl
-warning: cannot find -lcrypto
-warning: cannot find -lz
-warning: go build rtmpgw
-# command-line-arguments
-/tmp/ccgo-linker-438951737/main.go:306:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-438951737/main.go:770:98: cannot use *(*s31in_addr)(unsafe.Pointer(_addr + 4)) (type s31in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-438951737/main.go:804:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-438951737/main.go:1049:14: undefined: crt.Xatol
-/tmp/ccgo-linker-438951737/main.go:1434:17: undefined: crt.Xgetopt_long
-/tmp/ccgo-linker-438951737/main.go:1491:5: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-438951737/main.go:1491:52: undefined: crt.Xoptarg
-/tmp/ccgo-linker-438951737/main.go:1495:92: undefined: crt.Xoptarg
-/tmp/ccgo-linker-438951737/main.go:1499:52: undefined: crt.Xoptarg
-/tmp/ccgo-linker-438951737/main.go:1504:52: undefined: crt.Xoptarg
-/tmp/ccgo-linker-438951737/main.go:1504:52: too many errors
-
-exit status 2
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsrv.o rtmpsrv.c
-ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpsrv rtmpsrv.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
-warning: cannot find -lpthread
-warning: cannot find -lssl
-warning: cannot find -lcrypto
-warning: cannot find -lz
-warning: go build rtmpsrv
-# command-line-arguments
-/tmp/ccgo-linker-090196493/main.go:1633:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-090196493/main.go:1792:97: cannot use *(*s74in_addr)(unsafe.Pointer(_addr + 4)) (type s74in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-090196493/main.go:1829:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-090196493/main.go:3662:45: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-090196493/main.go:7671:60: undefined: crt.Xrand
-/tmp/ccgo-linker-090196493/main.go:7705:41: undefined: crt.Xntohl
-/tmp/ccgo-linker-090196493/main.go:7770:60: undefined: crt.Xrand
-/tmp/ccgo-linker-090196493/main.go:7790:40: undefined: crt.Xntohl
-/tmp/ccgo-linker-090196493/main.go:8641:5: undefined: crt.Xstrncasecmp
-/tmp/ccgo-linker-090196493/main.go:11773:5: undefined: crt.Xstrncasecmp
-/tmp/ccgo-linker-090196493/main.go:11773:5: too many errors
-
-exit status 2
-ccgo -Wall   -DRTMPDUMP_VERSION=\"v2.4\"   -O2   -c -o rtmpsuck.o rtmpsuck.c
-ccgo -Wall --warn-unresolved-libs --warn-go-build -o rtmpsuck rtmpsuck.o thread.o -lpthread -Llibrtmp -lrtmp -lssl -lcrypto -lz
-warning: cannot find -lpthread
-warning: cannot find -lssl
-warning: cannot find -lcrypto
-warning: cannot find -lz
-warning: go build rtmpsuck
-# command-line-arguments
-/tmp/ccgo-linker-271014455/main.go:1354:14: undefined: crt.Xgetchar
-/tmp/ccgo-linker-271014455/main.go:1874:97: cannot use *(*s63in_addr)(unsafe.Pointer(_addr + 4)) (type s63in_addr) as type struct { Xs_addr uint32 } in argument to crt.Xinet_ntoa
-/tmp/ccgo-linker-271014455/main.go:2563:42: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-271014455/main.go:4343:45: undefined: crt.Xinet_addr
-/tmp/ccgo-linker-271014455/main.go:8352:60: undefined: crt.Xrand
-/tmp/ccgo-linker-271014455/main.go:8386:41: undefined: crt.Xntohl
-/tmp/ccgo-linker-271014455/main.go:8451:60: undefined: crt.Xrand
-/tmp/ccgo-linker-271014455/main.go:8471:40: undefined: crt.Xntohl
-/tmp/ccgo-linker-271014455/main.go:9322:5: undefined: crt.Xstrncasecmp
-/tmp/ccgo-linker-271014455/main.go:12454:5: undefined: crt.Xstrncasecmp
-/tmp/ccgo-linker-271014455/main.go:12454:5: too many errors
-
-exit status 2
-done
-jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c>
-jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> GOARCH=arm ccgo -o ~/src/tmp/rtmp.go librtmp/librtmp.a
-jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c> go build ~/src/tmp/rtmp.go
-# command-line-arguments
-/home/jnml/src/tmp/rtmp.go:95:16: invalid operation: crt.Xtimes(tls, _t) * int32(1000) (mismatched types int64 and int32)
-/home/jnml/src/tmp/rtmp.go:126:32: cannot use uint32(1) (type uint32) as type uint64 in argument to crt.Xcalloc
-/home/jnml/src/tmp/rtmp.go:126:43: cannot use _nSize + uint32(18) (type uint32) as type uint64 in argument to crt.Xcalloc
-/home/jnml/src/tmp/rtmp.go:183:32: cannot use uint32(1) (type uint32) as type uint64 in argument to crt.Xcalloc
-/home/jnml/src/tmp/rtmp.go:183:43: cannot use uint32(16792) (type uint32) as type uint64 in argument to crt.Xcalloc
-/home/jnml/src/tmp/rtmp.go:193:39: cannot use uint32(16792) (type uint32) as type uint64 in argument to crt.Xmemset
-/home/jnml/src/tmp/rtmp.go:1283:5: cannot use crt.Xstrtol(tls, *(*uintptr)(unsafe.Pointer(_arg)), null, int32(0)) (type int64) as type int32 in assignment
-/home/jnml/src/tmp/rtmp.go:1491:74: cannot use uint32(_len) (type uint32) as type uint64 in argument to crt.Xmalloc
-/home/jnml/src/tmp/rtmp.go:1492:128: cannot use uint32(_len) (type uint32) as type uint64 in argument to crt.Xsnprintf
-/home/jnml/src/tmp/rtmp.go:1544:37: cannot use uint32(*(*int32)(unsafe.Pointer(_host + 4)) + int32(1)) (type uint32) as type uint64 in argument to crt.Xmalloc
-/home/jnml/src/tmp/rtmp.go:1544:37: too many errors
-jnml@r550:~/src/bitbucket.org/ausocean/av/rtmp/rtmp_c>
-
-*/
-
 import (
 	"bufio"
 	"fmt"
@@ -195,8 +76,9 @@ import (
 )
 
 const (
-	crt   = "crt."
-	crt0c = "crt0.c"
+	version = "0.0.1"
+	crt     = "crt."
+	crt0c   = "crt0.c"
 
 	help = `
   -c                          Compile and assemble, but do not link
@@ -206,7 +88,9 @@ const (
   -D<macro>[=<val>]           Define a <macro> with <val> as its value.  If
                               just <macro> is given, <val> is taken to be 1
   -E                          Preprocess only; do not compile, assemble or link
+  -fPIC                       Generate position-independent code if possible
   --help                      Display this information
+  -g --gen-debug              generate debugging information (ignored)
   -h FILENAME, -soname FILENAME
                               Set internal name of shared library
   -I <dir>                    Add <dir> to the end of the main include path
@@ -217,13 +101,17 @@ const (
   -m64                        Generate 64bit x86-64 code
   -o <file>                   Place the output into <file>. Use .go extension
                               to produce a Go source file instead of a binary.
+  -O                          Optimize output file (ignored)
   -rpath PATH                 Set runtime shared library search path
   -shared                     Create a shared library
+  -v                          Display the programs invoked by the compiler
+  --version                   Display compiler version information
   --warn-go-build             Report 'go build' errors as warning
   --warn-unresolved-libs      Report unresolved libraries as warnings
   --warn-unresolved-symbols   Report unresolved symbols as warnings
+  -Wall                       Enable most warning messages (ignored)
   -Wl,<options>               Pass comma-separated <options> on to the linker
-  -x <language>               Specify the language of the following input files
+  -x <language>               Specify the language of the following input files.
                               Permissible languages include: c.
 
   --ccgo-full-paths           Keep full source code positions instead of
@@ -266,8 +154,74 @@ func alloca(p *[]uintptr, n int) uintptr   { r := %[3]sMustMalloc(n); *p = appen
 func preinc(p *uintptr, n uintptr) uintptr { *p += n; return *p }
 
 `
+	pkgHeaderLog = `// Code generated by '%[1]s', DO NOT EDIT.
+
+/` + `/ +build %[4]s,%[5]s
+
+package %[2]s
+
+import (
+	"fmt"
+	"math"
+	"os"
+	"unsafe"
+
+	"github.com/cznic/crt"
+)
+
+const (
+	null = uintptr(0)
+)
+
+var (
+	_ = math.Pi
+	_ = os.DevNull
+	_ = unsafe.Pointer(null)
+
+	nz32 float32
+	nz64 float64
+)
+
+func init() { nz32 = -nz32 }
+func init() { nz64 = -nz64 }
+
+func alloca(p *[]uintptr, n int) uintptr   { r := %[3]sMustMalloc(n); *p = append(*p, r); return r }
+func preinc(p *uintptr, n uintptr) uintptr { *p += n; return *p }
+
+`
 
 	mainHeader = `func main() {
+	psz := unsafe.Sizeof(uintptr(0))
+	argv := crt.MustCalloc((len(os.Args) + 1) * int(psz))
+	p := argv
+	for _, v := range os.Args {
+		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
+		p += psz
+	}
+	a := os.Environ()
+	env := crt.MustCalloc((len(a) + 1) * int(psz))
+	p = env
+	for _, v := range a {
+		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
+		p += psz
+	}
+	*(*uintptr)(unsafe.Pointer(Xenviron)) = env
+	X_start(%[3]sNewTLS(), int32(len(os.Args)), argv)
+}
+
+`
+
+	mainHeaderLog = `func main() {
+	if fn := os.Getenv("CCGOLOG"); fn != "" {
+		f, err := os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_SYNC, 0644)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Fprintf(f, "[pid %%v] EXEC %%v\n", os.Getpid(), os.Args)
+		//TODO want exit status
+		f.Close()
+	}
 	psz := unsafe.Sizeof(uintptr(0))
 	argv := crt.MustCalloc((len(os.Args) + 1) * int(psz))
 	p := argv
@@ -325,21 +279,41 @@ type config struct {
 	linkerConfig *linkerConfig
 
 	E         bool // -E
+	O         bool // -O* (ignored)
+	Wall      bool // -Wall (ignored)
 	c         bool // -c
 	dM        bool // -dM
+	fPIC      bool // -fPIC (ignored)
 	fullPaths bool // --ccgo-full-paths
+	g         bool // -g --gen-debug (ignored)
 	help      bool // --help
 	keepGo    bool // --ccgo-go
 	m64       bool // -m64
 	shared    bool // -shared
+	v         bool // -v
+	version   bool // --version
 }
 
-func newConfig(args []string) (*config, error) {
+func newConfig(args []string) (c *config, err error) {
+	var errs []string
+
+	defer func() {
+		if len(errs) != 0 {
+			if err != nil {
+				errs = append([]string{err.Error()}, errs...)
+			}
+			err = fmt.Errorf("%s", strings.Join(errs, "\n"))
+		}
+		if err != nil {
+			c = nil
+		}
+	}()
+
 	if len(args) == 0 {
 		return nil, fmt.Errorf("no arguments to parse")
 	}
 
-	c := &config{
+	c = &config{
 		arg0:     args[0],
 		goarch:   env("GOARCH", runtime.GOARCH),
 		goos:     env("GOOS", runtime.GOOS),
@@ -357,15 +331,18 @@ func newConfig(args []string) (*config, error) {
 				a = append(a, "1")
 			}
 			c.D = append(c.D, fmt.Sprintf("%s %s", a[0][2:], a[1]))
+		case arg == "-v":
+			c.v = true
 		case arg == "-c":
 			c.c = true
 		case arg == "-o":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("-o option requires an argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "-o option requires an argument")
+			default:
+				c.o = args[1]
+				args = args[1:]
 			}
-
-			c.o = args[1]
-			args = args[1:]
 		case arg == "--ccgo-go": // keep the .go file when linking a main program
 			c.keepGo = true
 		case arg == "--ccgo-full-paths":
@@ -376,26 +353,36 @@ func newConfig(args []string) (*config, error) {
 			c.E = true
 		case arg == "--help":
 			c.help = true
+		case arg == "-Wall":
+			c.Wall = true
 		case arg == "-E":
 			c.E = true
+		case arg == "--version":
+			c.version = true
+		case arg == "-fPIC":
+			c.fPIC = true
+		case arg == "-g", arg == "--gen-debug":
+			c.g = true
 		case arg == "-I":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("-I option requires an argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "-I option requires an argument")
+			default:
+				c.I = append(c.I, args[1])
+				args = args[1:]
 			}
-
-			c.I = append(c.I, args[1])
-			args = args[1:]
 		case strings.HasPrefix(arg, "-I"):
 			c.I = append(c.I, arg[2:])
 		case strings.HasPrefix(arg, "-x"):
 			c.args = append(c.args, arg)
 		case arg == "-L", arg == "--library-path":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("-L option requires an argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "-L option requires an argument")
+			default:
+				c.L = append(c.L, args[1])
+				args = args[1:]
 			}
-
-			c.L = append(c.L, args[1])
-			args = args[1:]
 		case strings.HasPrefix(arg, "-L"), strings.HasPrefix(arg, "--library-path"):
 			c.L = append(c.L, arg[2:])
 		case arg == "-shared":
@@ -407,39 +394,37 @@ func newConfig(args []string) (*config, error) {
 		case strings.HasPrefix(arg, "-Wl,"):
 			c.Wl = append(c.Wl, strings.Split(arg[4:], ",")...)
 		case arg == "-":
-			if len(args) > 1 {
-				return nil, fmt.Errorf("no arguments allowed after -")
+			switch {
+			case len(args) > 1:
+				errs = append(errs, "no arguments allowed after -")
+			default:
+				c.args = append(c.args, "") // stdin
+				c.linkOrder = append(c.linkOrder, "<stdin>")
 			}
 
-			c.args = append(c.args, "") // stdin
-			c.linkOrder = append(c.linkOrder, "<stdin>")
-		case
-			arg == "-g",
-			arg == "-pthread",
-			strings.HasPrefix(arg, "-O"),
-			strings.HasPrefix(arg, "-W"),
-			strings.HasPrefix(arg, "-f"):
-
-			// ignored
+		case strings.HasPrefix(arg, "-O"):
+			c.O = true
 		case !strings.HasPrefix(arg, "-"):
 			c.args = append(c.args, arg)
 			c.linkOrder = append(c.linkOrder, arg)
 
 		// Linker flags -----------------------------------------------
 		case arg == "-rpath":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("missing -rpath argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "missing -rpath argument")
+			default:
+				c.Wl = append(c.Wl, arg, args[1])
+				args = args[1:]
 			}
-
-			c.Wl = append(c.Wl, arg, args[1])
-			args = args[1:]
 		case arg == "-soname", arg == "-h":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("missing -soname argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "missing -soname argument")
+			default:
+				c.Wl = append(c.Wl, arg, args[1])
+				args = args[1:]
 			}
-
-			c.Wl = append(c.Wl, arg, args[1])
-			args = args[1:]
 		case
 			arg == "--export-dynamic",
 			arg == "--warn-go-build",
@@ -448,7 +433,7 @@ func newConfig(args []string) (*config, error) {
 
 			c.Wl = append(c.Wl, arg)
 		default:
-			return nil, fmt.Errorf("%s: error: unrecognized command line option %q %v", c.arg0, arg, args)
+			errs = append(errs, fmt.Sprintf("%s: error: unrecognized command line option '%v'", c.arg0, arg))
 		}
 		args = args[1:]
 	}
@@ -457,13 +442,12 @@ func newConfig(args []string) (*config, error) {
 		case "amd64":
 			// ok
 		default:
-			return nil, fmt.Errorf("-m64 invalid architecture %s", c.goarch)
+			errs = append(errs, fmt.Sprintf("-m64 used with invalid architecture %s", c.goarch))
 		}
 	}
 	c.incPaths = append(c.incPaths, c.I...)
 	c.sysPaths = append(c.sysPaths, c.I...)
-	var err error
-	if c.linkerConfig, err = newLinkerConfig(c.Wl); err != nil {
+	if c.linkerConfig, err = newLinkerConfig(c.arg0, c.Wl); err != nil {
 		return nil, err
 	}
 
@@ -487,27 +471,43 @@ type linkerConfig struct {
 	warnUnresolvedLibs bool // --warn-unresolved-libs
 }
 
-func newLinkerConfig(args []string) (*linkerConfig, error) {
-	c := &linkerConfig{}
+func newLinkerConfig(prog string, args []string) (c *linkerConfig, err error) {
+	var errs []string
+
+	defer func() {
+		if len(errs) != 0 {
+			if err != nil {
+				errs = append([]string{err.Error()}, errs...)
+			}
+			err = fmt.Errorf("%s", strings.Join(errs, "\n"))
+		}
+		if err != nil {
+			c = nil
+		}
+	}()
+
+	c = &linkerConfig{}
 	for ; len(args) != 0; args = args[1:] {
 		switch arg := args[0]; {
 		case arg == "--export-dynamic":
 			c.exportDynamic = true
 		case arg == "-soname", arg == "-h":
-			if len(args) < 2 {
-				return nil, fmt.Errorf("missing -soname argument")
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "missing -soname argument")
+			default:
+				c.sonames = append(c.sonames, args[1])
+				c.soname = args[1]
 			}
-
-			c.sonames = append(c.sonames, args[1])
-			c.soname = args[1]
 			args = args[1:]
 		case arg == "-rpath":
-			if len(args) < 2 {
+			switch {
+			case len(args) < 2:
 				return nil, fmt.Errorf("missing -rpath argument")
+			default:
+				c.rpath = append(c.rpath, args[1])
+				args = args[1:]
 			}
-
-			c.rpath = append(c.rpath, args[1])
-			args = args[1:]
 		case arg == "--warn-unresolved-symbols":
 			c.warnUnresolvedSymbols = true
 		case arg == "--warn-unresolved-libs":
@@ -515,7 +515,7 @@ func newLinkerConfig(args []string) (*linkerConfig, error) {
 		case arg == "--warn-go-build":
 			c.warnGoBuild = true
 		default:
-			return nil, fmt.Errorf("unknown/unsupported linker option: %q", arg)
+			errs = append(errs, fmt.Sprintf("%s: error: unrecognized linker option '%v'", prog, arg))
 		}
 	}
 	if len(c.sonames) > 1 {
@@ -566,6 +566,10 @@ func main1(args []string) (r int, err error) {
 		return 2, err
 	}
 
+	if c.version {
+		return 0, fmt.Errorf("%s %s", c.arg0, version)
+	}
+
 	if c.help {
 		return 2, fmt.Errorf("%s", help[1:])
 	}
@@ -581,6 +585,10 @@ func main1(args []string) (r int, err error) {
 	}
 
 	if len(c.args) == 0 {
+		if c.v {
+			return 0, fmt.Errorf("%s %s", c.arg0, version)
+		}
+
 		return 2, fmt.Errorf(`
 %s: fatal error: no input files
 compilation terminated`, c.arg0)
@@ -596,6 +604,8 @@ compilation terminated`, c.arg0)
 		return 1, err
 	}
 
+	c.incPaths = append(c.incPaths, localSysPaths...)
+	c.incPaths = append(c.incPaths, sysPaths...)
 	c.sysPaths = append(c.sysPaths, localSysPaths...)
 	c.sysPaths = append(c.sysPaths, sysPaths...)
 	var forceExt string
@@ -778,11 +788,15 @@ func (c *config) linkExecutable() (err error) {
 		return err
 	}
 
-	cmd := exec.Command("go", "build", "-o", fn, src)
+	a := []string{"go", "build", "-o", fn, src}
+	cmd := exec.Command(a[0], a[1:]...)
 	for _, v := range os.Environ() {
 		if v != "CC=ccgo" {
 			cmd.Env = append(cmd.Env, v)
 		}
+	}
+	if c.v {
+		fmt.Fprintf(os.Stderr, "%s\n", strings.Join(a, " "))
 	}
 	if co, err := cmd.CombinedOutput(); err != nil {
 		switch {
@@ -851,7 +865,13 @@ func (c *config) linkGo(fn string) (err error) {
 		}
 	}
 	if l.Main {
-		header = fmt.Sprintf(pkgHeader+mainHeader, strings.Join(c.osArgs, " "), "main", crt, c.goos, c.goarch)
+		ph := pkgHeader
+		mh := mainHeader
+		if logging {
+			ph = pkgHeaderLog
+			mh = mainHeaderLog
+		}
+		header = fmt.Sprintf(ph+mh, strings.Join(c.osArgs, " "), "main", crt, c.goos, c.goarch)
 		crt0o := toExt(crt0c, ".o")
 		if err = c.compileSource(crt0o, crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
 			return err
