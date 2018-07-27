@@ -372,6 +372,10 @@ func (g *ngen) tld(n *cc.Declarator) {
 	}
 
 	defer func() {
+		if e := recover(); e != nil {
+			panic(fmt.Errorf("%s\n%s", e, debugStack()))
+		}
+
 		if err := newNOpt().do(g.out, io.MultiReader(&g.tldPreamble, &g.out0), testFn); err != nil {
 			todo("", err)
 		}

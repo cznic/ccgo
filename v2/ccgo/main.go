@@ -36,6 +36,7 @@
 //       --warn-go-build             Report 'go build' errors as warning
 //       --warn-unresolved-libs      Report unresolved libraries as warnings
 //       --warn-unresolved-symbols   Report unresolved symbols as warnings
+//       -W  --no-warn               suppress warnings (ignored)
 //       -Wall                       Enable most warning messages (ignored)
 //       -Wl,<options>               Pass comma-separated <options> on to the linker
 //       -x <language>               Specify the language of the following input files.
@@ -109,6 +110,7 @@ const (
   --warn-go-build             Report 'go build' errors as warning
   --warn-unresolved-libs      Report unresolved libraries as warnings
   --warn-unresolved-symbols   Report unresolved symbols as warnings
+  -W  --no-warn               suppress warnings (ignored)
   -Wall                       Enable most warning messages (ignored)
   -Wl,<options>               Pass comma-separated <options> on to the linker
   -x <language>               Specify the language of the following input files.
@@ -280,6 +282,7 @@ type config struct {
 
 	E         bool // -E
 	O         bool // -O* (ignored)
+	W         bool // -W (ignored)
 	Wall      bool // -Wall (ignored)
 	c         bool // -c
 	dM        bool // -dM
@@ -361,6 +364,8 @@ func newConfig(args []string) (c *config, err error) {
 			c.version = true
 		case arg == "-fPIC":
 			c.fPIC = true
+		case arg == "-W", arg == "--no-warn":
+			c.W = true
 		case arg == "-g", arg == "--gen-debug":
 			c.g = true
 		case arg == "-I":
@@ -831,30 +836,11 @@ func main() {
 
 		return err
 	}
-	a := []string{"go", "build", "-gcflags=-e", "-o", fn, src}
-	cmd := exec.Command(a[0], a[1:]...)
-	for _, v := range os.Environ() {
-		if v != "CC=ccgo" {
-			cmd.Env = append(cmd.Env, v)
-		}
-	}
-	if c.v {
-		fmt.Fprintf(os.Stderr, "%s\n", strings.Join(a, " "))
-	}
-	if co, err := cmd.CombinedOutput(); err != nil {
-		switch {
-		case c.linkerConfig.warnGoBuild:
-			fmt.Printf("warning: go build %s\n%s\n%v\n", fn, co, err)
-		default:
-			return fmt.Errorf("%s\n%v", co, err)
-		}
-	}
-
 	return nil
 }
 
 func (c *config) buildExecutable(bin, src string) error {
-	a := []string{"go", "build", "-o", bin, src}
+	a := []string{"go", "build", "-gcflags=-e", "-o", bin, src}
 	cmd := exec.Command(a[0], a[1:]...)
 	for _, v := range os.Environ() {
 		if v != "CC=ccgo" {

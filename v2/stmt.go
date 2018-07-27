@@ -935,9 +935,13 @@ func (g *ngen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool, main boo
 					n := o.ExprList.Expr // Expr '?' ExprList ':' Expr
 					switch {
 					case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
-						todo("", g.position(n))
+						g.w("\nreturn ")
+						g.convert(n.Expr2, rt)
+						g.w("\n")
 					case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
-						todo("", g.position(n))
+						g.w("\nreturn ")
+						g.exprList2(n.ExprList, rt)
+						g.w("\n")
 					default:
 						g.w("\nif ")
 						g.value(n.Expr, false)

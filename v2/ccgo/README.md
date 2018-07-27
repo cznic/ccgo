@@ -40,6 +40,7 @@ Command ccgo is a C compiler targeting Go.
     --warn-go-build             Report 'go build' errors as warning
     --warn-unresolved-libs      Report unresolved libraries as warnings
     --warn-unresolved-symbols   Report unresolved symbols as warnings
+    -W  --no-warn               suppress warnings (ignored)
     -Wall                       Enable most warning messages (ignored)
     -Wl,<options>               Pass comma-separated <options> on to the linker
     -x <language>               Specify the language of the following input files.

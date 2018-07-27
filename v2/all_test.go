@@ -132,8 +132,8 @@
 //	FAIL	github.com/cznic/ccgo/v2	481.539s
 
 //	go version go1.10.3 linux/amd64
-//	crt @910ae030780e4ca109fca2e9ea2533d86ba10510
-//	cc  @aae6c0dabbc72b112fcf5cb7ba5228da1fc3a63c
+//	crt @f3d2a3af01ad6c17899d94f4d70694a99dc6b440
+//	cc  @aeca8082a810dd1b386799ef5ea9f4f4efe94a2e
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
