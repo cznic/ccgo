@@ -791,6 +791,10 @@ func (c *config) linkExecutable() (err error) {
 	if err := c.buildExecutable(fn, src); err != nil {
 		if c.linkerConfig.warnGoBuild {
 			msg := err.Error()
+			if !isArgumentMismatchError(msg) {
+				return err
+			}
+
 			src = filepath.Join(dir, "error.go")
 			f, err := os.Create(src)
 			if err != nil {
@@ -805,6 +809,16 @@ import (
 )
 
 func main() {
+	if fn := os.Getenv("CCGOLOG"); fn != "" {
+		f, err := os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_SYNC, 0644)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Fprintf(f, "[pid %%v] EXEC %%v\n", os.Getpid(), os.Args)
+		//TODO want exit status
+		f.Close()
+	}
 	fmt.Fprintln(os.Stderr, %q)
 	os.Exit(1)
 }
@@ -817,7 +831,7 @@ func main() {
 
 		return err
 	}
-	a := []string{"go", "build", "-o", fn, src}
+	a := []string{"go", "build", "-gcflags=-e", "-o", fn, src}
 	cmd := exec.Command(a[0], a[1:]...)
 	for _, v := range os.Environ() {
 		if v != "CC=ccgo" {

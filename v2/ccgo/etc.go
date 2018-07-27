@@ -168,3 +168,35 @@ func (r *arReader) Read(b []byte) (int, error) {
 	}
 	return n, err
 }
+
+func isArgumentMismatchError(s string) bool {
+	a := strings.Split(s, "\n")
+	for _, v := range a {
+		switch {
+		case
+			strings.HasPrefix(v, "#"),
+			strings.HasPrefix(v, "\thave"),
+			strings.HasPrefix(v, "\twant"),
+			strings.HasPrefix(v, "exit status "),
+			v == "":
+
+			// ok
+		default:
+			i := strings.Index(v, ": ")
+			if i < 0 {
+				return false
+			}
+
+			switch v = v[i+2:]; {
+			case
+				strings.HasPrefix(v, "cannot use"),
+				strings.HasPrefix(v, "not enough arguments in call to"):
+
+				// ok
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
