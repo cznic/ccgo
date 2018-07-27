@@ -1302,6 +1302,7 @@ func (g *ngen) value(n *cc.Expr, packedField bool) {
 			g.constant(n)
 			g.w(")")
 		default:
+			g.enqueue(d)
 			switch {
 			case d.Type.Kind() == cc.Function:
 				g.w("%s(%s)", g.registerHelper("fp%d", g.typ(d.Type)), g.mangleDeclarator(d))
@@ -2066,6 +2067,7 @@ func (g *ngen) uintptr(n *cc.Expr, packedField bool) {
 		}
 	case cc.ExprIdent: // IDENTIFIER
 		d := n.Declarator
+		g.enqueue(d)
 		arr := cc.UnderlyingType(d.Type).Kind() == cc.Array
 		switch {
 		case d.Type.Kind() == cc.Function:
@@ -3108,6 +3110,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 		switch n.Case {
 		case cc.ExprIdent: // IDENTIFIER
 			d := n.Declarator
+			g.enqueue(d)
 			dt := cc.UnderlyingType(d.Type)
 			if dt.Equal(ft) {
 				g.w("%s", g.mangleDeclarator(d))
@@ -3132,6 +3135,7 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 			todo("", g.position(n))
 		case cc.ExprCast: // '(' TypeName ')' Expr
 			if d := n.Expr.Declarator; d != nil {
+				g.enqueue(d)
 				if d.Type.Equal(t) {
 					g.w("%s", g.mangleDeclarator(d))
 					return

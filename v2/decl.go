@@ -72,8 +72,8 @@ func (g *ngen) defineQueued() {
 			switch y := x.Value.(type) {
 			case *cc.Declarator:
 				g.tld(y)
-			//TODO case *cc.EnumType:
-			//TODO 	g.defineEnumType(y)
+			case *cc.EnumType:
+				g.defineEnumType(y)
 			//TODO case *cc.NamedType:
 			//TODO 	// nop ATM, probably needed later
 			case *cc.TaggedEnumType:
@@ -98,6 +98,12 @@ func (g *ngen) defineQueued() {
 }
 
 func (g *gen) defineEnumType(t *cc.EnumType) {
+	if t.Tag != 0 {
+		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
+	}
+}
+
+func (g *ngen) defineEnumType(t *cc.EnumType) {
 	if t.Tag != 0 {
 		g.defineTaggedEnumType(&cc.TaggedEnumType{Tag: t.Tag, Type: t})
 	}
@@ -152,7 +158,7 @@ func (g *ngen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 	for i, v := range et.Enums {
 		val := v.Operand.Value.(*ir.Int64Value).Value
 		if i == 0 {
-			g.w("\nC%s E%s = iota", dict.S(v.Token.Val), tag)
+			g.w("\nC%s%s E%s = iota", tag, dict.S(v.Token.Val), tag)
 			if val != 0 {
 				g.w(" %+d", val)
 			}
@@ -160,7 +166,7 @@ func (g *ngen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 			continue
 		}
 
-		g.w("\nC%s", dict.S(v.Token.Val))
+		g.w("\nC%s%s", tag, dict.S(v.Token.Val))
 		if val == iota {
 			iota++
 			continue
@@ -170,7 +176,6 @@ func (g *ngen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 		iota = val + 1
 	}
 	g.w("\n)\n")
-
 }
 
 func (g *gen) defineTaggedStructType(t *cc.TaggedStructType) {

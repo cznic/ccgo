@@ -319,6 +319,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 			return g.typ(x.Enums[0].Operand.Type)
 		}
 
+		g.enqueue(x)
 		return fmt.Sprintf("E%s", dict.S(x.Tag))
 	case *cc.TaggedEnumType:
 		g.enqueue(x)
