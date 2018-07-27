@@ -788,6 +788,35 @@ func (c *config) linkExecutable() (err error) {
 		return err
 	}
 
+	if err := c.buildExecutable(fn, src); err != nil {
+		if c.linkerConfig.warnGoBuild {
+			msg := err.Error()
+			src = filepath.Join(dir, "error.go")
+			f, err := os.Create(src)
+			if err != nil {
+				return err
+			}
+
+			if _, err := fmt.Fprintf(f, `package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	fmt.Fprintln(os.Stderr, %q)
+	os.Exit(1)
+}
+`, msg); err != nil {
+				return err
+			}
+
+			return c.buildExecutable(fn, src)
+		}
+
+		return err
+	}
 	a := []string{"go", "build", "-o", fn, src}
 	cmd := exec.Command(a[0], a[1:]...)
 	for _, v := range os.Environ() {
@@ -807,6 +836,26 @@ func (c *config) linkExecutable() (err error) {
 		}
 	}
 
+	return nil
+}
+
+func (c *config) buildExecutable(bin, src string) error {
+	a := []string{"go", "build", "-o", bin, src}
+	cmd := exec.Command(a[0], a[1:]...)
+	for _, v := range os.Environ() {
+		if v != "CC=ccgo" {
+			cmd.Env = append(cmd.Env, v)
+		}
+	}
+	if c.v {
+		fmt.Fprintf(os.Stderr, "%s\n", strings.Join(a, " "))
+	}
+	if co, err := cmd.CombinedOutput(); err != nil {
+		if c.linkerConfig.warnGoBuild {
+			fmt.Printf("warning: go build %s\n%s\n%v\n", bin, co, err)
+		}
+		return fmt.Errorf("%s\n%v", co, err)
+	}
 	return nil
 }
 
