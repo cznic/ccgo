@@ -644,7 +644,7 @@ compilation terminated`, c.arg0)
 			if err = c.compile(in); err != nil {
 				return 1, err
 			}
-		case ".a", ".o":
+		case ".a", ".o", ".so":
 			c.objects = append(c.objects, in)
 			c.objMap[in] = in
 		default:

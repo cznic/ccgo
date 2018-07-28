@@ -137,21 +137,21 @@
 //
 //	TCC0	cc 51 ccgo 51 build 51 run 51 ok 51
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
-//	Other0	cc 18 ccgo 18 build 18 run 18 ok 18
-//	Other	cc 18 ccgo 18 build 18 run 18 ok 18 n 18
-//	GCC0	cc 1118 ccgo 1096 build 1092 run 1092 ok 1092
-//	GCC	cc 1070 ccgo 1070 build 1066 run 1066 ok 1066 n 1408
-//	--- FAIL: TestGCC (602.51s)
+//	Other0	cc 20 ccgo 20 build 20 run 20 ok 20
+//	Other	cc 20 ccgo 20 build 20 run 20 ok 20 n 20
+//	GCC0	cc 1121 ccgo 1099 build 1095 run 1095 ok 1095
+//	GCC	cc 1073 ccgo 1073 build 1070 run 1070 ok 1070 n 1408
+//	--- FAIL: TestGCC (259.60s)
 //			...
 //			exit status 1
 //	Shell0	cc 1 ccgo 1 build 1 run 1 ok 1
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
 //	TCL0	tclsqlite build ok
-//	--- FAIL: TestTCL0 (4544.96s)
-//		all_test.go:2044:
-//			Test cases:   261824
-//			Pass:         261066 (99.71%)
-//			Fail:            758 (0.29%)
+//	--- FAIL: TestTCL0 (2308.93s)
+//		all_test.go:2028:
+//			Test cases:   261858
+//			Pass:         261066 (99.70%)
+//			Fail:            792 (0.30%)
 //			! alter-7.1 expected: [text 1 integer -2 text 5.4e-8 real 5.4e-8]
 //			! alter-7.1 got:      [text 1 integer -2 text 5.4e-8 real {}]
 //			! auth3-2.2 expected: [1]
@@ -163,9 +163,9 @@
 //			! autovacuum-1.3.3 expected: [4]
 //			! autovacuum-1.3.3 got:      [16]
 //			... too many fails
-//		all_test.go:2052:
+//		all_test.go:2036:
 //			Test binary exit error: exit status 1
-//			Last completed test file: "Time: selectC.test 1609 ms"
+//			Last completed test file: "Time: selectC.test 308 ms"
 //			Last passed test: "no_optimization.selectC-5.3... Ok"
 //			Last line written to stdout: "Page-cache overflow:  now 0  max 21057216"
 //			Blacklisted test files: 107
@@ -276,25 +276,30 @@
 //			where.test
 //			whereD.test
 //			writecrash.test
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.88473353s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (3.447951734s)
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (4.915034263s)
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (6.943595799s)
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (8.324983063s)
-//	cc 7 ccgo 7 build 6 run 6 ok 6 (85.71%) csmith 7 (10.617310509s)
-//	cc 8 ccgo 8 build 7 run 7 ok 7 (87.50%) csmith 8 (12.310274208s)
-//	cc 9 ccgo 9 build 8 run 8 ok 8 (88.89%) csmith 9 (20.248588288s)
-//	cc 10 ccgo 10 build 9 run 9 ok 9 (90.00%) csmith 10 (20.943468954s)
-//	cc 11 ccgo 11 build 10 run 10 ok 10 (90.91%) csmith 11 (22.713586274s)
-//	cc 12 ccgo 12 build 11 run 11 ok 11 (91.67%) csmith 12 (33.918731744s)
-//	cc 13 ccgo 13 build 12 run 12 ok 12 (92.31%) csmith 13 (35.179793079s)
-//	cc 14 ccgo 14 build 13 run 13 ok 13 (92.86%) csmith 14 (36.652411334s)
-//	cc 15 ccgo 15 build 14 run 14 ok 14 (93.33%) csmith 15 (51.526350097s)
-//	cc 16 ccgo 16 build 15 run 15 ok 15 (93.75%) csmith 16 (1m0.246107834s)
-//	CSmith0	cc 16 ccgo 16 build 15 run 15 ok 15 (93.75%) csmith 16 (1m0.246152475s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (735.224844ms)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (1.059415524s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (1.387179826s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (2.331431624s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (3.017522216s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (17.107543036s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (17.443167925s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (18.309128582s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (19.075985308s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (26.466077537s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (40.725893028s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (42.490285122s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (43.055450211s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (56.709415659s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (57.367728233s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (57.702418137s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (58.031585042s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (58.718592835s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (59.609992631s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (1m0.525614587s)
+//	CSmith0	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (1m0.525627647s)
 //	FAIL
 //	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	5913.463s
+//	FAIL	github.com/cznic/ccgo/v2	2932.678s
 
 package ccgo
 

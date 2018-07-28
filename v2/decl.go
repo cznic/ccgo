@@ -367,7 +367,7 @@ func (g *gen) tld(n *cc.Declarator) {
 
 func (g *ngen) tld(n *cc.Declarator) {
 	ds := n.DeclarationSpecifier
-	if ds.IsExtern() || ds.IsTypedef() {
+	if ds.IsTypedef() {
 		return
 	}
 
@@ -388,6 +388,10 @@ func (g *ngen) tld(n *cc.Declarator) {
 	t := cc.UnderlyingType(n.Type)
 	if t.Kind() == cc.Function {
 		g.functionDefinition(n)
+		return
+	}
+
+	if ds.IsExtern() {
 		return
 	}
 
