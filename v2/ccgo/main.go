@@ -993,7 +993,7 @@ func (c *config) compile(in string) (err error) {
 	if c.c && c.o != "" {
 		out = c.o
 	}
-	if log != nil {
+	if logging {
 		b, err := ioutil.ReadFile(in)
 		if err != nil {
 			return err
