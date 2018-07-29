@@ -231,7 +231,7 @@ func (g *ngen) defineTaggedStructType(t *cc.TaggedStructType) {
 		//TODO g.opaqueStructTags[t.Tag] = struct{}{}
 	default:
 		g.producedStructTags[t.Tag] = struct{}{}
-		g.w("\ntype S%s %s\n", dict.S(t.Tag), g.typ(t.Type))
+		g.w("\ntype S%s = %s\n", dict.S(t.Tag), g.typ(t.Type))
 		if isTesting {
 			g.w("\n\nfunc init() {")
 			st := cc.UnderlyingType(t.Type).(*cc.StructType)
@@ -284,7 +284,7 @@ func (g *ngen) defineTaggedUnionType(t *cc.TaggedUnionType) {
 	}
 
 	g.producedStructTags[t.Tag] = struct{}{}
-	g.w("\ntype U%s %s\n", dict.S(t.Tag), g.typ(t.Type))
+	g.w("\ntype U%s = %s\n", dict.S(t.Tag), g.typ(t.Type))
 	if isTesting {
 		g.w("\n\nfunc init() {")
 		g.w("\nif n := unsafe.Sizeof(U%s{}); n != %d { panic(n) }", dict.S(t.Tag), g.model.Sizeof(t))

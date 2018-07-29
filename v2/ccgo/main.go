@@ -604,15 +604,15 @@ compilation terminated`, c.arg0)
 		return 1, err
 	}
 
-	sysPaths, err := cc.Paths(false)
-	if err != nil {
-		return 1, err
-	}
+	//TODO- sysPaths, err := cc.Paths(false)
+	//TODO- if err != nil {
+	//TODO- 	return 1, err
+	//TODO- }
 
 	c.incPaths = append(c.incPaths, localSysPaths...)
-	c.incPaths = append(c.incPaths, sysPaths...)
+	//TODO- c.incPaths = append(c.incPaths, sysPaths...)
 	c.sysPaths = append(c.sysPaths, localSysPaths...)
-	c.sysPaths = append(c.sysPaths, sysPaths...)
+	//TODO- c.sysPaths = append(c.sysPaths, sysPaths...)
 	var forceExt string
 	for _, in := range c.args {
 		if strings.HasPrefix(in, "-xc") {
@@ -1094,6 +1094,7 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 	}
 	sources = append(sources, src)
 	tu, err := cc.Translate(tweaks, c.incPaths, c.sysPaths, sources...)
+	log("%p, %v", tu, err) //TODO-
 	if err != nil {
 		return err
 	}

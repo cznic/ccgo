@@ -174,29 +174,30 @@ func (u *unit) require(nm string) {
 
 // Linker produces Go files from object files.
 type Linker struct {
-	bss             int64
-	definedExterns  map[string]string // name: type
-	ds              []byte
-	errs            scanner.ErrorList
-	errsMu          sync.Mutex
-	goarch          string
-	goos            string
-	helpers         map[string]int
-	num             int
-	out             *bufio.Writer
-	producedExterns map[string]struct{} // name: -
-	renamed         map[string]int
-	renamedHelpers  map[string]string
-	renamedNum      map[string]int
-	strings         map[int]int64
-	tempFile        *os.File
-	text            []int
-	tld             []string
-	ts              int64
-	unit            *unit
-	units           []*unit
-	visitor         visitor
-	wout            *bufio.Writer
+	bss              int64
+	definedExterns   map[string]string // name: type
+	ds               []byte
+	errs             scanner.ErrorList
+	errsMu           sync.Mutex
+	goarch           string
+	goos             string
+	helpers          map[string]int
+	num              int
+	out              *bufio.Writer
+	producedExterns  map[string]struct{} // name: -
+	renamedHelperNum map[string]int
+	renamedHelpers   map[string]int
+	renamedNameNum   map[string]int
+	renamedNames     map[string]int
+	strings          map[int]int64
+	tempFile         *os.File
+	text             []int
+	tld              []string
+	ts               int64
+	unit             *unit
+	units            []*unit
+	visitor          visitor
+	wout             *bufio.Writer
 
 	Main      bool // Seen external definition of main.
 	bool2int  bool
@@ -218,18 +219,19 @@ func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 	}
 
 	r := &Linker{
-		definedExterns:  map[string]string{},
-		goarch:          goarch,
-		goos:            goos,
-		helpers:         map[string]int{},
-		out:             bin,
-		producedExterns: map[string]struct{}{},
-		renamed:         map[string]int{},
-		renamedHelpers:  map[string]string{},
-		renamedNum:      map[string]int{},
-		strings:         map[int]int64{},
-		tempFile:        tempFile,
-		wout:            bufio.NewWriter(tempFile),
+		definedExterns:   map[string]string{},
+		goarch:           goarch,
+		goos:             goos,
+		helpers:          map[string]int{},
+		out:              bin,
+		producedExterns:  map[string]struct{}{},
+		renamedHelperNum: map[string]int{},
+		renamedHelpers:   map[string]int{},
+		renamedNameNum:   map[string]int{},
+		renamedNames:     map[string]int{},
+		strings:          map[int]int64{},
+		tempFile:         tempFile,
+		wout:             bufio.NewWriter(tempFile),
 	}
 	r.visitor = visitor{r}
 	return r, nil
@@ -552,67 +554,6 @@ var (
 }
 
 func (l *Linker) genHelpers() {
-	a := make([]string, 0, len(l.helpers))
-	for k := range l.helpers {
-		a = append(a, k)
-	}
-	sort.Strings(a)
-	for _, k := range a {
-		a := strings.Split(k, "$")
-		l.w("\nfunc "+a[0], l.helpers[k])
-		switch a[0] {
-		case "add%d", "and%d", "div%d", "mod%d", "mul%d", "or%d", "sub%d", "xor%d":
-			// eg.: [0: "add%d" 1: op "+" 2: operand type "uint32"]
-			l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= v; return *p }", a[1], a[2])
-		case "and%db", "or%db", "xor%db":
-			// eg.: [0: "or%db" 1: op "|" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
-			l.w(`(p *%[3]s, v %[2]s) %[2]s {
-r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) %[1]s v
-*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-}`, a[1], a[2], a[3], a[4], a[5], a[6])
-		case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
-			l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
-		case "setb%d":
-			// eg.: [0: "setb%d" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
-			l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s) }",
-				"", a[2], a[3], a[4], a[5], a[6])
-		case "rsh%d":
-			// eg.: [0: "rsh%d" 1: op ">>" 2: operand type "uint32" 3: mod "32"]
-			l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= (v %% %[3]s); return *p }", a[1], a[2], a[3])
-		case "fn%d":
-			// eg.: [0: "fn%d" 1: type "unc()"]
-			l.w("(p uintptr) %[1]s { return *(*%[1]s)(unsafe.Pointer(&p)) }", a[1])
-		case "fp%d":
-			l.w("(f %[1]s) uintptr { return *(*uintptr)(unsafe.Pointer(&f)) }", a[1])
-		case "postinc%d":
-			// eg.: [0: "postinc%d" 1: operand type "int32" 2: delta "1"]
-			l.w("(p *%[1]s) %[1]s { r := *p; *p += %[2]s; return r }", a[1], a[2])
-		case "preinc%d":
-			// eg.: [0: "preinc%d" 1: operand type "int32" 2: delta "1"]
-			l.w("(p *%[1]s) %[1]s { *p += %[2]s; return *p }", a[1], a[2])
-		case "postinc%db":
-			// eg.: [0: "postinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
-			l.w(`(p *%[3]s) %[2]s {
-r := %[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r+%[1]s) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-return r
-}`, a[1], a[2], a[3], a[4], a[5], a[6])
-		case "preinc%db":
-			// eg.: [0: "preinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
-			l.w(`(p *%[3]s) %[2]s {
-r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) + %[1]s
-*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-}`, a[1], a[2], a[3], a[4], a[5], a[6])
-		case "float2int%d":
-			// eg.: [0: "float2int%d" 1: type "uint64" 2: max "18446744073709551615"]
-			l.w("(f float32) %[1]s { if f > %[2]s { return 0 }; return %[1]s(f) }", a[1], a[2])
-		default:
-			todo("%q", a)
-		}
-	}
-	l.w("\n")
 	if l.bool2int {
 		l.w(`
 func bool2int(b bool) int32 {
@@ -704,27 +645,28 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 			x.Value = fmt.Sprintf("ts+%d %s", v.allocString(dict.SID(s)), strComment2([]byte(s)))
 		}
 	case *ast.Ident:
-		if nm, ok := v.renamedHelpers[x.Name]; ok {
-			x.Name = nm
+		nm := x.Name
+		if _, ok := v.renamedHelpers[nm]; ok {
+			x.Name = v.renameHelper(nm)
 			break
 		}
 
 		switch {
-		case strings.HasPrefix(x.Name, "X"):
-			if _, ok := v.definedExterns[x.Name]; !ok {
-				x.Name = fmt.Sprintf("%s%s", crt, x.Name)
+		case strings.HasPrefix(nm, "X"):
+			if _, ok := v.definedExterns[nm]; !ok {
+				x.Name = fmt.Sprintf("%s%s", crt, nm)
 			}
-		case strings.HasPrefix(x.Name, "C"): // Enum constant
-			x.Name = v.rename("C", x.Name[1:])
-		case strings.HasPrefix(x.Name, "E"): // Tagged enum type
-			x.Name = v.rename("E", x.Name[1:])
-		case strings.HasPrefix(x.Name, "S"): // Tagged struct type
-			x.Name = v.rename("S", x.Name[1:])
-		case strings.HasPrefix(x.Name, "U"): // Tagged union type
-			x.Name = v.rename("U", x.Name[1:])
-		case strings.HasPrefix(x.Name, "x") && x.Name != "x": // Static linkage
-			x.Name = v.rename("x", x.Name[1:])
-		case x.Name == "bool2int":
+		case strings.HasPrefix(nm, "C"): // Enum constant
+			x.Name = v.rename("C", nm[1:])
+		case strings.HasPrefix(nm, "E"): // Tagged enum type
+			x.Name = v.rename("E", nm[1:])
+		case strings.HasPrefix(nm, "S"): // Tagged struct type
+			x.Name = v.rename("S", nm[1:])
+		case strings.HasPrefix(nm, "U"): // Tagged union type
+			x.Name = v.rename("U", nm[1:])
+		case strings.HasPrefix(nm, "x") && len(nm) > 1: // Static linkage
+			x.Name = v.rename("x", nm[1:])
+		case nm == "bool2int":
 			v.bool2int = true
 		}
 	}
@@ -741,14 +683,39 @@ func (l *Linker) allocDS(s string) int64 {
 	return int64(r)
 }
 
+func (l *Linker) renameHelper(nm string) string {
+	n := l.renamedHelpers[nm]
+	if n == 0 {
+		l.num++
+		n = l.num
+		l.renamedHelpers[nm] = n
+	}
+	for i := 0; i < len(nm); i++ {
+		if c := nm[i]; c < '0' || c > '9' {
+			continue
+		}
+
+		var j int
+		for j = i + 1; j < len(nm); j++ {
+			if c := nm[j]; c < '0' || c > '9' {
+				break
+			}
+		}
+		// "abc123def" i: 3, j:6
+		return fmt.Sprintf("%s%d%s", nm[:i], n, nm[j:])
+	}
+	todo("%q", nm)
+	panic("unreachable")
+}
+
 func (l *Linker) rename(prefix, nm string) string {
 	switch c := nm[0]; {
 	case c >= '0' && c <= '9':
-		n := l.renamed[nm]
+		n := l.renamedNames[nm]
 		if n == 0 {
 			l.num++
 			n = l.num
-			l.renamed[nm] = n
+			l.renamedNames[nm] = n
 		}
 		for {
 			if c := nm[0]; c < '0' || c > '9' {
@@ -759,11 +726,11 @@ func (l *Linker) rename(prefix, nm string) string {
 		}
 		return fmt.Sprintf("%s%d%s", prefix, n, nm)
 	default:
-		n, ok := l.renamed[nm]
+		n, ok := l.renamedNames[nm]
 		if !ok {
-			n = l.renamedNum[nm]
-			l.renamed[nm] = n
-			l.renamedNum[nm]++
+			n = l.renamedNameNum[nm]
+			l.renamedNames[nm] = n
+			l.renamedNameNum[nm]++
 		}
 		for {
 			if c := nm[0]; c < '0' || c > '9' {
@@ -854,20 +821,72 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 		strings.HasPrefix(s, "soname "):
 
 		l.w("\n// linking %s\n", arg)
-		for k := range l.renamed {
-			delete(l.renamed, k)
+		for k := range l.renamedNames {
+			delete(l.renamedNames, k)
 		}
 		for k := range l.renamedHelpers {
 			delete(l.renamedHelpers, k)
 		}
 	case strings.HasPrefix(nm, "h"): // helper
-		_, id := l.parseID(nm[1:])
-		h := strings.SplitN(arg, "$", 2)[0]
-		old := fmt.Sprintf(h, id)
-		new := fmt.Sprintf(h, l.helpers[arg])
-		l.renamedHelpers[old] = new
+		l.genHelper(l.renameHelper(nm[1:]), strings.Split(arg, "$"))
 	default:
 		todo("%s", s)
 		panic("unreachable")
 	}
+}
+
+func (l *Linker) genHelper(nm string, a []string) {
+	l.w("\nfunc %s", nm)
+	switch a[0] {
+	case "add%d", "and%d", "div%d", "mod%d", "mul%d", "or%d", "sub%d", "xor%d":
+		// eg.: [0: "add%d" 1: op "+" 2: operand type "uint32"]
+		l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= v; return *p }", a[1], a[2])
+	case "and%db", "or%db", "xor%db":
+		// eg.: [0: "or%db" 1: op "|" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+		l.w(`(p *%[3]s, v %[2]s) %[2]s {
+		r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) %[1]s v
+		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+		return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+	case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
+		l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
+	case "setb%d":
+		// eg.: [0: "setb%d" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
+		l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s) }",
+			"", a[2], a[3], a[4], a[5], a[6])
+	case "rsh%d":
+		// eg.: [0: "rsh%d" 1: op ">>" 2: operand type "uint32" 3: mod "32"]
+		l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= (v %% %[3]s); return *p }", a[1], a[2], a[3])
+	case "fn%d":
+		// eg.: [0: "fn%d" 1: type "unc()"]
+		l.w("(p uintptr) %[1]s { return *(*%[1]s)(unsafe.Pointer(&p)) }", a[1])
+	case "fp%d":
+		l.w("(f %[1]s) uintptr { return *(*uintptr)(unsafe.Pointer(&f)) }", a[1])
+	case "postinc%d":
+		// eg.: [0: "postinc%d" 1: operand type "int32" 2: delta "1"]
+		l.w("(p *%[1]s) %[1]s { r := *p; *p += %[2]s; return r }", a[1], a[2])
+	case "preinc%d":
+		// eg.: [0: "preinc%d" 1: operand type "int32" 2: delta "1"]
+		l.w("(p *%[1]s) %[1]s { *p += %[2]s; return *p }", a[1], a[2])
+	case "postinc%db":
+		// eg.: [0: "postinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+		l.w(`(p *%[3]s) %[2]s {
+		r := %[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r+%[1]s) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+		return r
+		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+	case "preinc%db":
+		// eg.: [0: "preinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+		l.w(`(p *%[3]s) %[2]s {
+		r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) + %[1]s
+		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+		return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+	case "float2int%d":
+		// eg.: [0: "float2int%d" 1: type "uint64" 2: max "18446744073709551615"]
+		l.w("(f float32) %[1]s { if f > %[2]s { return 0 }; return %[1]s(f) }", a[1], a[2])
+	default:
+		todo("%q", a)
+	}
+	l.w("\n")
 }
