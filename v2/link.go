@@ -567,9 +567,10 @@ func bool2int(b bool) int32 {
 }
 
 func (l *Linker) emit() (err error) {
+	defer func() { l.tld = l.tld[:0] }()
+
 	if l.doNotEmit {
 		l.doNotEmit = false
-		l.tld = l.tld[:0]
 		return
 	}
 
@@ -584,8 +585,6 @@ func (l *Linker) emit() (err error) {
 	ast.Walk(&l.visitor, file)
 	e := emitor{out: l.wout}
 	format.Node(&e, fset, file)
-
-	l.tld = l.tld[:0]
 	return nil
 }
 

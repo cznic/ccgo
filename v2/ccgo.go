@@ -126,6 +126,7 @@ type ngen struct { //TODO rename to gen
 	out0               bytes.Buffer
 	producedEnumTags   map[int]struct{}
 	producedStructTags map[int]struct{}
+	producedTLDs       map[string]struct{}
 	queue              list.List
 	tCache             map[tCacheKey]string
 	tldPreamble        bytes.Buffer
@@ -147,6 +148,7 @@ func newNGen(out io.Writer, in *cc.TranslationUnit, file string, tweaks *NewObje
 		out:                out,
 		producedEnumTags:   map[int]struct{}{},
 		producedStructTags: map[int]struct{}{},
+		producedTLDs:       map[string]struct{}{},
 		tCache:             map[tCacheKey]string{},
 		tweaks:             *tweaks,
 	}

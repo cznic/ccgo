@@ -366,6 +366,11 @@ func (g *gen) tld(n *cc.Declarator) {
 }
 
 func (g *ngen) tld(n *cc.Declarator) {
+	mn := g.mangleDeclarator(n)
+	if _, ok := g.producedTLDs[mn]; ok {
+		return
+	}
+
 	ds := n.DeclarationSpecifier
 	if ds.IsTypedef() {
 		return
@@ -384,7 +389,6 @@ func (g *ngen) tld(n *cc.Declarator) {
 		g.out0.Reset()
 	}()
 
-	nm := n.Name()
 	t := cc.UnderlyingType(n.Type)
 	if t.Kind() == cc.Function {
 		g.functionDefinition(n)
@@ -395,44 +399,45 @@ func (g *ngen) tld(n *cc.Declarator) {
 		return
 	}
 
+	g.producedTLDs[mn] = struct{}{}
 	pos := g.position(n)
 	pos.Filename, _ = filepath.Abs(pos.Filename)
 	if !isTesting && !g.tweaks.FullTLDPaths {
 		pos.Filename = filepath.Base(pos.Filename)
 	}
 	if n.Linkage == cc.LinkageExternal {
-		g.w("\n\nconst Ld%s = %q", g.mangleDeclarator(n), n.Type)
+		g.w("\n\nconst Ld%s = %q", mn, n.Type)
 	}
-	g.w("\n\n// %s %s, escapes: %v, %v", g.mangleDeclarator(n), g.typeComment(n.Type), g.escaped(n), pos)
+	g.w("\n\n// %s %s, escapes: %v, %v", mn, g.typeComment(n.Type), g.escaped(n), pos)
 	if g.isZeroInitializer(n.Initializer) {
 		if isVaList(n.Type) {
-			g.w("\nvar %s *[]interface{}", g.mangleDeclarator(n))
+			g.w("\nvar %s *[]interface{}", mn)
 			return
 		}
 
 		if g.escaped(n) {
-			g.w("\nvar %s = Lb + %d", g.mangleDeclarator(n), g.model.Sizeof(n.Type))
+			g.w("\nvar %s = Lb + %d", mn, g.model.Sizeof(n.Type))
 			return
 		}
 
 		switch x := t.(type) {
 		case *cc.StructType:
 			todo("", g.position(n))
-			//TODO g.w("\nvar %s = bss + %d\n", g.mangleDeclarator(n), g.allocBSS(n.Type))
+			//TODO g.w("\nvar %s = bss + %d\n", mn, g.allocBSS(n.Type))
 		case *cc.PointerType:
-			g.w("\nvar %s uintptr\n", g.mangleDeclarator(n))
+			g.w("\nvar %s uintptr\n", mn)
 		case
 			*cc.EnumType,
 			cc.TypeKind:
 
 			if x.IsArithmeticType() {
-				g.w("\nvar %s %s\n", g.mangleDeclarator(n), g.typ(n.Type))
+				g.w("\nvar %s %s\n", mn, g.typ(n.Type))
 				break
 			}
 
 			todo("%v: %v", g.position(n), x)
 		default:
-			todo("%v: %s %v %T", g.position(n), dict.S(nm), n.Type, x)
+			todo("%v: %s %v %T", g.position(n), dict.S(n.Name()), n.Type, x)
 		}
 		return
 	}
@@ -444,7 +449,7 @@ func (g *ngen) tld(n *cc.Declarator) {
 
 	switch n.Initializer.Case {
 	case cc.InitializerExpr: // Expr
-		g.w("\nvar %s = ", g.mangleDeclarator(n))
+		g.w("\nvar %s = ", mn)
 		g.convert(n.Initializer.Expr, n.Type)
 		g.w("\n")
 	default:
@@ -585,11 +590,17 @@ func (g *ngen) functionDefinition(n *cc.Declarator) {
 		return
 	}
 
-	if n.Linkage == cc.LinkageExternal {
-		g.w("\n\nconst Ld%s = %q", g.mangleDeclarator(n), n.Type)
+	mn := g.mangleDeclarator(n)
+	if _, ok := g.producedTLDs[mn]; ok {
+		return
 	}
-	g.w("\n\n// %s is defined at %v", g.mangleDeclarator(n), pos)
-	g.w("\nfunc %s(tls %sTLS", g.mangleDeclarator(n), crt)
+
+	g.producedTLDs[mn] = struct{}{}
+	if n.Linkage == cc.LinkageExternal {
+		g.w("\n\nconst Ld%s = %q", mn, n.Type)
+	}
+	g.w("\n\n// %s is defined at %v", mn, pos)
+	g.w("\nfunc %s(tls %sTLS", mn, crt)
 	names := n.ParameterNames()
 	t := n.Type.(*cc.FunctionType)
 	if len(names) != len(t.Params) {
