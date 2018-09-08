@@ -5,19 +5,24 @@
 // Package ccgo translates C99 ASTs to Go source code. Work In Progress. API unstable.
 package ccgo
 
+//TODO must respect 'volatile' -> use sync.Atomic
+
 import (
-	"bufio"
 	"bytes"
 	"container/list"
 	"fmt"
 	"go/scanner"
 	"go/token"
 	"io"
+	"math"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/cznic/cc/v2"
+	"github.com/cznic/ir"
 )
 
 var (
@@ -37,7 +42,11 @@ func init() {
 		pid := fmt.Sprintf("[pid %v] ", os.Getpid())
 
 		log = func(s string, args ...interface{}) {
-			s = fmt.Sprintf(pid+s, args...)
+			if s == "" {
+				s = strings.Repeat("%v ", len(args))
+			}
+			_, fn, fl, _ := runtime.Caller(1)
+			s = fmt.Sprintf(pid+"%s:%d: "+s, append([]interface{}{filepath.Base(fn), fl}, args...)...)
 			switch {
 			case len(s) != 0 && s[len(s)-1] == '\n':
 				fmt.Fprint(f, s)
@@ -113,7 +122,10 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
+	bss                int64
+	crtPrefix          string
 	enqueued           map[interface{}]struct{}
+	enumConsts         map[int]struct{}
 	err                error
 	file               string
 	helpers            map[string]int
@@ -122,9 +134,11 @@ type ngen struct { //TODO rename to gen
 	nextLabel          int
 	num                int
 	nums               map[*cc.Declarator]int
+	opaqueStructTags   map[int]struct{}
 	out                io.Writer
 	out0               bytes.Buffer
 	producedEnumTags   map[int]struct{}
+	producedNamedTypes map[int]struct{}
 	producedStructTags map[int]struct{}
 	producedTLDs       map[string]struct{}
 	queue              list.List
@@ -138,15 +152,23 @@ type ngen struct { //TODO rename to gen
 }
 
 func newNGen(out io.Writer, in *cc.TranslationUnit, file string, tweaks *NewObjectTweaks) *ngen { //TODO rename to newGen
+	crtPrefix := crt
+	if tweaks.FreeStanding {
+		crtPrefix = ""
+	}
 	return &ngen{
+		crtPrefix:          crtPrefix,
 		enqueued:           map[interface{}]struct{}{},
+		enumConsts:         map[int]struct{}{},
 		file:               file,
 		helpers:            map[string]int{},
 		in:                 in,
 		model:              in.Model,
 		nums:               map[*cc.Declarator]int{},
+		opaqueStructTags:   map[int]struct{}{},
 		out:                out,
 		producedEnumTags:   map[int]struct{}{},
+		producedNamedTypes: map[int]struct{}{},
 		producedStructTags: map[int]struct{}{},
 		producedTLDs:       map[string]struct{}{},
 		tCache:             map[tCacheKey]string{},
@@ -156,11 +178,11 @@ func newNGen(out io.Writer, in *cc.TranslationUnit, file string, tweaks *NewObje
 
 func newGen(out io.Writer, in []*cc.TranslationUnit) *gen { //TODO-
 	return &gen{
-		enqueued:  map[interface{}]struct{}{},
-		externs:   map[int]*cc.Declarator{},
-		filenames: map[string]struct{}{},
-		helpers:   map[string]int{},
-		in:        in,
+		enqueued:               map[interface{}]struct{}{},
+		externs:                map[int]*cc.Declarator{},
+		filenames:              map[string]struct{}{},
+		helpers:                map[string]int{},
+		in:                     in,
 		incompleteExternArrays: map[int]*cc.Declarator{},
 		initializedExterns:     map[int]struct{}{},
 		nums:                   map[*cc.Declarator]int{},
@@ -215,7 +237,7 @@ func (g *ngen) enqueue(n interface{}) {
 		}
 
 		if x.Linkage == cc.LinkageInternal {
-			//TODO? g.enqueueNumbered(x)
+			g.enqueueNumbered(x)
 			return
 		}
 
@@ -310,7 +332,7 @@ const %s = uintptr(0)
 	for _, k := range a {
 		tag := dict.SID(k)
 		if _, ok := g.producedStructTags[tag]; !ok {
-			g.w("\ntype S%s struct{ uintptr }\n", k)
+			g.w("\ntype S%s = struct{ uintptr }\n", k)
 		}
 	}
 
@@ -361,33 +383,156 @@ const %s = uintptr(0)
 }
 
 func (g *ngen) gen() (err error) {
+	//traceWrites = true //TODO- DBG
 	defer func() {
 		if g.err == nil {
 			g.err = err
 		}
 	}()
 
+	if g.crtPrefix == "" {
+		g.w("\nconst Lfreestanding = \"1\"\n")
+	}
+
+	if g.tweaks.DefineValues {
+		g.defs()
+	}
+
 	for l := g.in.ExternalDeclarationList; l != nil; l = l.ExternalDeclarationList {
 		switch n := l.ExternalDeclaration; n.Case {
 		case cc.ExternalDeclarationDecl: // Declaration
 			if o := n.Declaration.InitDeclaratorListOpt; o != nil {
 				for l := o.InitDeclaratorList; l != nil; l = l.InitDeclaratorList {
-					g.tld(l.InitDeclarator.Declarator)
+					d := l.InitDeclarator.Declarator
+					ds := d.DeclarationSpecifier
+					if ds.IsTypedef() {
+						continue
+					}
+
+					if d.Linkage != cc.LinkageExternal && len(d.Attributes) == 0 {
+						continue
+					}
+
+					t := cc.UnderlyingType(d.Type)
+					switch {
+					case t.Kind() == cc.Function:
+						if len(d.Attributes) == 0 {
+							continue
+						}
+					default:
+						if d.DeclarationSpecifier.IsExtern() {
+							if len(d.Attributes) != 0 {
+								g.linkInfo(d, true)
+								if _, err := g.out.Write(g.out0.Bytes()); err != nil {
+									return err
+								}
+
+								g.out0.Reset()
+							}
+							continue
+						}
+					}
+
+					g.tld(d)
+				}
+				break
+			}
+
+			for _, v := range n.Declaration.Attributes {
+				if len(v) == 0 {
+					continue
+				}
+
+				switch t := v[0]; t.Rune {
+				case cc.IDENTIFIER:
+					switch t.Val {
+					case idPacked, idPacked2:
+						//TODO Can we always safely ignore the __packed__ attribute of a struct?
+					default:
+						todo("", g.position(n), cc.PrettyString(v))
+					}
+				default:
+					todo("", g.position(n), cc.PrettyString(v))
 				}
 			}
 		case cc.ExternalDeclarationFunc: // FunctionDefinition
-			g.tld(n.FunctionDefinition.Declarator)
+			d := n.FunctionDefinition.Declarator
+			if d.Linkage == cc.LinkageExternal || len(d.Attributes) != 0 {
+				g.tld(d)
+			}
 		default:
 			todo("unexpected %v", n.Case)
 		}
 	}
 	g.defineQueued()
-	if x, ok := g.out.(*bufio.Writer); ok {
-		if e := x.Flush(); e != nil && err == nil {
-			err = e
+
+	var a []string
+	for k := range g.opaqueStructTags {
+		a = append(a, string(dict.S(k)))
+	}
+	sort.Strings(a)
+	for _, k := range a {
+		tag := dict.SID(k)
+		if _, ok := g.producedStructTags[tag]; !ok {
+			g.w("\n\ntype S%s struct{ uintptr }", k)
 		}
 	}
+
+	if err := newNOpt().do(g.out, &g.out0, testFn); err != nil {
+		todo("", err)
+	}
 	return nil
+}
+
+func (g *ngen) defs() {
+	tu := g.in
+	var a []string
+	for _, v := range tu.Macros {
+		if v.IsFnLike {
+			continue
+		}
+
+		nm := string(dict.S(v.DefTok.Val))
+		if strings.HasPrefix(nm, "__") {
+			continue
+		}
+
+		a = append(a, nm)
+	}
+	sort.Strings(a)
+	for _, nm := range a {
+		v := tu.Macros[dict.SID(nm)]
+		op, err := v.Eval(tu.Model, tu.Macros)
+		if err != nil {
+			continue
+		}
+
+		switch x := op.Value.(type) {
+		case *ir.Float32Value:
+			if f := float64(x.Value); math.IsInf(f, 0) || math.IsNaN(f) || f == 0 && math.Signbit(f) {
+				break
+			}
+
+			g.w("\n%sDD%s = \"%v\"\n", lConstPrefix, nm, x.Value)
+		case *ir.Float64Value:
+			if f := x.Value; math.IsInf(f, 0) || math.IsNaN(f) || f == 0 && math.Signbit(f) {
+				break
+			}
+
+			g.w("\n%sDD%s = \"%v\"\n", lConstPrefix, nm, x.Value)
+		case *ir.Int64Value:
+			switch {
+			case op.Type.IsUnsigned():
+				g.w("\n%sDD%s = \"%v\"\n", lConstPrefix, nm, uint64(cc.ConvertInt64(x.Value, op.Type, tu.Model)))
+			default:
+				g.w("\n%sDD%s = \"%v\"\n", lConstPrefix, nm, x.Value)
+			}
+		case *ir.StringValue:
+			g.w("\n%sDD%s = %q\n", lConstPrefix, nm, fmt.Sprintf("%q", dict.S(int(x.StringID))))
+		default:
+			panic(fmt.Errorf("%T", x))
+		}
+	}
 }
 
 // dbg only
@@ -530,13 +675,6 @@ func (g ngen) escaped(n *cc.Declarator) bool {
 	switch cc.UnderlyingType(n.Type).(type) {
 	case *cc.ArrayType:
 		return !n.IsFunctionParameter
-	case
-		*cc.StructType,
-		*cc.TaggedStructType,
-		*cc.TaggedUnionType,
-		*cc.UnionType:
-
-		return n.IsTLD() || n.DeclarationSpecifier.IsStatic()
 	default:
 		return false
 	}

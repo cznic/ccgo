@@ -33,11 +33,11 @@ edit:
 
 editor:
 	gofmt -l -s -w *.go
-	GOOS=linux GOARCH=arm go build -o /dev/null
-	GOOS=linux GOARCH=386 go build -o /dev/null
+	#TODO GOOS=linux GOARCH=arm go build -o /dev/null
+	#TODO GOOS=linux GOARCH=386 go build -o /dev/null
 	GOOS=linux GOARCH=amd64 go build -o /dev/null
-	GOOS=windows GOARCH=386 go build -o /dev/null
-	GOOS=windows GOARCH=amd64 go build -o /dev/null
+	#TODO GOOS=windows GOARCH=386 go build -o /dev/null
+	#TODO GOOS=windows GOARCH=amd64 go build -o /dev/null
 	go test -i
 	touch log
 	cp log log0

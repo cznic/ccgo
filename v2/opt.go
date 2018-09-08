@@ -912,6 +912,13 @@ func (o *nopt) expr(n *ast.Expr, use bool) {
 		}
 	case *ast.InterfaceType:
 		// nop
+	case *ast.SliceExpr:
+		o.expr(&x.X, use)
+		o.expr(&x.Low, use)
+		o.expr(&x.High, use)
+		o.expr(&x.Max, use)
+	case *ast.TypeAssertExpr:
+		o.expr(&x.X, use)
 	case nil:
 		// nop
 	default:

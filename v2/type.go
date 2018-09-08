@@ -230,7 +230,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 		return fmt.Sprintf("[%d]%s", x.Size.Value.(*ir.Int64Value).Value, g.ptyp(x.Item, ptr2uintptr, lvl))
 	case *cc.FunctionType:
 		var buf bytes.Buffer
-		fmt.Fprintf(&buf, "func(%sTLS", crt)
+		fmt.Fprintf(&buf, "func(%sTLS", g.crtPrefix)
 		switch {
 		case len(x.Params) == 1 && x.Params[0].Kind() == cc.Void:
 			// nop
@@ -261,9 +261,11 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 			return fmt.Sprintf("%s", dict.S(x.Name))
 		}
 
+		g.enqueue(x)
 		t := x.Type
 		for {
 			if x, ok := t.(*cc.NamedType); ok {
+				g.enqueue(x)
 				t = x.Type
 				continue
 			}
@@ -309,7 +311,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 			}
 			fmt.Fprintf(&buf, "%s;", g.ptyp(v.Type, ptr2uintptr, lvl+1))
 			if lvl == 0 && ptr2uintptr && v.Type.Kind() == cc.Ptr {
-				fmt.Fprintf(&buf, "// %s\n", g.ptyp(v.Type, false, lvl+1))
+				fmt.Fprintf(&buf, "// %s\n", g.typeComment(v.Type))
 			}
 		}
 		buf.WriteByte('}')
@@ -356,18 +358,55 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 			cc.LongDouble:
 
 			return fmt.Sprintf("float64")
+		case
+			cc.DoubleComplex,
+			cc.LongDoubleComplex:
+
+			return fmt.Sprintf("complex128")
+		case cc.FloatComplex:
+			return fmt.Sprintf("complex64")
 		default:
 			todo("", x)
 		}
 	case *cc.UnionType:
+		var buf bytes.Buffer
+		buf.WriteString("struct{")
+		layout := g.model.Layout(x)
+		for i, v := range x.Fields {
+			if v.Bits < 0 {
+				continue
+			}
+
+			if v.Bits != 0 {
+				if layout[i].Bitoff == 0 {
+					fmt.Fprintf(&buf, "F%d [0]%s;", i, g.typ(layout[i].PackedType))
+					if lvl == 0 {
+						fmt.Fprintf(&buf, "\n")
+					}
+				}
+				continue
+			}
+
+			switch {
+			case v.Name == 0:
+				fmt.Fprintf(&buf, "_ ")
+			default:
+				fmt.Fprintf(&buf, "F%s ", dict.S(v.Name))
+			}
+			fmt.Fprintf(&buf, "[0]%s;", g.ptyp(v.Type, ptr2uintptr, lvl+1))
+			if lvl == 0 && ptr2uintptr && v.Type.Kind() == cc.Ptr {
+				fmt.Fprintf(&buf, "// %s\n", g.typeComment(v.Type))
+			}
+		}
 		al := int64(g.model.Alignof(x))
 		sz := g.model.Sizeof(x)
 		switch {
 		case al == sz:
-			return fmt.Sprintf("struct{F int%d}", 8*sz)
+			fmt.Fprintf(&buf, "F int%d}", 8*sz)
 		default:
-			return fmt.Sprintf("struct{F int%d; _ [%d]byte}", 8*al, sz-al) //TODO use precomputed padding from model layout?
+			fmt.Fprintf(&buf, "F int%d; _ [%d]byte}", 8*al, sz-al) //TODO use precomputed padding from model layout?
 		}
+		return buf.String()
 	default:
 		todo("%v %T %v\n%v", t, x, ptr2uintptr, pretty(x))
 	}
@@ -457,10 +496,13 @@ func underlyingType(t cc.Type, enums bool) cc.Type {
 			case
 				cc.Char,
 				cc.Double,
+				cc.DoubleComplex,
 				cc.Float,
+				cc.FloatComplex,
 				cc.Int,
 				cc.Long,
 				cc.LongDouble,
+				cc.LongDoubleComplex,
 				cc.LongLong,
 				cc.SChar,
 				cc.Short,

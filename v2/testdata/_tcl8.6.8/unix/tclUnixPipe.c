@@ -411,6 +411,10 @@ TclpCreateProcess(
     Tcl_DString *dsArray;
     char **newArgv;
     int pid, i;
+    __GO__(
+	"var argv []string\n"
+	"var cmd *exec.Cmd\n"
+    );
 
     errPipeIn = NULL;
     errPipeOut = NULL;
@@ -459,44 +463,83 @@ TclpCreateProcess(
     }
 #endif
 
-    pid = fork();
-    if (pid == 0) {
-	size_t len;
-	int joinThisError = errorFile && (errorFile == outputFile);
+    // pid = fork();
+    // if (pid == 0) {
+    //     size_t len;
+    //     int joinThisError = errorFile && (errorFile == outputFile);
 
-	fd = GetFd(errPipeOut);
+    //     fd = GetFd(errPipeOut);
 
-	/*
-	 * Set up stdio file handles for the child process.
-	 */
+    //     /*
+    //      * Set up stdio file handles for the child process.
+    //      */
 
-	if (!SetupStdFile(inputFile, TCL_STDIN)
-		|| !SetupStdFile(outputFile, TCL_STDOUT)
-		|| (!joinThisError && !SetupStdFile(errorFile, TCL_STDERR))
-		|| (joinThisError &&
-			((dup2(1,2) == -1) || (fcntl(2, F_SETFD, 0) != 0)))) {
-	    sprintf(errSpace,
-		    "%dforked process couldn't set up input/output", errno);
-	    len = strlen(errSpace);
-	    if (len != (size_t) write(fd, errSpace, len)) {
-		    Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
-	    }
-	    _exit(1);
-	}
+    //     if (!SetupStdFile(inputFile, TCL_STDIN)
+    //     	|| !SetupStdFile(outputFile, TCL_STDOUT)
+    //     	|| (!joinThisError && !SetupStdFile(errorFile, TCL_STDERR))
+    //     	|| (joinThisError &&
+    //     		((dup2(1,2) == -1) || (fcntl(2, F_SETFD, 0) != 0)))) {
+    //         sprintf(errSpace,
+    //     	    "%dforked process couldn't set up input/output", errno);
+    //         len = strlen(errSpace);
+    //         if (len != (size_t) write(fd, errSpace, len)) {
+    //     	    Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
+    //         }
+    //         _exit(1);
+    //     }
 
-	/*
-	 * Close the input side of the error pipe.
-	 */
+    //     /*
+    //      * Close the input side of the error pipe.
+    //      */
 
-	RestoreSignals();
-	execvp(newArgv[0], newArgv);			/* INTL: Native. */
-	sprintf(errSpace, "%dcouldn't execute \"%.150s\"", errno, argv[0]);
-	len = strlen(errSpace);
-	if (len != (size_t) write(fd, errSpace, len)) {
-	    Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
-	}
-	_exit(1);
-    }
+    //     RestoreSignals();
+    //     execvp(newArgv[0], newArgv);			/* INTL: Native. */
+    //     sprintf(errSpace, "%dcouldn't execute \"%.150s\"", errno, argv[0]);
+    //     len = strlen(errSpace);
+    //     if (len != (size_t) write(fd, errSpace, len)) {
+    //         Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
+    //     }
+    //     _exit(1);
+    // }
+    __GO__(
+	"_pid = 0\n"
+	"for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
+	"	q := *(*uintptr)(unsafe.Pointer(p))\n"
+	"	if q == 0 {\n"
+	"		break\n"
+	"	}\n"
+	"	argv = append(argv, crt.GoString(q))\n"
+	"}\n"
+	"cmd = exec.Command(argv[0], argv[1:]...)\n"
+	"if fd := _inputFile; fd != 0 {\n"
+	"	fd--\n"
+	"	f := os.NewFile(fd, `inputFile`)\n"
+	"	if f == nil {\n"
+	"		panic(fd)\n"
+	"	}\n"
+	"	cmd.Stdin = f\n"
+	"}\n"
+	"if fd := _outputFile; fd != 0 {\n"
+	"	fd--\n"
+	"	f := os.NewFile(fd, `outputFile`)\n"
+	"	if f == nil {\n"
+	"		panic(fd)\n"
+	"	}\n"
+	"	cmd.Stdout = f\n"
+	"}\n"
+	"if fd := _errorFile; fd != 0 {\n"
+	"	fd--\n"
+	"	f := os.NewFile(fd, `errorFile`)\n"
+	"	if f == nil {\n"
+	"		panic(fd)\n"
+	"	}\n"
+	"	cmd.Stderr = f\n"
+	"}\n"
+	"if err := cmd.Start(); err != nil {\n"
+	"	panic(err)\n"
+	"}\n"
+	"_pid = int32(cmd.Process.Pid)\n"
+    );
 
     /*
      * Free the mem we used for the fork

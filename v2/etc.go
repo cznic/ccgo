@@ -35,19 +35,38 @@ var (
 	bPanic           = []byte("panic")
 	dict             = xc.Dict
 
+	idAlias                  = dict.SID("alias")
+	idAligned                = dict.SID("aligned")
 	idBacktrace              = dict.SID("backtrace")
+	idBuiltin                = dict.SID("__builtin_")
 	idBuiltinAlloca          = dict.SID("__builtin_alloca")
 	idBuiltinTypesCompatible = dict.SID("__builtin_types_compatible__") // Implements __builtin_types_compatible_p
 	idBuiltinVaList          = dict.SID("__builtin_va_list")
 	idFuncName               = dict.SID("__func__")
+	idGo                     = dict.SID("__GO__")
+	idLS                     = dict.SID("LS")
 	idMain                   = dict.SID("main")
+	idNoInline               = dict.SID("noinline")
+	idNoInline2              = dict.SID("__noinline__")
+	idNoReturn               = dict.SID("noreturn")
+	idNoReturn2              = dict.SID("__noreturn__")
+	idPacked                 = dict.SID("packed")
+	idPacked2                = dict.SID("__packed__")
+	idPure                   = dict.SID("pure")
 	idStart                  = dict.SID("_start")
+	idStdcall                = dict.SID("stdcall")
 	idStderr                 = dict.SID("stderr")
 	idStdin                  = dict.SID("stdin")
 	idStdout                 = dict.SID("stdout")
+	idUU                     = dict.SID("__")
 	idVaEnd                  = dict.SID("__ccgo_va_end")
 	idVaList                 = dict.SID("va_list")
 	idVaStart                = dict.SID("__ccgo_va_start")
+	idVisibility             = dict.SID("visibility")
+	idVisibility2            = dict.SID("__visibility__")
+	idWcharT                 = dict.SID("wchar_t")
+	idWeak                   = dict.SID("weak")
+	idWeak2                  = dict.SID("__weak__")
 
 	testFn      string
 	traceOpt    bool
@@ -116,6 +135,10 @@ func mangleIdent(nm int, exported bool) string {
 	}
 }
 
+func mangleLabel(nm int) string {
+	return fmt.Sprintf("l%s", dict.S(nm))
+}
+
 func printError(w io.Writer, pref string, err error) {
 	switch x := err.(type) {
 	case scanner.ErrorList:
@@ -174,6 +197,9 @@ func todo(msg string, args ...interface{}) {
 
 func isFnPtr(t cc.Type, out *cc.Type) bool {
 	switch x := cc.UnderlyingType(t).(type) {
+	case *cc.FunctionType:
+		*out = x
+		return true
 	case *cc.PointerType:
 		if x.Item.Kind() == cc.Function {
 			if out != nil {

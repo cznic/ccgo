@@ -174,11 +174,12 @@ func (g *ngen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map
 		if g.escaped(v) {
 			malloc = roundup(malloc, 16)
 			offv = append(offv, malloc)
+			//fmt.Printf("%v:\n", g.position(v)) //TODO- DBG
 			malloc += g.model.Sizeof(v.Type)
 		}
 	}
 	if malloc != 0 {
-		g.w("\nesc := %sMustMalloc(%d)", crt, malloc)
+		g.w("\nesc := %sMustMalloc(%d)", g.crtPrefix, malloc)
 	}
 	if len(vars)+len(escParams) != 0 {
 		localNames := map[int]struct{}{}
@@ -232,17 +233,17 @@ func (g *ngen) compoundStmt(n *cc.CompoundStmt, vars []*cc.Declarator, cases map
 	case alloca:
 		g.w("\ndefer func() {")
 		if malloc != 0 {
-			g.w("\n%sFree(esc)", crt)
+			g.w("\n%sFree(esc)", g.crtPrefix)
 		}
 		if alloca {
 			g.w(`
 for _, v := range allocs {
 	%sFree(v)
-}`, crt)
+}`, g.crtPrefix)
 		}
 		g.w("\n}()")
 	case malloc != 0:
-		g.w("\ndefer %sFree(esc)", crt)
+		g.w("\ndefer %sFree(esc)", g.crtPrefix)
 	}
 	for _, v := range escParams {
 		g.w("\n*(*%s)(unsafe.Pointer(%s)) = a%s", g.typ(v.Type), g.mangleDeclarator(v), dict.S(v.Name()))
@@ -296,6 +297,9 @@ func (g *gen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, con
 }
 
 func (g *ngen) blockItem(n *cc.BlockItem, cases map[*cc.LabeledStmt]int, brk, cont *int, deadcode *bool, main bool) {
+	if g.tweaks.Watch {
+		g.w("\ncrt.Watch(tls)")
+	}
 	switch n.Case {
 	case cc.BlockItemDecl: // Declaration
 		g.declaration(n.Declaration, deadcode)
@@ -382,7 +386,10 @@ func (g *ngen) labeledStmt(n *cc.LabeledStmt, cases map[*cc.LabeledStmt]int, brk
 		*deadcode = false
 		g.stmt(n.Stmt, cases, brk, cont, &f, main)
 	case cc.LabeledStmtLabel: // IDENTIFIER ':' Stmt
-		g.w("\ngoto %[1]s;%[1]s:\n", mangleIdent(n.Token.Val, false))
+		g.w("\ngoto %[1]s;%[1]s:\n", mangleLabel(n.Token.Val))
+		g.stmt(n.Stmt, cases, brk, cont, &f, main)
+	case cc.LabeledStmtLabel2: // TYPEDEF_NAME ':' Stmt
+		g.w("\ngoto %[1]s;%[1]s:\n", mangleLabel(n.Token.Val))
 		g.stmt(n.Stmt, cases, brk, cont, &f, main)
 	default:
 		todo("", g.position(n), n.Case)
@@ -765,6 +772,42 @@ func (g *ngen) iterationStmt(n *cc.IterationStmt, cases map[*cc.LabeledStmt]int,
 			g.w("\ngoto _%d\n\n_%d:", c, c)
 			*deadcode = false
 		}
+	case cc.IterationStmtForDecl: // "for" '(' Declaration ExprListOpt ';' ExprListOpt ')' Stmt
+		// Declaration
+		// A:
+		// if ExprListOpt == 0 { goto C }
+		// Stmt
+		// B: <- continue
+		// ExprListOpt2
+		// goto A
+		// C: <- break
+		g.w("\n")
+		g.declaration(n.Declaration, deadcode)
+		a := g.local()
+		b := -g.local()
+		c := -g.local()
+		g.w("\n_%d:", a)
+		*deadcode = false
+		if n.ExprListOpt != nil {
+			g.w("if ")
+			g.exprList(n.ExprListOpt.ExprList, false)
+			c = -c
+			g.w(" == 0 { goto _%d }\n", c)
+		}
+		g.stmt(n.Stmt, cases, &c, &b, deadcode, main)
+		if n.ExprListOpt2 != nil {
+			g.w("\n")
+		}
+		if b > 0 {
+			g.w("\n_%d:", b)
+			*deadcode = false
+		}
+		g.exprListOpt(n.ExprListOpt2, true)
+		g.w("\ngoto _%d\n", a)
+		if c > 0 {
+			g.w("\n_%d:", c)
+			*deadcode = false
+		}
 	case cc.IterationStmtFor: // "for" '(' ExprListOpt ';' ExprListOpt ';' ExprListOpt ')' Stmt
 		// ExprListOpt
 		// A:
@@ -967,7 +1010,7 @@ func (g *ngen) jumpStmt(n *cc.JumpStmt, brk, cont *int, deadcode *bool, main boo
 		}
 		g.w("\ngoto _%d\n", *brk)
 	case cc.JumpStmtGoto: // "goto" IDENTIFIER ';'
-		g.w("\ngoto %s\n", mangleIdent(n.Token2.Val, false))
+		g.w("\ngoto %s\n", mangleLabel(n.Token2.Val))
 	case cc.JumpStmtContinue: // "continue" ';'
 		if *cont < 0 {
 			*cont = -*cont // Signal used.

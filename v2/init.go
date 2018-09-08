@@ -61,10 +61,12 @@ func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 			return true
 		case *cc.StructType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -84,10 +86,12 @@ func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 			return true
 		case *cc.UnionType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -116,7 +120,7 @@ func (g *gen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 
 		switch x := underlyingType(t, true).(type) {
 		case *cc.ArrayType:
-			switch y := n.Expr.Operand.Value.(type) {
+			switch y := op.Value.(type) {
 			case *ir.StringValue:
 				if x.Size.Value != nil {
 					switch x.Item.Kind() {
@@ -162,10 +166,12 @@ func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 			return true
 		case *cc.StructType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -185,10 +191,12 @@ func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 			return true
 		case *cc.UnionType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -217,7 +225,7 @@ func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 
 		switch x := underlyingType(t, true).(type) {
 		case *cc.ArrayType:
-			switch y := n.Expr.Operand.Value.(type) {
+			switch y := op.Value.(type) {
 			case *ir.StringValue:
 				if x.Size.Value != nil {
 					switch x.Item.Kind() {
@@ -240,6 +248,13 @@ func (g *ngen) isConstInitializer(t cc.Type, n *cc.Initializer) bool {
 		case cc.TypeKind:
 			if x.IsArithmeticType() {
 				return true
+			}
+		case *cc.StructType:
+			switch x := op.Value.(type) {
+			case *ir.Int64Value:
+				return true
+			default:
+				todo("%v: %T %v %v", g.position(n), x, t, op)
 			}
 		case *cc.UnionType:
 			switch x := op.Value.(type) {
@@ -321,11 +336,13 @@ func (g *gen) initializer(d *cc.Declarator) { // non TLD
 			switch x := underlyingType(d.Type, true).(type) {
 			case *cc.StructType:
 				layout := g.model.Layout(x)
-				fld := 0
+				var fld int64
 				fields := x.Fields
 				for l := n.InitializerList; l != nil; l = l.InitializerList {
-					for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-						fld++
+					if fld < int64(len(layout)) {
+						for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+							fld++
+						}
 					}
 					if d := l.Designation; d != nil {
 						l := d.List
@@ -340,7 +357,7 @@ func (g *gen) initializer(d *cc.Declarator) { // non TLD
 					case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 						todo("", g.position0(n))
 					case cc.InitializerExpr: // Expr
-						fp := x.Field(fields[fld].Name)
+						fp := x.Field(fields[fld].Name) //TODO mixed index fieds vs layout
 						e := &cc.Expr{
 							Case: cc.ExprAssign,
 							Expr: &cc.Expr{
@@ -352,7 +369,7 @@ func (g *gen) initializer(d *cc.Declarator) { // non TLD
 									Token:      xc.Token{Val: d.Name()},
 								},
 								Operand: cc.Operand{Type: fp.Type, FieldProperties: fp},
-								Token2:  xc.Token{Val: fields[fld].Name},
+								Token2:  xc.Token{Val: fields[fld].Name}, //TODO mixed index fieds vs layout
 							},
 							Expr2:   n.Expr,
 							Operand: cc.Operand{Type: fp.Declarator.Type},
@@ -402,7 +419,7 @@ func (g *ngen) initializer(d *cc.Declarator) {
 		}
 		switch {
 		case g.escaped(d):
-			g.w("\n%sCopy(%s, %q, %d)", crt, g.mangleDeclarator(d), b, len(b))
+			g.w("\n%sCopy(%s, %q, %d)", g.crtPrefix, g.mangleDeclarator(d), b, len(b))
 		default:
 			g.w("\n%s = *(*%s)(unsafe.Pointer(%q))", g.mangleDeclarator(d), g.typ(d.Type), b)
 		}
@@ -416,11 +433,13 @@ func (g *ngen) initializer(d *cc.Declarator) {
 			switch x := underlyingType(d.Type, true).(type) {
 			case *cc.StructType:
 				layout := g.model.Layout(x)
-				fld := 0
+				var fld int64
 				fields := x.Fields
 				for l := n.InitializerList; l != nil; l = l.InitializerList {
-					for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-						fld++
+					if fld < int64(len(layout)) {
+						for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+							fld++
+						}
 					}
 					if d := l.Designation; d != nil {
 						l := d.List
@@ -435,7 +454,7 @@ func (g *ngen) initializer(d *cc.Declarator) {
 					case cc.InitializerCompLit: // '{' InitializerList CommaOpt '}'
 						todo("", g.position(n))
 					case cc.InitializerExpr: // Expr
-						fp := x.Field(fields[fld].Name)
+						fp := x.Field(fields[fld].Name) //TODO mixed index fieds vs layout
 						e := &cc.Expr{
 							Case: cc.ExprAssign,
 							Expr: &cc.Expr{
@@ -447,7 +466,7 @@ func (g *ngen) initializer(d *cc.Declarator) {
 									Token:      xc.Token{Val: d.Name()},
 								},
 								Operand: cc.Operand{Type: fp.Type, FieldProperties: fp},
-								Token2:  xc.Token{Val: fields[fld].Name},
+								Token2:  xc.Token{Val: fields[fld].Name}, //TODO mixed index fieds vs layout
 							},
 							Expr2:   n.Expr,
 							Operand: cc.Operand{Type: fp.Declarator.Type},
@@ -495,10 +514,12 @@ func (g *gen) initializerHasBitFields(t cc.Type, n *cc.Initializer) bool {
 			return false
 		case *cc.StructType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -563,10 +584,41 @@ func (g *ngen) initializerHasBitFields(t cc.Type, n *cc.Initializer) bool {
 			return false
 		case *cc.StructType:
 			layout := g.model.Layout(x)
-			fld := 0
+			var fld int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
+				}
+				if d := l.Designation; d != nil {
+					l := d.List
+					if len(l) != 1 {
+						todo("", g.position(n))
+					}
+
+					fld = l[0]
+				}
+
+				if layout[fld].Bits > 0 {
+					return true
+				}
+
+				if g.initializerHasBitFields(layout[fld].Type, l.Initializer) {
+					return true
+				}
+
+				fld++
+			}
+			return false
+		case *cc.UnionType:
+			layout := g.model.Layout(x)
+			var fld int64
+			for l := n.InitializerList; l != nil; l = l.InitializerList {
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -681,11 +733,13 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 		g.initializerListNL(n.InitializerList)
 		if !g.isZeroInitializer(n) {
 			layout := g.model.Layout(t)
-			fld := 0
+			var fld int64
 			fields := x.Fields
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -700,7 +754,7 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 					todo("bit field %v", g.position0(n))
 				}
 				if !g.isZeroInitializer(l.Initializer) {
-					d := fields[fld]
+					d := fields[fld] //TODO mixed index fieds vs layout
 					g.w("%s: ", mangleIdent(d.Name, true))
 					g.literal(d.Type, l.Initializer)
 					g.w(", ")
@@ -738,11 +792,13 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 		g.w("*(*%s)(unsafe.Pointer(&struct{", g.typ(t))
 		if !g.isZeroInitializer(n) {
 			layout := g.model.Layout(t)
-			fld := 0
+			var fld int64
 			fields := x.Fields
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -760,7 +816,7 @@ func (g *gen) literal(t cc.Type, n *cc.Initializer) {
 					todo("", g.position0(n))
 				}
 
-				d := fields[fld]
+				d := fields[fld] //TODO mixed index fieds vs layout
 				switch pad := g.model.Sizeof(t) - g.model.Sizeof(d.Type); {
 				case pad == 0:
 					g.w("%s}{", g.typ(d.Type))
@@ -781,32 +837,71 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 	switch x := cc.UnderlyingType(t).(type) {
 	case *cc.ArrayType:
 		if n.Expr != nil {
-			switch x.Item.Kind() {
-			case
-				cc.Char,
-				cc.UChar:
+			it := x.Item
+			switch y := it.(type) {
+			case cc.TypeKind:
+				switch y {
+				case
+					cc.Char,
+					cc.UChar:
 
-				g.w("*(*%s)(unsafe.Pointer(", g.typ(t))
-				switch n.Expr.Case {
-				case cc.ExprString:
-					s := dict.S(int(n.Expr.Operand.Value.(*ir.StringValue).StringID))
-					switch {
-					case x.Size.Value == nil:
-						g.w("%q", s)
-					default:
-						b := make([]byte, x.Size.Value.(*ir.Int64Value).Value)
-						copy(b, s)
-						if len(b) != 0 && b[len(b)-1] == 0 {
-							b = b[:len(b)-1]
+					g.w("*(*%s)(unsafe.Pointer(", g.typ(t))
+					switch n.Expr.Case {
+					case cc.ExprString:
+						s := dict.S(int(n.Expr.Operand.Value.(*ir.StringValue).StringID))
+						switch {
+						case x.Size.Value == nil:
+							g.w("%q", s)
+						default:
+							b := make([]byte, x.Size.Value.(*ir.Int64Value).Value)
+							copy(b, s)
+							if len(b) != 0 && b[len(b)-1] == 0 {
+								b = b[:len(b)-1]
+							}
+							g.w("%q", string(b))
 						}
-						g.w("%q", string(b))
+					default:
+						todo("", g.position(n), n.Expr.Case)
+					}
+					g.w("))")
+				}
+			case *cc.NamedType:
+				switch {
+				case y.Name == idWcharT:
+					switch it := underlyingType(y.Type, false); it.Kind() {
+					case cc.Int:
+						sz := g.model.Sizeof(it)
+						g.w("*(*%s)(unsafe.Pointer(", g.typ(t))
+						switch n.Expr.Case {
+						case cc.ExprLString:
+							s := n.Expr.Operand.Value.(*ir.WideStringValue).Value
+							switch {
+							case x.Size.Value == nil:
+								todo("", g.position(n))
+							default:
+								b := make([]byte, len(s)*int(sz)+3)
+								for i, v := range s {
+									switch sz {
+									case 4:
+										*(*uint32)(unsafe.Pointer(&b[4*i])) = uint32(v)
+									default:
+										todo("", g.position(n), sz)
+									}
+								}
+								g.w("%q", string(b))
+							}
+						default:
+							todo("", g.position(n), n.Expr.Case)
+						}
+						g.w("))")
+					default:
+						todo("%v: %v", g.position(n), it)
 					}
 				default:
-					todo("", g.position(n), n.Expr.Case)
+					todo("%v:", g.position(n))
 				}
-				g.w("))")
 			default:
-				todo("", g.position(n), x.Item.Kind())
+				todo("%v: %T", g.position(n), y)
 			}
 			return
 		}
@@ -814,10 +909,15 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 		g.w("%s{", g.typ(t))
 		g.initializerListNL(n.InitializerList)
 		if !g.isZeroInitializer(n) {
-			index := 0
+			var index int64
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				if l.Designation != nil {
-					todo("", g.position(n))
+				if d := l.Designation; d != nil {
+					l := d.List
+					if len(l) != 1 {
+						todo("", g.position(n))
+					}
+
+					index = l[0]
 				}
 				if !g.isZeroInitializer(l.Initializer) {
 					g.w("%d: ", index)
@@ -846,11 +946,13 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 		g.initializerListNL(n.InitializerList)
 		if !g.isZeroInitializer(n) {
 			layout := g.model.Layout(t)
-			fld := 0
+			var fld int64
 			fields := x.Fields
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -865,7 +967,7 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 					todo("bit field %v", g.position(n))
 				}
 				if !g.isZeroInitializer(l.Initializer) {
-					d := fields[fld]
+					d := fields[fld] //TODO mixed index fieds vs layout
 					g.w("F%s: ", dict.S(d.Name))
 					g.literal(d.Type, l.Initializer)
 					g.w(", ")
@@ -898,18 +1000,20 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 		}
 
 		if n.Expr != nil {
-			todo("", g.position(n), x)
+			g.value(n.Expr, false)
 			return
 		}
 
 		g.w("*(*%s)(unsafe.Pointer(&struct{", g.typ(t))
 		if !g.isZeroInitializer(n) {
 			layout := g.model.Layout(t)
-			fld := 0
+			var fld int64
 			fields := x.Fields
 			for l := n.InitializerList; l != nil; l = l.InitializerList {
-				for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-					fld++
+				if fld < int64(len(layout)) {
+					for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+						fld++
+					}
 				}
 				if d := l.Designation; d != nil {
 					l := d.List
@@ -923,14 +1027,11 @@ func (g *ngen) literal(t cc.Type, n *cc.Initializer) {
 				case layout[fld].Bits > 0:
 					todo("bit field %v", g.position(n))
 				}
-				if fld != 0 {
-					todo("", g.position(n))
-				}
 
-				d := fields[fld]
+				d := fields[fld] //TODO mixed index fieds vs layout
 				switch pad := g.model.Sizeof(t) - g.model.Sizeof(d.Type); {
 				case pad == 0:
-					g.w("%s}{", g.typ(d.Type))
+					g.w("f %s}{", g.typ(d.Type))
 				default:
 					g.w("f %s; _[%d]byte}{f: ", g.typ(d.Type), pad)
 				}
@@ -1003,11 +1104,13 @@ func (g *gen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 		}
 
 		layout := g.model.Layout(t)
-		fld := 0
+		var fld int64
 		fields := x.Fields
 		for l := n.InitializerList; l != nil; l = l.InitializerList {
-			for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-				fld++
+			if fld < int64(len(layout)) {
+				for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+					fld++
+				}
 			}
 			if d := l.Designation; d != nil {
 				l := d.List
@@ -1048,7 +1151,7 @@ func (g *gen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 					todo("", g.position0(n), sz, v)
 				}
 			default:
-				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer)
+				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer) //TODO mixed index fieds vs layout
 			}
 			fld++
 		}
@@ -1105,11 +1208,13 @@ func (g *gen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 		}
 
 		layout := g.model.Layout(t)
-		fld := 0
+		var fld int64
 		fields := x.Fields
 		for l := n.InitializerList; l != nil; l = l.InitializerList {
-			for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-				fld++
+			if fld < int64(len(layout)) {
+				for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+					fld++
+				}
 			}
 			if d := l.Designation; d != nil {
 				l := d.List
@@ -1153,7 +1258,7 @@ func (g *gen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 					todo("", g.position0(n), sz, v)
 				}
 			default:
-				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer)
+				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer) //TODO mixed index fieds vs layout
 			}
 			fld++
 		}
@@ -1184,10 +1289,26 @@ func (g *ngen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 		}
 
 		itemSz := g.model.Sizeof(x.Item)
+		if x.Item.Kind() == cc.Char && n.InitializerList.Len == 1 {
+			in := n.InitializerList.Initializer
+			if in.Expr != nil {
+				switch x := in.Expr.Operand.Value.(type) {
+				case *ir.StringValue:
+					copy(b, dict.S(int(x.StringID)))
+					return
+				}
+			}
+		}
+
 		var index int64
 		for l := n.InitializerList; l != nil; l = l.InitializerList {
-			if l.Designation != nil {
-				todo("", g.position(n))
+			if d := l.Designation; d != nil {
+				l := d.List
+				if len(l) != 1 {
+					todo("", g.position(n), l)
+				}
+
+				index = l[0]
 			}
 			lo := index * itemSz
 			hi := lo + itemSz
@@ -1209,11 +1330,13 @@ func (g *ngen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 		}
 
 		layout := g.model.Layout(t)
-		fld := 0
+		var fld int64
 		fields := x.Fields
 		for l := n.InitializerList; l != nil; l = l.InitializerList {
-			for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-				fld++
+			if fld < int64(len(layout)) {
+				for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+					fld++
+				}
 			}
 			if d := l.Designation; d != nil {
 				l := d.List
@@ -1254,7 +1377,7 @@ func (g *ngen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 					todo("", g.position(n), sz, v)
 				}
 			default:
-				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer)
+				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer) //TODO mixed index fieds vs layout
 			}
 			fld++
 		}
@@ -1306,16 +1429,26 @@ func (g *ngen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 			todo("", g.position(n), x)
 		}
 	case *cc.UnionType:
+		layout := g.model.Layout(t)
 		if n.Expr != nil {
-			todo("", g.position(n))
+			fp := layout[0]
+			if fp.Bits != 0 {
+				todo("", g.position(n))
+			}
+
+			lo := fp.Offset
+			hi := lo + fp.Size
+			g.renderInitializerExpr(b[lo:hi:hi], fp.Type, n.Expr)
+			return
 		}
 
-		layout := g.model.Layout(t)
-		fld := 0
 		fields := x.Fields
+		var fld int64
 		for l := n.InitializerList; l != nil; l = l.InitializerList {
-			for layout[fld].Bits < 0 || layout[fld].Declarator == nil {
-				fld++
+			if fld < int64(len(layout)) {
+				for !layout[fld].Anonymous && (layout[fld].Bits < 0 || layout[fld].Declarator == nil) {
+					fld++
+				}
 			}
 			if d := l.Designation; d != nil {
 				l := d.List
@@ -1359,9 +1492,29 @@ func (g *ngen) renderInitializer(b []byte, t cc.Type, n *cc.Initializer) {
 					todo("", g.position(n), sz, v)
 				}
 			default:
-				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer)
+				g.renderInitializer(b[lo:hi:hi], fields[fld].Type, l.Initializer) //TODO mixed index fieds vs layout
 			}
 			fld++
+		}
+	default:
+		todo("%v: %T", g.position(n), x)
+	}
+}
+
+func (g *ngen) renderInitializerExpr(b []byte, t cc.Type, n *cc.Expr) {
+	switch x := cc.UnderlyingType(t).(type) {
+	case cc.TypeKind:
+		switch x {
+		case cc.Int:
+			v := uint64(n.Operand.Value.(*ir.Int64Value).Value)
+			switch sz := g.model.Sizeof(t); sz {
+			case 4:
+				*(*uint32)(unsafe.Pointer(&b[0])) = uint32(v)
+			default:
+				todo("", g.position(n), sz, v)
+			}
+		default:
+			todo("%v: %v", g.position(n), x)
 		}
 	default:
 		todo("%v: %T", g.position(n), x)

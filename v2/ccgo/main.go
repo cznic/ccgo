@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//TODO remove all produced files on error/panic.
+
 // Command ccgo is a C compiler targeting Go.
 //
 // Usage
@@ -14,7 +16,11 @@
 //                                   of the preprocessor, including predefined macros.
 //       -D<macro>[=<val>]           Define a <macro> with <val> as its value.  If
 //                                   just <macro> is given, <val> is taken to be 1
+//       -e ADDRESS, --entry ADDRESS Set start address (ignored)
 //       -E                          Preprocess only; do not compile, assemble or link
+//       -ffreestanding              Do not assume that standard C libraries and
+//                                   "main" exist
+//       -fomit-frame-pointer        When possible do not generate stack frames (ignored)
 //       -fPIC                       Generate position-independent code if possible
 //       --help                      Display this information
 //       -g --gen-debug              generate debugging information (ignored)
@@ -26,6 +32,7 @@
 //       -L DIRECTORY, --library-path DIRECTORY
 //                                   Add DIRECTORY to library search path
 //       -m64                        Generate 64bit x86-64 code
+//       -nostdlib                   Do not look for object files in standard path (ignored)
 //       -o <file>                   Place the output into <file>. Use .go extension
 //                                   to produce a Go source file instead of a binary.
 //       -O                          Optimize output file (ignored)
@@ -42,10 +49,17 @@
 //       -x <language>               Specify the language of the following input files.
 //                                   Permissible languages include: c.
 //
+//       --ccgo-define-values        Emit #defines that evaluate to a constant
 //       --ccgo-full-paths           Keep full source code positions instead of
 //                                   basenames
 //       --ccgo-go                   Do not remove the Go source file used to link the
 //                                   executable file and print its path
+//       --ccgo-import <paths>       Add import comma separated paths
+//       --ccgo-pkg-name             Set output Go file package name
+//       --ccgo-struct-checks        Generate code to verify struct/union sizes
+//                                   and field offsets.
+//       --ccgo-use-import <exprs>   Add import usage comma separated expressions
+//       --ccgo-watch                Enable run time watch instrumentation
 //
 // Installation
 //
@@ -74,12 +88,12 @@ import (
 	"github.com/cznic/cc/v2"
 	"github.com/cznic/ccgo/v2"
 	"github.com/cznic/ccgo/v2/internal/object"
+	"github.com/cznic/crt"
 )
 
 const (
-	version = "0.0.1"
-	crt     = "crt."
-	crt0c   = "crt0.c"
+	version   = "0.0.1"
+	crtPrefix = "crt."
 
 	help = `
   -c                          Compile and assemble, but do not link
@@ -88,7 +102,11 @@ const (
                               of the preprocessor, including predefined macros.
   -D<macro>[=<val>]           Define a <macro> with <val> as its value.  If
                               just <macro> is given, <val> is taken to be 1
+  -e ADDRESS, --entry ADDRESS Set start address (ignored)
   -E                          Preprocess only; do not compile, assemble or link
+  -ffreestanding              Do not assume that standard C libraries and
+                              "main" exist
+  -fomit-frame-pointer        When possible do not generate stack frames (ignored)
   -fPIC                       Generate position-independent code if possible
   --help                      Display this information
   -g --gen-debug              generate debugging information (ignored)
@@ -100,6 +118,7 @@ const (
   -L DIRECTORY, --library-path DIRECTORY
                               Add DIRECTORY to library search path
   -m64                        Generate 64bit x86-64 code
+  -nostdlib                   Do not look for object files in standard path
   -o <file>                   Place the output into <file>. Use .go extension
                               to produce a Go source file instead of a binary.
   -O                          Optimize output file (ignored)
@@ -116,10 +135,16 @@ const (
   -x <language>               Specify the language of the following input files.
                               Permissible languages include: c.
 
+  --ccgo-define-values        Emit #defines that evaluate to a constant
   --ccgo-full-paths           Keep full source code positions instead of
                               basenames
   --ccgo-go                   Do not remove the Go source file used to link the
                               executable file and print its path
+  --ccgo-import <paths>       Add import comma separated paths
+  --ccgo-pkg-name             Set output Go file package name
+  --ccgo-struct-checks        Generate code to verify struct/union sizes
+                              and field offsets.
+  --ccgo-use-import <exprs>   Add import usage comma separated expressions
 `
 
 	pkgHeader = `// Code generated by '%[1]s', DO NOT EDIT.
@@ -130,117 +155,16 @@ package %[2]s
 
 import (
 	"math"
-	"os"
-	"unsafe"
-
-	"github.com/cznic/crt"
+	"unsafe"%[6]s
 )
 
-const (
-	null = uintptr(0)
-)
+const null = uintptr(0)
 
-var (
-	_ = math.Pi
-	_ = os.DevNull
-	_ = unsafe.Pointer(null)
-
-	nz32 float32
-	nz64 float64
-)
-
-func init() { nz32 = -nz32 }
-func init() { nz64 = -nz64 }
-
-func alloca(p *[]uintptr, n int) uintptr   { r := %[3]sMustMalloc(n); *p = append(*p, r); return r }
-func preinc(p *uintptr, n uintptr) uintptr { *p += n; return *p }
-
+var _ = math.Pi
+var _ = unsafe.Pointer(null)
+%[7]s
 `
-	pkgHeaderLog = `// Code generated by '%[1]s', DO NOT EDIT.
-
-/` + `/ +build %[4]s,%[5]s
-
-package %[2]s
-
-import (
-	"fmt"
-	"math"
-	"os"
-	"unsafe"
-
-	"github.com/cznic/crt"
-)
-
-const (
-	null = uintptr(0)
-)
-
-var (
-	_ = math.Pi
-	_ = os.DevNull
-	_ = unsafe.Pointer(null)
-
-	nz32 float32
-	nz64 float64
-)
-
-func init() { nz32 = -nz32 }
-func init() { nz64 = -nz64 }
-
-func alloca(p *[]uintptr, n int) uintptr   { r := %[3]sMustMalloc(n); *p = append(*p, r); return r }
-func preinc(p *uintptr, n uintptr) uintptr { *p += n; return *p }
-
-`
-
-	mainHeader = `func main() {
-	psz := unsafe.Sizeof(uintptr(0))
-	argv := crt.MustCalloc((len(os.Args) + 1) * int(psz))
-	p := argv
-	for _, v := range os.Args {
-		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
-		p += psz
-	}
-	a := os.Environ()
-	env := crt.MustCalloc((len(a) + 1) * int(psz))
-	p = env
-	for _, v := range a {
-		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
-		p += psz
-	}
-	*(*uintptr)(unsafe.Pointer(Xenviron)) = env
-	X_start(%[3]sNewTLS(), int32(len(os.Args)), argv)
-}
-
-`
-
-	mainHeaderLog = `func main() {
-	if fn := os.Getenv("CCGOLOG"); fn != "" {
-		f, err := os.OpenFile(fn, os.O_APPEND|os.O_CREATE|os.O_WRONLY|os.O_SYNC, 0644)
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Fprintf(f, "[pid %%v] EXEC %%v\n", os.Getpid(), os.Args)
-		//TODO want exit status
-		f.Close()
-	}
-	psz := unsafe.Sizeof(uintptr(0))
-	argv := crt.MustCalloc((len(os.Args) + 1) * int(psz))
-	p := argv
-	for _, v := range os.Args {
-		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
-		p += psz
-	}
-	a := os.Environ()
-	env := crt.MustCalloc((len(a) + 1) * int(psz))
-	p = env
-	for _, v := range a {
-		*(*uintptr)(unsafe.Pointer(p)) = %[3]sCString(v)
-		p += psz
-	}
-	*(*uintptr)(unsafe.Pointer(Xenviron)) = env
-	X_start(%[3]sNewTLS(), int32(len(os.Args)), argv)
-}
+	mainHeader = `func main() { %[3]sMain(Xmain) }
 
 `
 )
@@ -259,13 +183,15 @@ func main() {
 }
 
 type config struct {
-	D  []string // -D
-	I  []string // -I
-	L  []string // -L
-	Wl []string // -Wl
-	l  []string // -l
-
-	o string // -o
+	D          []string // -D
+	I          []string // -I
+	L          []string // -L
+	Wl         []string // -Wl
+	imports    []string // --ccgo-import
+	l          []string // -l
+	o          string   // -o
+	pkgName    string   // --ccgo-pkg-name
+	useImports []string // --ccgo-use-import
 
 	arg0         string
 	args         []string
@@ -280,21 +206,27 @@ type config struct {
 	sysPaths     []string
 	linkerConfig *linkerConfig
 
-	E         bool // -E
-	O         bool // -O* (ignored)
-	W         bool // -W (ignored)
-	Wall      bool // -Wall (ignored)
-	c         bool // -c
-	dM        bool // -dM
-	fPIC      bool // -fPIC (ignored)
-	fullPaths bool // --ccgo-full-paths
-	g         bool // -g --gen-debug (ignored)
-	help      bool // --help
-	keepGo    bool // --ccgo-go
-	m64       bool // -m64
-	shared    bool // -shared
-	v         bool // -v
-	version   bool // --version
+	E                bool // -E
+	O                bool // -O* (ignored)
+	W                bool // -W (ignored)
+	Wall             bool // -Wall (ignored)
+	c                bool // -c
+	dM               bool // -dM
+	defineValues     bool // --ccgo-define-values
+	fPIC             bool // -fPIC (ignored)
+	ffreeStanding    bool // -ffreestanding
+	fullPaths        bool // --ccgo-full-paths
+	g                bool // -g --gen-debug (ignored)
+	help             bool // --help
+	keepGo           bool // --ccgo-go
+	m64              bool // -m64
+	noStdLib         bool // -nostdlib (ignored)
+	omitFramePointes bool // -fomit-frame-pointer
+	shared           bool // -shared
+	structChecks     bool // --ccgo-struct-checks
+	v                bool // -v
+	version          bool // --version
+	watch            bool // --ccgo-watch
 }
 
 func newConfig(args []string) (c *config, err error) {
@@ -348,8 +280,44 @@ func newConfig(args []string) (c *config, err error) {
 			}
 		case arg == "--ccgo-go": // keep the .go file when linking a main program
 			c.keepGo = true
+		case arg == "-nostdlib":
+			c.noStdLib = true
+		case arg == "-ffreestanding":
+			c.ffreeStanding = true
+		case arg == "-fomit-frame-pointer":
+			c.omitFramePointes = true
 		case arg == "--ccgo-full-paths":
 			c.fullPaths = true
+		case arg == "--ccgo-watch":
+			c.watch = true
+		case arg == "--ccgo-import":
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "--ccgo-import option requires an argument")
+			default:
+				c.imports = append(c.imports, strings.Split(args[1], ",")...)
+				args = args[1:]
+			}
+		case arg == "--ccgo-use-import":
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "--ccgo-use-import option requires an argument")
+			default:
+				c.useImports = append(c.useImports, strings.Split(args[1], ",")...)
+				args = args[1:]
+			}
+		case arg == "--ccgo-struct-checks":
+			c.structChecks = true
+		case arg == "--ccgo-define-values":
+			c.defineValues = true
+		case arg == "--ccgo-pkg-name":
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "--ccgo-pkg-name option requires an argument")
+			default:
+				c.pkgName = args[1]
+				args = args[1:]
+			}
 		case arg == "-dM":
 			c.dM = true
 		case arg == "-m64":
@@ -460,6 +428,7 @@ func newConfig(args []string) (c *config, err error) {
 }
 
 type linkerConfig struct {
+	e       string   // -e (ignored)
 	rpath   []string // -rpath dir		Add a directory to the runtime library search path
 	soname  string
 	sonames []string // -soname
@@ -496,6 +465,14 @@ func newLinkerConfig(prog string, args []string) (c *linkerConfig, err error) {
 		switch arg := args[0]; {
 		case arg == "--export-dynamic":
 			c.exportDynamic = true
+		case arg == "-e", arg == "--entry":
+			switch {
+			case len(args) < 2:
+				errs = append(errs, "missing -e argument")
+			default:
+				c.e = args[1]
+			}
+			args = args[1:]
 		case arg == "-soname", arg == "-h":
 			switch {
 			case len(args) < 2:
@@ -540,7 +517,11 @@ func main1(args []string) (r int, err error) {
 		pid := fmt.Sprintf("[pid %v] ", os.Getpid())
 
 		log = func(s string, args ...interface{}) {
-			s = fmt.Sprintf(pid+s, args...)
+			if s == "" {
+				s = strings.Repeat("%v ", len(args))
+			}
+			_, fn, fl, _ := runtime.Caller(1)
+			s = fmt.Sprintf(pid+"%s:%d: "+s, append([]interface{}{filepath.Base(fn), fl}, args...)...)
 			switch {
 			case len(s) != 0 && s[len(s)-1] == '\n':
 				fmt.Fprint(f, s)
@@ -599,20 +580,31 @@ func main1(args []string) (r int, err error) {
 compilation terminated`, c.arg0)
 	}
 
-	localSysPaths, err := cc.Paths(true)
-	if err != nil {
-		return 1, err
+	libc := filepath.Join(crt.RepositoryPath, "libc")
+	var libcArch string
+	switch c.goarch {
+	case "386":
+		libcArch = "i386"
+	case "amd64":
+		libcArch = "x86_64"
+	default:
+		return 1, fmt.Errorf("unknown/unsupported GOARCH: %s", c.goarch)
 	}
 
-	//TODO- sysPaths, err := cc.Paths(false)
-	//TODO- if err != nil {
-	//TODO- 	return 1, err
-	//TODO- }
+	var sysPaths []string
+	if !c.ffreeStanding {
+		sysPaths = []string{
+			filepath.Join(libc, "arch", libcArch),
+			filepath.Join(libc, "arch", "generic"),
+			//TODO filepath.Join(libc, "obj", "src", "internal"),
+			//TODO filepath.Join(libc, "src", "internal"),
+			filepath.Join(libc, "obj", "include"),
+			filepath.Join(libc, "include"),
+		}
+	}
 
-	c.incPaths = append(c.incPaths, localSysPaths...)
-	//TODO- c.incPaths = append(c.incPaths, sysPaths...)
-	c.sysPaths = append(c.sysPaths, localSysPaths...)
-	//TODO- c.sysPaths = append(c.sysPaths, sysPaths...)
+	c.incPaths = append(c.incPaths, sysPaths...)
+	c.sysPaths = append(c.sysPaths, sysPaths...)
 	var forceExt string
 	for _, in := range c.args {
 		if strings.HasPrefix(in, "-xc") {
@@ -641,10 +633,12 @@ compilation terminated`, c.arg0)
 				continue
 			}
 
-			if err = c.compile(in); err != nil {
+			fallthrough
+		case ".s":
+			if _, err = c.compile(in); err != nil {
 				return 1, err
 			}
-		case ".a", ".o", ".so":
+		case ".a", ".o", ".so", ".lo":
 			c.objects = append(c.objects, in)
 			c.objMap[in] = in
 		default:
@@ -800,6 +794,7 @@ func (c *config) linkExecutable() (err error) {
 				return err
 			}
 
+			log("faking a --warn-go-build binary\n%s", msg)
 			src = filepath.Join(dir, "error.go")
 			f, err := os.Create(src)
 			if err != nil {
@@ -862,6 +857,9 @@ func (c *config) buildExecutable(bin, src string) error {
 func (c *config) linkGo(fn string) (err error) {
 	lc := c.linkerConfig
 	pkgName := toExt(filepath.Base(fn), "")
+	if c.pkgName != "" {
+		pkgName = c.pkgName
+	}
 
 	f, err := os.Create(fn)
 	if err != nil {
@@ -876,7 +874,31 @@ func (c *config) linkGo(fn string) (err error) {
 		return err
 	}
 
-	header := fmt.Sprintf(pkgHeader, strings.Join(c.osArgs, " "), pkgName, crt, c.goos, c.goarch)
+	crtPrefix := crtPrefix
+	imports := "\n\n\t\"github.com/cznic/crt\""
+	if c.ffreeStanding {
+		imports = ""
+		crtPrefix = ""
+	}
+
+	var a []string
+	for _, v := range c.imports {
+		a = append(a, fmt.Sprintf("%q", v))
+	}
+	if len(a) != 0 {
+		imports = fmt.Sprintf("\n\t%s%s", strings.Join(a, "\n\t"), imports)
+	}
+
+	var useImportsA []string
+	for _, v := range c.useImports {
+		useImportsA = append(useImportsA, fmt.Sprintf("var _ = %s", v))
+	}
+	if len(useImportsA) != 0 {
+		useImportsA = append(useImportsA, "")
+	}
+	useImports := strings.Join(useImportsA, "\n")
+
+	header := fmt.Sprintf(pkgHeader, strings.Join(c.osArgs, " "), pkgName, crtPrefix, c.goos, c.goarch, imports, useImports)
 
 	defer func() { err = errs(err, l.Close(header)) }()
 
@@ -914,21 +936,7 @@ func (c *config) linkGo(fn string) (err error) {
 		}
 	}
 	if l.Main {
-		ph := pkgHeader
-		mh := mainHeader
-		if logging {
-			ph = pkgHeaderLog
-			mh = mainHeaderLog
-		}
-		header = fmt.Sprintf(ph+mh, strings.Join(c.osArgs, " "), "main", crt, c.goos, c.goarch)
-		crt0o := toExt(crt0c, ".o")
-		if err = c.compileSource(crt0o, crt0c, cc.NewStringSource(crt0c, cc.CRT0Source)); err != nil {
-			return err
-		}
-
-		if err = c.linkFile(l, crt0o); err != nil {
-			return err
-		}
+		header = fmt.Sprintf(pkgHeader+mainHeader, strings.Join(c.osArgs, " "), "main", crtPrefix, c.goos, c.goarch, imports, useImports)
 	}
 	return nil
 }
@@ -972,7 +980,7 @@ func (c *config) linkFile(l *ccgo.Linker, fn string) (err error) {
 		}
 
 		for r.Next() {
-			if err := l.Link(fn, r); err != nil {
+			if err := l.Link(r.fn, r); err != nil {
 				return fmt.Errorf("%s: %v", fn, err)
 			}
 		}
@@ -988,25 +996,74 @@ func (c *config) linkFile(l *ccgo.Linker, fn string) (err error) {
 	return nil
 }
 
-func (c *config) compile(in string) (err error) {
-	out := filepath.Base(toExt(in, ".o"))
+func (c *config) compile(in string) (out string, err error) {
+	out = filepath.Base(toExt(in, ".o"))
 	if c.c && c.o != "" {
 		out = c.o
 	}
 	if logging {
 		b, err := ioutil.ReadFile(in)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		log("file %s\n%s\n----", in, b)
 	}
 	src, err := cc.NewFileSource2(in, true)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return c.compileSource(out, in, src)
+	if filepath.Ext(in) != ".s" {
+		return out, c.compileSource(out, in, src)
+	}
+
+	f, err := os.Open(in)
+	if err != nil {
+		return "", err
+	}
+
+	sc := bufio.NewScanner(f)
+
+	g, err := os.Create(out)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() { err = errs(err, g.Close()) }()
+
+	gb := bufio.NewWriter(g)
+
+	defer func() { err = errs(err, gb.Flush()) }()
+
+	r, w := io.Pipe()
+
+	var e2 error
+	go func() {
+		defer func() {
+			e2 = errs(e2, w.Close())
+		}()
+
+		if _, e2 = fmt.Fprintf(w, `
+const Lf = %q
+
+`, in); e2 != nil {
+			return
+		}
+		for sc.Scan() {
+			if _, e2 = fmt.Fprintf(w, "// %s\n", sc.Text()); e2 != nil {
+				return
+			}
+		}
+
+		_, e2 = fmt.Fprintf(w, "\n")
+	}()
+
+	err = ccgo.NewSharedObject(gb, c.goos, c.goarch, r)
+	if err = errs(err, e2); err != nil {
+		out = ""
+	}
+	return out, err
 }
 
 func (c *config) compileSource(out, in string, src cc.Source) (err error) {
@@ -1030,11 +1087,13 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 		// TrackExpand:   func(s string) { fmt.Print(s) },
 		// TrackIncludes: func(s string) { fmt.Printf("[#include %s]\n", s) },
 		EnableAnonymousStructFields: true,
+		EnableBinaryLiterals:        true,
 		EnableEmptyStructs:          true,
 		EnableImplicitBuiltins:      true,
 		EnableOmitFuncDeclSpec:      true,
 		EnableReturnExprInVoidFunc:  true,
 		EnableUnionCasts:            true,
+		IgnorePragmas:               true,
 		InjectFinalNL:               true,
 	}
 
@@ -1094,7 +1153,6 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 	}
 	sources = append(sources, src)
 	tu, err := cc.Translate(tweaks, c.incPaths, c.sysPaths, sources...)
-	log("%p, %v", tu, err) //TODO-
 	if err != nil {
 		return err
 	}
@@ -1115,7 +1173,11 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 	defer func() { err = errs(err, b.Flush()) }()
 
 	objTweaks := &ccgo.NewObjectTweaks{
+		DefineValues: c.defineValues,
+		FreeStanding: c.ffreeStanding,
 		FullTLDPaths: c.fullPaths,
+		StructChecks: c.structChecks,
+		Watch:        c.watch,
 	}
 	return ccgo.NewObject(b, c.goos, c.goarch, src.Name(), tu, objTweaks)
 }

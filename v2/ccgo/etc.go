@@ -83,7 +83,33 @@ type arHeader struct { // https://en.wikipedia.org/wiki/Ar_(Unix)#File_header
 	End       [2]byte
 }
 
-func (h *arHeader) fn() string { return strings.TrimSpace(string(h.FileName[:])) }
+func (h *arHeader) fn(ext []byte) (string, error) {
+	r := strings.TrimSpace(string(h.FileName[:]))
+	if r != "//" {
+		r = strings.TrimSuffix(r, "/")
+	}
+	if len(ext) != 0 && len(r) > 1 && r[0] == '/' && r[1] >= '0' && r[1] <= '9' {
+		n, err := strconv.ParseUint(r[1:], 10, 31)
+		if err != nil {
+			return "", err
+		}
+
+		if int(n) >= len(ext) {
+			return "", fmt.Errorf("invalid extended filename offset")
+		}
+
+		i := bytes.IndexByte(ext[n:], '\n')
+		switch {
+		case i < 0:
+			i = len(ext)
+		default:
+			i += int(n)
+		}
+		r = strings.TrimSuffix(string(ext[n:i]), "/")
+	}
+	return r, nil
+}
+
 func (h *arHeader) sz() (int64, error) {
 	return strconv.ParseInt(strings.TrimSpace(string(h.Size[:])), 10, 63)
 }
@@ -97,6 +123,7 @@ func init() {
 type arReader struct {
 	err error
 	ext []byte
+	fn  string
 	r   *bufio.Reader
 	rem int64
 
@@ -137,8 +164,16 @@ func (r *arReader) Next() bool {
 	}
 
 	r.rem, r.err = h.sz()
+	if r.err != nil {
+		return false
+	}
+
 	r.odd = r.rem&1 != 0
-	if h.fn() == "//" {
+	if r.fn, r.err = h.fn(r.ext); r.err != nil {
+		return false
+	}
+
+	if r.fn == "//" {
 		if r.ext != nil {
 			r.err = fmt.Errorf("multiple extended filenames section")
 			return false

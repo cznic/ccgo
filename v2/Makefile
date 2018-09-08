@@ -41,7 +41,8 @@ editor:
 	GOOS=windows GOARCH=amd64 go build
 	go test -i
 	cp log log0 || true
-	go test -timeout 24h -edit 2>&1 | tee log
+	date 2>&1 | tee log
+	go test -timeout 24h -edit 2>&1 | tee -a log
 
 internalError:
 	egrep -ho '"internal error.*"' *.go | sort | cat -n

@@ -28,13 +28,18 @@ import (
 
 /*
 
-
 -------------------------------------------------------------------------------
 Linker constants (const Lx = "value")
 -------------------------------------------------------------------------------
 
-Ld<mangled name>	Definition with external linkage. Value: type.
+LD<mangled name>	Macro value definition. Value: value.
+La<mangled name>	Declarator with external linkage has alias attribute. Value: mangled alias name with external linkage.
+Lb<mangled name>	Declarator with external linkage has alias attribute. Value: mangled alias name with internal linkage.
+Ld<mangled name>	Definition (provides) with external linkage. Value: type.
+Le<mangled name>	Declaration (requires) with external linkage. Value: type.
 Lf			Translation unit boundary. Value: file name.
+Lv<mangled name>		Visibility of a declarator with external linkage. Value: eg. "hidden".
+Lw<mangled name>		Declarator with external linkage has weak attribute. Value: none.
 
 -------------------------------------------------------------------------------
 Linker magic names
@@ -45,6 +50,35 @@ Ld + "foo"		-> dss + off
 Lw + "foo"		-> ts + off wchar_t string
 
 */
+
+// ============================================================================
+// Weak aliases
+//
+// ----------------------------------------------------------------------------
+// C
+//
+// int __pthread_mutex_unlock(pthread_mutex_t *m)
+// {
+// 	// ...
+// }
+//
+// extern typeof(__pthread_mutex_unlock) pthread_mutex_unlock __attribute__((weak, alias("__pthread_mutex_unlock")));
+//
+// ----------------------------------------------------------------------------
+// Go
+//
+// // const LdX__pthread_mutex_unlock = "func(TLS, uintptr) int32" //TODO-
+//
+// // X__pthread_mutex_unlock is defined at src/thread/pthread_mutex_unlock.c:3:5
+// func X__pthread_mutex_unlock(tls TLS, _m uintptr /* *Tpthread_mutex_t = struct{F__u struct{F int64; _ [32]byte};} */) (r int32) {
+// 	// ...
+// }
+//
+// // const LeXpthread_mutex_unlock = "func(TLS, uintptr) int32" //TODO-
+//
+// // const LwXpthread_mutex_unlock = "" //TODO-
+//
+// // const LaXpthread_mutex_unlock = "X__pthread_mutex_unlock" //TODO-
 
 const (
 	lConstPrefix = "const L"
@@ -66,15 +100,6 @@ func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err erro
 		if e != nil && err == nil {
 			err = fmt.Errorf("%v", e)
 		}
-	}()
-
-	defer func() {
-		if x, ok := out.(*bufio.Writer); ok {
-			if e := x.Flush(); e != nil && err == nil {
-				err = e
-			}
-		}
-
 	}()
 
 	r, w := io.Pipe()
@@ -100,7 +125,11 @@ func NewSharedObject(out io.Writer, goos, goarch string, in io.Reader) (err erro
 
 // NewObjectTweaks amend NewObject behavior.
 type NewObjectTweaks struct {
-	FullTLDPaths bool
+	DefineValues bool // --ccgo-define-values
+	FreeStanding bool // -ffreestanding
+	FullTLDPaths bool // --ccgo-full-paths
+	StructChecks bool // --ccgo-struct-checks
+	Watch        bool // --ccgo-watch
 }
 
 // NewObject writes a linker object file produced from in that comes from file
@@ -116,15 +145,6 @@ func NewObject(out io.Writer, goos, goarch, file string, in *cc.TranslationUnit,
 		if e != nil && err == nil {
 			err = fmt.Errorf("%v", e)
 		}
-	}()
-
-	defer func() {
-		if x, ok := out.(*bufio.Writer); ok {
-			if e := x.Flush(); e != nil && err == nil {
-				err = e
-			}
-		}
-
 	}()
 
 	r, w := io.Pipe()
@@ -172,9 +192,17 @@ func (u *unit) require(nm string) {
 	u.requires[nm] = struct{}{}
 }
 
+type attr struct {
+	alias string
+	weak  bool
+}
+
 // Linker produces Go files from object files.
 type Linker struct {
+	attrs            map[string]attr // name: attr
 	bss              int64
+	crtPrefix        string
+	declaredExterns  map[string]string // name: type
 	definedExterns   map[string]string // name: type
 	ds               []byte
 	errs             scanner.ErrorList
@@ -182,6 +210,7 @@ type Linker struct {
 	goarch           string
 	goos             string
 	helpers          map[string]int
+	macroDefs        map[string]string
 	num              int
 	out              *bufio.Writer
 	producedExterns  map[string]struct{} // name: -
@@ -196,12 +225,13 @@ type Linker struct {
 	ts               int64
 	unit             *unit
 	units            []*unit
+	visibility       map[string]string // name: type
 	visitor          visitor
 	wout             *bufio.Writer
 
-	Main      bool // Seen external definition of main.
-	bool2int  bool
-	doNotEmit bool
+	Main             bool // Seen external definition of main.
+	bool2int         bool
+	ignoreDeclarator bool
 }
 
 // NewLinker returns a newly created Linker writing to out.
@@ -219,10 +249,14 @@ func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 	}
 
 	r := &Linker{
+		attrs:            map[string]attr{},
+		crtPrefix:        crt,
+		declaredExterns:  map[string]string{},
 		definedExterns:   map[string]string{},
 		goarch:           goarch,
 		goos:             goos,
 		helpers:          map[string]int{},
+		macroDefs:        map[string]string{},
 		out:              bin,
 		producedExterns:  map[string]struct{}{},
 		renamedHelperNum: map[string]int{},
@@ -231,6 +265,7 @@ func NewLinker(out io.Writer, goos, goarch string) (*Linker, error) {
 		renamedNames:     map[string]int{},
 		strings:          map[int]int64{},
 		tempFile:         tempFile,
+		visibility:       map[string]string{},
 		wout:             bufio.NewWriter(tempFile),
 	}
 	r.visitor = visitor{r}
@@ -302,7 +337,7 @@ func (l *Linker) link(fn string, obj io.Reader) error {
 		}
 	}()
 
-	l.w("\nconst Lf = %q\n", fn)
+	l.w("\n%sf = %q\n", lConstPrefix, fn)
 	l.unit = newUnit()
 	l.units = append(l.units, l.unit)
 
@@ -321,39 +356,65 @@ func (l *Linker) link(fn string, obj io.Reader) error {
 
 func (l *Linker) lConst(s string) { // x<name> = "value"
 	if traceLConsts {
-		l.w("\n// const L%s\n", s)
+		l.w("\n// %s%s\n", lConstPrefix, s)
 	}
+	l.w("\n%s%s\n", lConstPrefix, s)
 	a := strings.SplitN(s, " ", 3)
 	nm := a[0]
 	arg, err := strconv.Unquote(a[2])
 	if err != nil {
-		todo("", err)
+		todo("%s: %s", s, err)
 	}
 
 	switch {
-	case strings.HasPrefix(nm, "d"):
+	case strings.HasPrefix(nm, "d"): // defines (provides)
 		nm = nm[1:]
 		if nm == "Xmain" {
 			l.Main = true
 		}
-		if ex, ok := l.definedExterns[nm]; ok {
-			if ex != arg {
-				l.err("external symbol %s type mismatch: %s vs %s", nm, ex, arg)
-				break
-			}
+		l.definedExterns[nm] = arg
+	case strings.HasPrefix(nm, "e"): // declares (requires)
+		nm = nm[1:]
+		l.declaredExterns[nm] = arg
+	case strings.HasPrefix(nm, "v"):
+		nm = nm[1:]
+		switch arg {
+		case "hidden":
+			l.visibility[nm] = arg
+		default:
+			todo("%q", s)
+		}
+	case strings.HasPrefix(nm, "w"):
+		nm = nm[1:]
+		attr := l.attrs[nm]
+		attr.weak = true
+		l.attrs[nm] = attr
+	case strings.HasPrefix(nm, "D"):
+		nm = nm[1:]
+		if _, ok := l.macroDefs[nm]; ok {
+			break
 		}
 
-		l.definedExterns[nm] = arg
-		l.w("\nconst L%s\n", s)
+		l.macroDefs[nm] = arg
+	case
+		strings.HasPrefix(nm, "a"),
+		strings.HasPrefix(nm, "b"):
+
+		nm = nm[1:]
+		attr := l.attrs[nm]
+		attr.alias = arg
+		l.attrs[nm] = attr
 	case strings.HasPrefix(nm, "h"): // helper
 		l.num++
 		l.helpers[arg] = l.num
-		l.w("\nconst L%s\n", s)
 	case
+		nm == "f",
 		strings.HasPrefix(s, "sofile "),
 		strings.HasPrefix(s, "soname "):
 
-		l.w("\nconst L%s\n", s)
+		// nop
+	case nm == "freestanding":
+		l.crtPrefix = ""
 	default:
 		todo("%s", s)
 		panic("unreachable")
@@ -509,21 +570,23 @@ func (l *Linker) close(header string) (err error) {
 		l.emit()
 	}
 
+	l.genDefs()
+	l.genWeak()
 	l.genHelpers()
 
-	l.w(`
-var (
-`)
 	if l.bss != 0 {
-		l.w(`	bss     = crt.BSS(&bssInit[0])
-	bssInit [%d]byte`, l.bss)
+		l.w(`
+var bss = %sBSS(&bssInit[0])
+
+var bssInit [%d]byte
+`, l.crtPrefix, l.bss)
 	}
 	if n := len(l.ds); n != 0 {
 		if n < 16 {
 			l.ds = append(l.ds, make([]byte, 16-n)...)
 		}
-		l.w("\n\tds = %sDS(dsInit)\n", crt)
-		l.w("\tdsInit = []byte{")
+		l.w("\nvar ds = %sDS(dsInit)\n", l.crtPrefix)
+		l.w("\nvar dsInit = []byte{")
 		if isTesting {
 			l.w("\n\t\t")
 		}
@@ -536,10 +599,10 @@ var (
 		if isTesting && len(l.ds)&15 != 0 {
 			l.w("// %#x\n", len(l.ds)&^15)
 		}
-		l.w("}")
+		l.w("}\n")
 	}
 	if l.ts != 0 {
-		l.w("\n\tts      = %sTS(\"", crt)
+		l.w("\nvar ts = %sTS(\"", l.crtPrefix)
 		for _, v := range l.text {
 			s := fmt.Sprintf("%q", dict.S(v))
 			l.w("%s\\x00", s[1:len(s)-1])
@@ -547,10 +610,53 @@ var (
 				l.w("\\x00")
 			}
 		}
-		l.w("\")")
+		l.w("\")\n")
+	}
+	return nil
+}
+
+func (l *Linker) genDefs() {
+	var a []string
+	for k := range l.macroDefs {
+		a = append(a, k)
+	}
+	if len(a) == 0 {
+		return
+	}
+	sort.Strings(a)
+	l.w("\nconst (")
+	for _, k := range a {
+		l.w("\n\t%s = %s", k, l.macroDefs[k])
 	}
 	l.w("\n)\n")
-	return nil
+}
+
+func (l *Linker) genWeak() {
+	var a []string
+	for k, v := range l.attrs {
+		if v.weak {
+			if _, ok := l.definedExterns[k]; !ok {
+				a = append(a, k)
+			}
+		}
+	}
+	sort.Strings(a)
+	for _, k := range a {
+		attr := l.attrs[k]
+		if attr.alias == "" {
+			continue
+		}
+
+		l.w("\nvar %s = %s\n", k, attr.alias)
+	}
+}
+
+func (l *Linker) isFunc(nm string) bool {
+	t := l.declaredExterns[nm]
+	if t == "" {
+		t = l.definedExterns[nm]
+	}
+	return strings.HasPrefix(t, "func")
 }
 
 func (l *Linker) genHelpers() {
@@ -567,10 +673,11 @@ func bool2int(b bool) int32 {
 }
 
 func (l *Linker) emit() (err error) {
+	// fmt.Printf("==== emit\n%s\n----\n", strings.Join(l.tld, "\n")) //TODO- DBG
 	defer func() { l.tld = l.tld[:0] }()
 
-	if l.doNotEmit {
-		l.doNotEmit = false
+	if l.ignoreDeclarator {
+		l.ignoreDeclarator = false
 		return
 	}
 
@@ -593,6 +700,7 @@ type visitor struct {
 }
 
 func (v *visitor) Visit(node ast.Node) ast.Visitor {
+out:
 	switch x := node.(type) {
 	case *ast.SelectorExpr:
 		ast.Walk(v, x.X)
@@ -608,6 +716,9 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 					todo("", err)
 				}
 
+				if n == 0 {
+					n++
+				}
 				x2.Name = "bss"
 				rhs.Value = fmt.Sprint(v.bss)
 				v.bss += roundup(n, 8) // keep alignment
@@ -636,6 +747,10 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 		}
 	case *ast.BasicLit:
 		if x.Kind == token.STRING {
+			if x.Value[0] == '`' {
+				break
+			}
+
 			s, err := strconv.Unquote(x.Value)
 			if err != nil {
 				todo("", err)
@@ -645,6 +760,17 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 		}
 	case *ast.Ident:
 		nm := x.Name
+		switch {
+		case nm == "Lb":
+			x.Name = "bss+0"
+			v.bss += roundup(1, 8) // keep alignment
+			break out
+		case nm == "Ld":
+			x.Name = "ds+0"
+			v.allocDS("\x00")
+			break out
+		}
+
 		if _, ok := v.renamedHelpers[nm]; ok {
 			x.Name = v.renameHelper(nm)
 			break
@@ -653,18 +779,22 @@ func (v *visitor) Visit(node ast.Node) ast.Visitor {
 		switch {
 		case strings.HasPrefix(nm, "X"):
 			if _, ok := v.definedExterns[nm]; !ok {
-				x.Name = fmt.Sprintf("%s%s", crt, nm)
+				x.Name = fmt.Sprintf("%s%s", v.crtPrefix, nm)
 			}
-		case strings.HasPrefix(nm, "C"): // Enum constant
-			x.Name = v.rename("C", nm[1:])
-		case strings.HasPrefix(nm, "E"): // Tagged enum type
-			x.Name = v.rename("E", nm[1:])
-		case strings.HasPrefix(nm, "S"): // Tagged struct type
-			x.Name = v.rename("S", nm[1:])
-		case strings.HasPrefix(nm, "U"): // Tagged union type
-			x.Name = v.rename("U", nm[1:])
 		case strings.HasPrefix(nm, "x") && len(nm) > 1: // Static linkage
-			x.Name = v.rename("x", nm[1:])
+			x.Name = v.rename("x", "x", nm[1:])
+		case strings.HasPrefix(nm, "C") && nm != "Copy": // Enum constant
+			x.Name = v.rename("C", "c", nm[1:])
+		case strings.HasPrefix(nm, "E"): // Tagged enum type
+			x.Name = v.rename("E", "e", nm[1:])
+		case strings.HasPrefix(nm, "N") && !strings.HasPrefix(nm, "Nz"): // Named type
+			x.Name = v.rename("N", "n", nm[1:])
+		case strings.HasPrefix(nm, "S"): // Tagged struct type
+			x.Name = v.rename("S", "s", nm[1:])
+		case strings.HasPrefix(nm, "T") && nm != "TLS": // Named type
+			x.Name = v.rename("T", "t", nm[1:])
+		case strings.HasPrefix(nm, "U"): // Tagged union type
+			x.Name = v.rename("U", "u", nm[1:])
 		case nm == "bool2int":
 			v.bool2int = true
 		}
@@ -707,7 +837,7 @@ func (l *Linker) renameHelper(nm string) string {
 	panic("unreachable")
 }
 
-func (l *Linker) rename(prefix, nm string) string {
+func (l *Linker) rename(prefix0, prefix, nm string) string {
 	switch c := nm[0]; {
 	case c >= '0' && c <= '9':
 		n := l.renamedNames[nm]
@@ -739,7 +869,7 @@ func (l *Linker) rename(prefix, nm string) string {
 			nm = nm[1:]
 		}
 		if n == 0 {
-			return fmt.Sprintf("%s%s", prefix, nm)
+			return fmt.Sprintf("%s%s", prefix0, nm)
 		}
 
 		return fmt.Sprintf("%s%d%s", prefix, n, nm)
@@ -797,8 +927,9 @@ func (l *Linker) scan(sc *lineScanner) bool {
 
 func (l *Linker) lConst2(s string) { // x<name> = "value"
 	if traceLConsts {
-		l.w("\n// const L%s\n", s)
+		l.w("\n// %s%s\n", lConstPrefix, s)
 	}
+	//l.w("\n// %s%s //TODO- \n", lConstPrefix, s)
 	a := strings.SplitN(s, " ", 3)
 	nm := a[0]
 	arg, err := strconv.Unquote(a[2])
@@ -806,16 +937,30 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 		todo("", err)
 	}
 	switch {
+	case
+		strings.HasPrefix(nm, "D"),
+		strings.HasPrefix(nm, "a"),
+		strings.HasPrefix(nm, "e"),
+		strings.HasPrefix(nm, "freestanding"),
+		strings.HasPrefix(nm, "v"),
+		strings.HasPrefix(nm, "w"):
+
+		// nop
+	case strings.HasPrefix(nm, "b"):
+		nm = nm[1:]
+		attr := l.attrs[nm]
+		attr.alias = l.rename("x", "x", arg[1:])
+		l.attrs[nm] = attr
 	case strings.HasPrefix(nm, "d"):
 		nm = nm[1:]
 		if _, ok := l.producedExterns[nm]; ok {
-			l.doNotEmit = true
+			l.ignoreDeclarator = true
 			break
 		}
 
 		l.producedExterns[nm] = struct{}{}
 	case
-		strings.HasPrefix(s, "f"),
+		nm == "f",
 		strings.HasPrefix(s, "sofile "),
 		strings.HasPrefix(s, "soname "):
 
@@ -830,7 +975,6 @@ func (l *Linker) lConst2(s string) { // x<name> = "value"
 		l.genHelper(l.renameHelper(nm[1:]), strings.Split(arg, "$"))
 	default:
 		todo("%s", s)
-		panic("unreachable")
 	}
 }
 
@@ -838,24 +982,28 @@ func (l *Linker) genHelper(nm string, a []string) {
 	l.w("\nfunc %s", nm)
 	switch a[0] {
 	case "add%d", "and%d", "div%d", "mod%d", "mul%d", "or%d", "sub%d", "xor%d":
-		// eg.: [0: "add%d" 1: op "+" 2: operand type "uint32"]
-		l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= v; return *p }", a[1], a[2])
+		// eg.: [0: "add%d" 1: op "+" 2: lhs type "uint16" 3: rhs type "uint8" 4: promotion type "int32"]
+		l.w("(p *%[2]s, v %[3]s) (r %[2]s) { r = %[2]s(%[4]s(*p) %[1]s %[4]s(v)); *p = r; return r }", a[1], a[2], a[3], a[4])
 	case "and%db", "or%db", "xor%db":
-		// eg.: [0: "or%db" 1: op "|" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
-		l.w(`(p *%[3]s, v %[2]s) %[2]s {
-		r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) %[1]s v
-		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-		return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+		// eg.: [0: "or%db" 1: op "|" 2: lhs type "uint16" 3: rhs type "uint8" 4: promotion type "int32" 5: packed type "uint32" 6: bitoff 7: promotion type bits 8: bits 9: lhs type bits]
+		l.w(`(p *%[5]s, v %[3]s) (r %[2]s) {
+	r = %[2]s((%[4]s(%[2]s(*p>>%[6]s))<<(%[7]s-%[8]s)>>(%[7]s-%[8]s)) %[1]s %[4]s(v))
+	*p = (*p &^ ((1<<%[8]s - 1) << %[6]s)) | (%[5]s(r) << %[6]s & ((1<<%[8]s - 1) << %[6]s))
+	return r<<(%[9]s-%[8]s)>>(%[9]s-%[8]s)
+}`, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9])
 	case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
 		l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
 	case "setb%d":
-		// eg.: [0: "setb%d" 1: ignored 2: operand type "uint32" 3: pack type "uint8" 4: op size 5: bits "3" 6: bitoff "2"]
-		l.w("(p *%[3]s, v %[2]s) %[2]s { *p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(v) << %[6]s & ((1<<%[5]s - 1) << %[6]s)); return v<<(%[4]s-%[5]s)>>(%[4]s-%[5]s) }",
-			"", a[2], a[3], a[4], a[5], a[6])
+		// eg.: [0: "set%db" 1: packed type "uint32" 2: lhs type "int16" 3: rhs type "char" 4: bitoff 5: bits]
+		l.w(`(p *%[1]s, v %[3]s) (r %[2]s) { 
+	r = %[2]s(v)
+	*p = (*p &^ ((1<<%[5]s - 1) << %[4]s)) | (%[1]s(r) << %[4]s & ((1<<%[5]s - 1) << %[4]s))
+	return r
+}`, a[1], a[2], a[3], a[4], a[5])
+
 	case "rsh%d":
-		// eg.: [0: "rsh%d" 1: op ">>" 2: operand type "uint32" 3: mod "32"]
-		l.w("(p *%[2]s, v %[2]s) %[2]s { *p %[1]s= (v %% %[3]s); return *p }", a[1], a[2], a[3])
+		// eg.: [0: "rsh%d" 1: op ">>" 2: lhs type "uint32" 3: promotion type]
+		l.w("(p *%[2]s, v uint) (r %[2]s) { r = %[2]s(%[3]s(*p) >> v); *p = r; return r }", a[1], a[2], a[3])
 	case "fn%d":
 		// eg.: [0: "fn%d" 1: type "unc()"]
 		l.w("(p uintptr) %[1]s { return *(*%[1]s)(unsafe.Pointer(&p)) }", a[1])
@@ -868,19 +1016,23 @@ func (l *Linker) genHelper(nm string, a []string) {
 		// eg.: [0: "preinc%d" 1: operand type "int32" 2: delta "1"]
 		l.w("(p *%[1]s) %[1]s { *p += %[2]s; return *p }", a[1], a[2])
 	case "postinc%db":
-		// eg.: [0: "postinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+		//TODO op.type(fp.type(*p>>fp.bitoff)<<x>>x)
+		// eg.: [0: "postinc%db" 1: delta "1" 2: lhs type "int32" 3: pack type "uint8" 4: lhs type bits "32" 5: bits "3" 6: bitoff "2"]
+
 		l.w(`(p *%[3]s) %[2]s {
-		r := %[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r+%[1]s) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-		return r
-		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+	r := %[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
+	*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r+%[1]s) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+	return r
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
 	case "preinc%db":
-		// eg.: [0: "preinc%db" 1: delta "1" 2: operand type "int32" 3: pack type "uint8" 4: op size "32" 5: bits "3" 6: bitoff "2"]
+		//TODO op.type(fp.type(*p>>fp.bitoff)<<x>>x)
+		// eg.: [0: "preinc%db" 1: delta "1" 2: lhs type "int32" 3: pack type "uint8" 4: lhs type bits "32" 5: bits "3" 6: bitoff "2"]
 		l.w(`(p *%[3]s) %[2]s {
-		r := (%[2]s(*p>>%[6]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)) + %[1]s
-		*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
-		return r<<(%[4]s-%[5]s)>>(%[4]s-%[5]s)
-		}`, a[1], a[2], a[3], a[4], a[5], a[6])
+	r := (%[2]s(*p>>%[6]s+%[1]s)<<(%[4]s-%[5]s)>>(%[4]s-%[5]s))
+	*p = (*p &^ ((1<<%[5]s - 1) << %[6]s)) | (%[3]s(r) << %[6]s & ((1<<%[5]s - 1) << %[6]s))
+	return r
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
+
 	case "float2int%d":
 		// eg.: [0: "float2int%d" 1: type "uint64" 2: max "18446744073709551615"]
 		l.w("(f float32) %[1]s { if f > %[2]s { return 0 }; return %[1]s(f) }", a[1], a[2])
