@@ -144,7 +144,6 @@
 //	PASS
 //	ok  	github.com/cznic/ccgo/v2	415.773s
 
-
 package ccgo
 
 import (
