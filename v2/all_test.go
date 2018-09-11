@@ -138,8 +138,8 @@
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 33 ccgo 33 build 33 run 33 ok 33 n 33
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
-//	GCC Compile	cc 971 ccgo 971 build 971 ok 971 n 1708
-//	GCC Execute	cc 1073 ccgo 1073 build 1073 run 1073 ok 1073 n 1411
+//	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
+//	GCC Execute	cc 1075 ccgo 1075 build 1075 run 1075 ok 1075 n 1411
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
 //	PASS
 //	ok  	github.com/cznic/ccgo/v2	415.773s
@@ -342,7 +342,7 @@ func test(t *testing.T, clean bool, c, ccgo, build, run *int, def, imp string, i
 		EnableOmitFuncDeclSpec:      true,
 		EnablePointerCompatibility:  true, // CSmith transparent_crc_bytes
 		EnableReturnExprInVoidFunc:  true,
-		IgnorePragmas:               true,
+		IgnoreUnknownPragmas:        true,
 		InjectFinalNL:               true,
 	}
 	inc := append([]string{"@"}, inc2...)

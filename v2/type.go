@@ -344,6 +344,7 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 
 			return fmt.Sprintf("int%d", g.model[x].Size*8)
 		case
+			cc.Bool,
 			cc.UChar,
 			cc.UShort,
 			cc.UInt,

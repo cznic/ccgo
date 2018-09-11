@@ -68,7 +68,7 @@ func (g *ngen) defineQueued() {
 					b = g.out0.Bytes()
 				}
 				if err := newNOpt().do(g.out, &g.out0, testFn); e != nil || err != nil {
-					todo("recover: %v, err: %v\nsrc:\n%s\n", e, err, b)
+					todo("recover: %v, err: %v\nsrc:\n====%s\n----\n%s", e, err, b, debugStack0())
 				}
 
 				g.out0.Reset()
@@ -213,7 +213,11 @@ func (g *ngen) defineTaggedEnumType(t *cc.TaggedEnumType) {
 	}
 
 	g.producedEnumTags[t.Tag] = struct{}{}
-	et := t.Type.(*cc.EnumType)
+	et, ok := t.Type.(*cc.EnumType)
+	if !ok {
+		return
+	}
+
 	tag := dict.S(t.Tag)
 	g.w("\ntype E%s = %s\n", tag, g.typ(et.Enums[0].Operand.Type))
 	g.w("\n// Values of E%s\nconst (", tag)
@@ -833,7 +837,7 @@ func (g *ngen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool
 	if vars == nil {
 		vars = []*cc.Declarator{}
 	}
-	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false, main)
+	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false, main, false)
 }
 
 func (g *gen) mangleDeclarator(n *cc.Declarator) string {

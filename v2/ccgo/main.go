@@ -1093,7 +1093,7 @@ func (c *config) compileSource(out, in string, src cc.Source) (err error) {
 		EnableOmitFuncDeclSpec:      true,
 		EnableReturnExprInVoidFunc:  true,
 		EnableUnionCasts:            true,
-		IgnorePragmas:               true,
+		IgnoreUnknownPragmas:        true,
 		InjectFinalNL:               true,
 	}
 
