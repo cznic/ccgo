@@ -676,7 +676,7 @@ func (g *ngen) void(n *cc.Expr) {
 		}
 		g.void(n.Expr2)
 	case cc.ExprStatement: // '(' CompoundStmt ')'
-		g.compoundStmt(n.CompoundStmt, nil, nil, false, nil, nil, nil, nil, false, false, false)
+		g.compoundStmt(n.CompoundStmt, nil, nil, false, nil, nil, nil, nil, false, false)
 	default:
 		todo("", g.position(n), n.Case) // void
 	}
@@ -2055,7 +2055,7 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 		g.constant(n)
 	case cc.ExprStatement: // '(' CompoundStmt ')'
 		g.w("func() %s {", g.typ(n.Operand.Type))
-		g.compoundStmt(n.CompoundStmt, nil, nil, false, nil, nil, nil, nil, false, false, true)
+		g.compoundStmt(n.CompoundStmt, nil, nil, false, nil, nil, nil, nil, false, true)
 		g.w("}()")
 	default:
 		//println(n.Case.String())

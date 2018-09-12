@@ -133,16 +133,15 @@
 
 //	go version go1.11 linux/amd64
 //
-//	Sat Sep  8 21:23:41 CEST 2018
-//	go test -timeout 24h -edit 2>&1 | tee -a log
+//	Wed Sep 12 15:26:48 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
-//	Other	cc 33 ccgo 33 build 33 run 33 ok 33 n 33
+//	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
 //	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
-//	GCC Execute	cc 1075 ccgo 1075 build 1075 run 1075 ok 1075 n 1411
+//	GCC Execute	cc 1075 ccgo 1075 build 1075 run 1075 ok 1075 n 1410
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
 //	PASS
-//	ok  	github.com/cznic/ccgo/v2	415.773s
+//	ok  	github.com/cznic/ccgo/v2	1234.484s
 
 package ccgo
 
@@ -1086,6 +1085,7 @@ func TestGCCExecute(t *testing.T) {
 		"bitfld-1.c":                   {}, //TODO bits, arithmetic precision
 		"bitfld-3.c":                   {}, //TODO bits, arithmetic precision
 		"builtin-types-compatible-p.c": {}, //TODO must track type qualifiers
+		"medce-1.c":                    {}, //TODO Handle dead code
 		"pr32244-1.c":                  {}, //TODO bits, arithmetic precision
 		"pr34971.c":                    {}, //TODO bits, arithmetic precision
 		"pr77767.c":                    {}, //TODO

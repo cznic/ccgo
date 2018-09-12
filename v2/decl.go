@@ -837,7 +837,7 @@ func (g *ngen) functionBody(n *cc.FunctionBody, vars []*cc.Declarator, void bool
 	if vars == nil {
 		vars = []*cc.Declarator{}
 	}
-	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, false, main, false)
+	g.compoundStmt(n.CompoundStmt, vars, nil, !void, nil, nil, params, escParams, main, false)
 }
 
 func (g *gen) mangleDeclarator(n *cc.Declarator) string {
@@ -929,9 +929,9 @@ func (g *gen) declaration(n *cc.Declaration, deadCode *bool) {
 	g.initDeclaratorListOpt(n.InitDeclaratorListOpt, deadCode)
 }
 
-func (g *ngen) declaration(n *cc.Declaration, deadCode *bool) {
+func (g *ngen) declaration(n *cc.Declaration) {
 	// DeclarationSpecifiers InitDeclaratorListOpt ';'
-	g.initDeclaratorListOpt(n.InitDeclaratorListOpt, deadCode)
+	g.initDeclaratorListOpt(n.InitDeclaratorListOpt)
 }
 
 func (g *gen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool) {
@@ -942,12 +942,12 @@ func (g *gen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool)
 	g.initDeclaratorList(n.InitDeclaratorList, deadCode)
 }
 
-func (g *ngen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt, deadCode *bool) {
+func (g *ngen) initDeclaratorListOpt(n *cc.InitDeclaratorListOpt) {
 	if n == nil {
 		return
 	}
 
-	g.initDeclaratorList(n.InitDeclaratorList, deadCode)
+	g.initDeclaratorList(n.InitDeclaratorList)
 }
 
 func (g *gen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
@@ -956,9 +956,9 @@ func (g *gen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
 	}
 }
 
-func (g *ngen) initDeclaratorList(n *cc.InitDeclaratorList, deadCode *bool) {
+func (g *ngen) initDeclaratorList(n *cc.InitDeclaratorList) {
 	for ; n != nil; n = n.InitDeclaratorList {
-		g.initDeclarator(n.InitDeclarator, deadCode)
+		g.initDeclarator(n.InitDeclarator)
 	}
 }
 
@@ -977,7 +977,7 @@ func (g *gen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
 	}
 }
 
-func (g *ngen) initDeclarator(n *cc.InitDeclarator, deadCode *bool) {
+func (g *ngen) initDeclarator(n *cc.InitDeclarator) {
 	d := n.Declarator
 	ds := d.DeclarationSpecifier
 	if ds.IsExtern() {
