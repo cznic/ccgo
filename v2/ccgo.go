@@ -664,7 +664,7 @@ func (g gen) escaped(n *cc.Declarator) bool {
 }
 
 func (g ngen) escaped(n *cc.Declarator) bool {
-	if isVaList(n.Type) {
+	if n == nil || isVaList(n.Type) {
 		return false
 	}
 

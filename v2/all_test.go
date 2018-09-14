@@ -133,15 +133,15 @@
 
 //	go version go1.11 linux/amd64
 //
-//	Wed Sep 12 15:26:48 CEST 2018
+//	Fri Sep 14 15:32:00 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
-//	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
+//	GCC Compile	cc 982 ccgo 982 build 982 ok 982 n 1708
 //	GCC Execute	cc 1075 ccgo 1075 build 1075 run 1075 ok 1075 n 1410
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
 //	PASS
-//	ok  	github.com/cznic/ccgo/v2	1234.484s
+//	ok  	github.com/cznic/ccgo/v2	1092.573s
 
 package ccgo
 
@@ -231,7 +231,6 @@ var (
 
 	re          *regexp.Regexp
 	searchPaths []string
-	crt0o       []byte
 	defCCGO     = cc.NewStringSource("<defines>", "#define __ccgo__ 1\n#define __FUNCTION__ __func__\n")
 )
 
@@ -240,26 +239,6 @@ func init() {
 	if searchPaths, err = cc.Paths(true); err != nil {
 		panic(err)
 	}
-
-	crt := cc.MustCrt0()
-	crt0, err := cc.Translate(&cc.Tweaks{}, []string{"@"}, searchPaths, defCCGO, cc.MustBuiltin(), crt)
-	if err != nil {
-		panic(err)
-	}
-
-	// o := traceOpt
-	// defer func() { traceOpt = o }()
-	// w := traceWrites
-	// defer func() { traceWrites = w }()
-	// traceWrites = true //TODO-
-	// traceOpt = true //TODO-
-
-	var b bytes.Buffer
-	if err = NewObject(&b, runtime.GOOS, runtime.GOARCH, crt.Name(), crt0, &NewObjectTweaks{}); err != nil {
-		panic(err)
-	}
-
-	crt0o = b.Bytes()
 }
 
 // Command outputs a Go program generated from in to w.

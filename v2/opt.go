@@ -400,11 +400,14 @@ func (o *opt) expr(n *ast.Expr, use bool) {
 			case *ast.Ident:
 				*n = x2
 			}
+		case *ast.StarExpr:
+			*n = x2
 		case *ast.UnaryExpr:
 			switch x2.Op {
-			case token.AND:
+			case token.AND, token.MUL:
 				switch x2.X.(type) {
 				case
+					*ast.CallExpr,
 					*ast.Ident,
 					*ast.SelectorExpr:
 
@@ -421,7 +424,7 @@ func (o *opt) expr(n *ast.Expr, use bool) {
 			switch x3 := x2.X.(type) {
 			case *ast.UnaryExpr:
 				switch x3.Op {
-				case token.AND:
+				case token.AND, token.MUL:
 					*n = x3.X
 				}
 			}
@@ -857,6 +860,8 @@ func (o *nopt) expr(n *ast.Expr, use bool) {
 			case *ast.Ident:
 				*n = x2
 			}
+		case *ast.StarExpr:
+			*n = x2
 		case *ast.UnaryExpr:
 			switch x2.Op {
 			case token.AND:
@@ -895,6 +900,13 @@ func (o *nopt) expr(n *ast.Expr, use bool) {
 		// nop
 	case *ast.UnaryExpr:
 		o.expr(&x.X, use)
+		switch x.Op {
+		case token.AND:
+			switch x2 := x.X.(type) {
+			case *ast.StarExpr:
+				*n = x2.X
+			}
+		}
 	case *ast.CompositeLit:
 		for i := range x.Elts {
 			o.expr(&x.Elts[i], true)
