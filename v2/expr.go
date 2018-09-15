@@ -166,10 +166,10 @@ func (g *gen) void(n *cc.Expr) {
 		if isVaList(n.Expr.Operand.Type) && n.Expr2.Case == cc.ExprCast {
 			if ec := n.Expr2; g.voidCanIgnore(ec) {
 				switch op := ec.Expr; {
-				case op.IsNonZero():
+				case op.IsNonZero() && g.voidCanIgnore(op):
 					g.w("&%s", ap)
 					return
-				case op.IsZero():
+				case op.IsZero() && g.voidCanIgnore(op):
 					g.w("nil")
 					return
 				}
@@ -468,10 +468,10 @@ func (g *ngen) void(n *cc.Expr) {
 		if isVaList(n.Expr.Operand.Type) && n.Expr2.Case == cc.ExprCast {
 			if ec := n.Expr2; g.voidCanIgnore(ec) {
 				switch op := ec.Expr; {
-				case op.IsNonZero():
+				case op.IsNonZero() && g.voidCanIgnore(op):
 					g.w("&%s", ap)
 					return
-				case op.IsZero():
+				case op.IsZero() && g.voidCanIgnore(op):
 					g.w("nil")
 					return
 				}
@@ -2579,17 +2579,25 @@ func (g *ngen) voidCanIgnore(n *cc.Expr) bool {
 
 		return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
 	case cc.ExprLAnd: // Expr "&&" Expr
+		if !g.voidCanIgnore(n.Expr) {
+			return false
+		}
+
 		if n.Expr.IsZero() {
-			return g.voidCanIgnore(n.Expr)
+			return true
 		}
 
-		return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+		return g.voidCanIgnore(n.Expr2)
 	case cc.ExprLOr: // Expr "||" Expr
-		if n.Expr.IsNonZero() {
-			return g.voidCanIgnore(n.Expr)
+		if !g.voidCanIgnore(n.Expr) {
+			return false
 		}
 
-		return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+		if n.Expr.IsNonZero() {
+			return true
+		}
+
+		return g.voidCanIgnore(n.Expr2)
 	case
 		cc.ExprAddrof,     // '&' Expr
 		cc.ExprCpl,        // '~' Expr
@@ -2912,7 +2920,7 @@ func (g *ngen) constant(n *cc.Expr) {
 
 		switch y := cc.UnderlyingType(n.Operand.Type).(type) {
 		case *cc.PointerType:
-			if n.IsZero() {
+			if n.IsZero() && g.voidCanIgnore(n) {
 				g.w("%s", null)
 				return
 			}

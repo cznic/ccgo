@@ -133,15 +133,15 @@
 
 //	go version go1.11 linux/amd64
 //
-//	Fri Sep 14 15:32:00 CEST 2018
+//	Sat Sep 15 18:11:53 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
-//	GCC Compile	cc 982 ccgo 982 build 982 ok 982 n 1708
-//	GCC Execute	cc 1075 ccgo 1075 build 1075 run 1075 ok 1075 n 1410
+//	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
+//	GCC Execute	cc 1076 ccgo 1076 build 1076 run 1076 ok 1076 n 1410
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
 //	PASS
-//	ok  	github.com/cznic/ccgo/v2	1092.573s
+//	ok  	github.com/cznic/ccgo/v2	422.965s
 
 package ccgo
 

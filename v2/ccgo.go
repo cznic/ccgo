@@ -122,7 +122,6 @@ type gen struct { //TODO-
 }
 
 type ngen struct { //TODO rename to gen
-	bss                int64
 	crtPrefix          string
 	enqueued           map[interface{}]struct{}
 	enumConsts         map[int]struct{}
