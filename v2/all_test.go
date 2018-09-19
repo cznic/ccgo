@@ -133,15 +133,20 @@
 
 //	go version go1.11 linux/amd64
 //
-//	Sat Sep 15 18:11:53 CEST 2018
+//	St zář 19 16:12:37 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
 //	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
 //	GCC Execute	cc 1076 ccgo 1076 build 1076 run 1076 ok 1076 n 1410
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
-//	PASS
-//	ok  	github.com/cznic/ccgo/v2	422.965s
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.432783064s)
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (2.251022077s)
+//	--- FAIL: TestCSmith (4.73s)
+//	        cc 2 ccgo 2 build 2 run 2 ok 2 (66.67%) csmith 3 (1m0s)
+//	FAIL
+//	exit status 1
+//	FAIL	github.com/cznic/ccgo/v2	965.632s
 
 package ccgo
 
@@ -2488,6 +2493,178 @@ out:
 			continue
 		}
 
+		if bytes.Equal(gccOut, ccgoOut) {
+			ok++
+			if *oEdit {
+				fmt.Printf("cc %v ccgo %v build %v run %v ok %v (%.2f%%) csmith %v (%v)\n", cc, ccgo, build, run, ok, 100*float64(ok)/float64(cs), cs, time.Since(t0))
+			}
+			continue
+		}
+
+		if *oNoCmp {
+			continue
+		}
+
+		csmithFatal(t, mainC, gccOut, ccgoOut, cc, ccgo, build, run, ok, cs, gccT)
+	}
+	d := time.Since(t0)
+	t.Logf("cc %v ccgo %v build %v run %v ok %v (%.2f%%) csmith %v (%v)", cc, ccgo, build, run, ok, 100*float64(ok)/float64(cs), cs, d)
+	if *oEdit {
+		fmt.Printf("CSmith0\tcc %v ccgo %v build %v run %v ok %v (%.2f%%) csmith %v (%v)\n", cc, ccgo, build, run, ok, 100*float64(ok)/float64(cs), cs, d)
+	}
+}
+
+func TestCSmith(t *testing.T) { //TODO-
+	cc.FlushCache()
+	csmith, err := exec.LookPath("csmith")
+	if err != nil {
+		t.Logf("%v: skipping test", err)
+		return
+	}
+
+	gcc, err := exec.LookPath("gcc")
+	if err != nil {
+		t.Logf("%v: skipping test", err)
+		return
+	}
+
+	var inc string
+	switch runtime.GOOS {
+	case "linux":
+		inc = "/usr/include"
+	default:
+		t.Logf("unsupported OS")
+		return
+	}
+	if _, err := os.Stat(filepath.Join(inc, "csmith.h")); err != nil {
+		if os.IsNotExist(err) {
+			t.Logf("%s not found: skipping test", inc)
+			return
+		}
+
+		t.Fatal(err)
+	}
+
+	dir := *oTmp
+	if dir == "" {
+		var err error
+		if dir, err = ioutil.TempDir("", "test-ccgo-smith-"); err != nil {
+			t.Fatal(err)
+		}
+
+		defer func() {
+			if err := os.RemoveAll(dir); err != nil {
+				t.Fatal(err)
+			}
+		}()
+	}
+
+	compiler, err := compileCCGO(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	const (
+		gccBin = "gcc"
+		mainC  = "main.c"
+	)
+
+	for _, v := range []string{
+		"csmith.h",
+		"random_inc.h",
+		"safe_math.h",
+		"platform_generic.h",
+	} {
+		if err := cpFile(v, filepath.Join(inc, v), nil); err != nil {
+			t.Fatal(v)
+		}
+	}
+
+	ch := time.After(*oCSmith)
+	var cs, cc, ccgo, build, run, ok int
+	t0 := time.Now()
+out:
+	for {
+		select {
+		case <-ch:
+			break out
+		default:
+		}
+
+		out, err := exec.Command(
+			csmith,
+			"-o", mainC,
+			"--bitfields",            // --bitfields | --no-bitfields: enable | disable full-bitfields structs (disabled by default).
+			"--no-const-pointers",    // --const-pointers | --no-const-pointers: enable | disable const pointers (enabled by default).
+			"--no-consts",            // --consts | --no-consts: enable | disable const qualifier (enabled by default).
+			"--no-packed-struct",     // --packed-struct | --no-packed-struct: enable | disable packed structs by adding #pragma pack(1) before struct definition (disabled by default).
+			"--no-volatile-pointers", // --volatile-pointers | --no-volatile-pointers: enable | disable volatile pointers (enabled by default).
+			"--no-volatiles",         // --volatiles | --no-volatiles: enable | disable volatiles (enabled by default).
+			"--paranoid",             // --paranoid | --no-paranoid: enable | disable pointer-related assertions (disabled by default).
+		).Output()
+		if err != nil {
+			t.Fatalf("%v\n%s", err, out)
+		}
+
+		if out, err := exec.Command(gcc, "-w", "-o", gccBin, mainC).CombinedOutput(); err != nil {
+			t.Fatalf("%v\n%s", err, out)
+		}
+
+		var gccOut []byte
+		var gccT0 time.Time
+		var gccT time.Duration
+		func() {
+			ctx, cancel := context.WithTimeout(context.Background(), testTimeout/10)
+
+			defer cancel()
+
+			gccT0 = time.Now()
+			gccOut, err = exec.CommandContext(ctx, filepath.Join(dir, gccBin)).CombinedOutput()
+			gccT = time.Since(gccT0)
+		}()
+		if err != nil {
+			continue
+		}
+
+		cs++
+		os.Remove("main.go")
+		if out, err := exec.Command(compiler, "-o", "main.go", mainC).CombinedOutput(); err != nil {
+			t.Log(err)
+			csmithFatal(t, mainC, gccOut, out, cc, ccgo, build, run, ok, cs, gccT)
+			continue
+		}
+
+		cc++
+		ccgo++
+		if out, err := exec.Command("go", "build", "-o", "test.bin", "main.go").CombinedOutput(); err != nil {
+			t.Log(err)
+			csmithFatal(t, mainC, gccOut, out, cc, ccgo, build, run, ok, cs, gccT)
+			continue
+		}
+
+		build++
+		ccgoOut, err := exec.Command("./test.bin").CombinedOutput()
+		if err != nil {
+			t.Log(err)
+			csmithFatal(t, mainC, gccOut, ccgoOut, cc, ccgo, build, run, ok, cs, gccT)
+		}
+
+		run++
 		if bytes.Equal(gccOut, ccgoOut) {
 			ok++
 			if *oEdit {

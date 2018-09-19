@@ -3724,7 +3724,14 @@ func (g *ngen) convertEscaped(n *cc.Expr, t cc.Type) {
 		case len(l) == 1:
 			g.convert(l[0], t)
 		default:
-			todo("", g.position(n))
+			g.w("func() %v {", g.typ(t))
+			for _, v := range l[:len(l)-1] {
+				g.void(v)
+				g.w(";")
+			}
+			g.w("return ")
+			g.convert(l[len(l)-1], t)
+			g.w("}()")
 		}
 	default:
 		todo("%v: %v, op %v, d %v, t %v, %q %v:", g.position(n), n.Case, n.Operand.Type, d.Type, t, dict.S(d.Name()), g.position(d))
