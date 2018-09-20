@@ -597,9 +597,15 @@ func (g *ngen) void(n *cc.Expr) {
 		g.void(n.Expr)
 	case cc.ExprCond: // Expr '?' ExprList ':' Expr
 		switch {
-		case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
+		case n.Expr.IsZero():
+			if !g.voidCanIgnore(n.Expr) {
+				g.void(n.Expr)
+			}
 			g.void(n.Expr2)
-		case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
+		case n.Expr.IsNonZero():
+			if !g.voidCanIgnore(n.Expr) {
+				g.void(n.Expr)
+			}
 			g.exprList(n.ExprList, true)
 		default:
 			// if expr != 0 {
@@ -616,25 +622,43 @@ func (g *ngen) void(n *cc.Expr) {
 			g.w("}")
 		}
 	case cc.ExprLAnd: // Expr "&&" Expr
-		if n.Expr.IsZero() && g.voidCanIgnore(n.Expr) {
-			return
+		switch {
+		case n.Operand.Value != nil && g.voidCanIgnore(n):
+			// nop
+		case n.Expr.IsZero():
+			if !g.voidCanIgnore(n.Expr) {
+				g.void(n.Expr)
+			}
+		case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
+			g.void(n.Expr2)
+		case g.voidCanIgnore(n.Expr2):
+			g.void(n.Expr)
+		default:
+			g.w("if ")
+			g.value(n.Expr, false)
+			g.w(" != 0 {")
+			g.void(n.Expr2)
+			g.w("}")
 		}
-
-		g.w("if ")
-		g.value(n.Expr, false)
-		g.w(" != 0 {")
-		g.void(n.Expr2)
-		g.w("}")
 	case cc.ExprLOr: // Expr "||" Expr
-		if n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr) {
-			return
+		switch {
+		case n.Operand.Value != nil && g.voidCanIgnore(n):
+			// nop
+		case n.Expr.IsNonZero():
+			if !g.voidCanIgnore(n.Expr) {
+				g.void(n.Expr)
+			}
+		case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
+			g.void(n.Expr2)
+		case g.voidCanIgnore(n.Expr2):
+			g.void(n.Expr)
+		default:
+			g.w("if ")
+			g.value(n.Expr, false)
+			g.w(" == 0 {")
+			g.void(n.Expr2)
+			g.w("}")
 		}
-
-		g.w("if ")
-		g.value(n.Expr, false)
-		g.w(" == 0 {")
-		g.void(n.Expr2)
-		g.w("}")
 	case cc.ExprIndex: // Expr '[' ExprList ']'
 		g.void(n.Expr)
 		if !g.voidCanIgnoreExprList(n.ExprList) {
@@ -1340,7 +1364,7 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 		switch {
 		case d == nil:
 			if n.Operand.Type == nil || n.Operand.Value == nil {
-				todo("", g.position(n), n.Operand)
+				todo("%v: %s, %v, %p", g.position(n), string(n.Token.S()), n.Operand, n.Declarator)
 			}
 
 			// Enum const
@@ -1634,30 +1658,58 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 	case cc.ExprAssign: // Expr '=' Expr
 		g.assignmentValue(n)
 	case cc.ExprLAnd: // Expr "&&" Expr
-		if n.Operand.Value != nil && g.voidCanIgnore(n) {
+		switch {
+		case n.Operand.Value != nil && g.voidCanIgnore(n):
 			g.constant(n)
-			break
-		}
+		case n.Expr.IsZero():
+			if g.voidCanIgnore(n.Expr) {
+				g.w(" 0")
+				break
+			}
 
-		g.w(" bool2int((")
-		g.value0(n.Expr, false, exprCall)
-		g.w(" != 0) && (")
-		g.value0(n.Expr2, false, exprCall)
-		g.w(" != 0))")
+			g.w(" bool2int(")
+			g.value0(n.Expr, false, exprCall)
+			g.w(" != 0)")
+		case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
+			g.w(" bool2int(")
+			g.value0(n.Expr2, false, exprCall)
+			g.w(" != 0)")
+		default:
+			g.w(" bool2int((")
+			g.value0(n.Expr, false, exprCall)
+			g.w(" != 0) && (")
+			g.value0(n.Expr2, false, exprCall)
+			g.w(" != 0))")
+		}
 	case cc.ExprLOr: // Expr "||" Expr
-		if n.Operand.Value != nil && g.voidCanIgnore(n) {
+		switch {
+		case n.Operand.Value != nil && g.voidCanIgnore(n):
 			g.constant(n)
-			break
-		}
+		case n.Expr.IsNonZero():
+			if g.voidCanIgnore(n.Expr) {
+				g.w(" 1")
+				break
+			}
 
-		g.w(" bool2int((")
-		g.value0(n.Expr, false, exprCall)
-		g.w(" != 0) || (")
-		g.value0(n.Expr2, false, exprCall)
-		g.w(" != 0))")
+			g.w(" bool2int(")
+			g.value0(n.Expr, false, exprCall)
+			g.w(" != 0)")
+		case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
+			g.w(" bool2int(")
+			g.value0(n.Expr2, false, exprCall)
+			g.w(" != 0)")
+		default:
+			g.w(" bool2int((")
+			g.value0(n.Expr, false, exprCall)
+			g.w(" != 0) || (")
+			g.value0(n.Expr2, false, exprCall)
+			g.w(" != 0))")
+		}
 	case cc.ExprCond: // Expr '?' ExprList ':' Expr
 		t := n.Operand.Type
 		switch {
+		case n.Operand.Value != nil && g.voidCanIgnore(n):
+			g.constant(n)
 		case n.Expr.IsZero() && g.voidCanIgnore(n.Expr):
 			g.value0(n.Expr2, false, exprCall)
 		case n.Expr.IsNonZero() && g.voidCanIgnore(n.Expr):
@@ -2062,9 +2114,9 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 		g.w("}()")
 	default:
 		//println(n.Case.String())
-		todo("", g.position(n), n.Case) // value0
+		todo("", g.position(n), n.Case)
 	}
-}
+} // value0
 
 func (g *ngen) value0Escaped(n *cc.Expr, packedField bool, exprCall bool) {
 	d := n.Declarator
@@ -2088,7 +2140,14 @@ func (g *ngen) value0Escaped(n *cc.Expr, packedField bool, exprCall bool) {
 		case len(l) == 1:
 			g.value0(l[0], packedField, exprCall)
 		default:
-			todo("", g.position(n))
+			g.w("func() %v {", g.typ(n.Operand.Type))
+			for _, v := range l[:len(l)-1] {
+				g.void(v)
+				g.w(";")
+			}
+			g.w("return ")
+			g.convert(l[len(l)-1], n.Operand.Type)
+			g.w("}()")
 		}
 	default:
 		todo("", g.position(n), n.Case) // value0Escaped
@@ -2547,18 +2606,6 @@ func (g *ngen) voidCanIgnore(n *cc.Expr) bool {
 		return false
 	case cc.ExprCast: // '(' TypeName ')' Expr
 		return !isVaList(n.Expr.Operand.Type) && g.voidCanIgnore(n.Expr)
-	case cc.ExprCond: // Expr '?' ExprList ':' Expr
-		if !g.voidCanIgnore(n.Expr) {
-			return false
-		}
-
-		switch {
-		case n.Expr.IsNonZero():
-			return g.voidCanIgnoreExprList(n.ExprList)
-		case n.Expr.IsZero():
-			return g.voidCanIgnore(n.Expr2)
-		}
-		return false
 	case
 		cc.ExprAdd, // Expr '+' Expr
 		cc.ExprAnd, // Expr '&' Expr
@@ -2578,26 +2625,33 @@ func (g *ngen) voidCanIgnore(n *cc.Expr) bool {
 		cc.ExprXor: // Expr '^' Expr
 
 		return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+	case cc.ExprCond: // Expr '?' ExprList ':' Expr
+		switch {
+		case n.Expr.IsZero():
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+		case n.Expr.IsNonZero():
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnoreExprList(n.ExprList)
+		default:
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnoreExprList(n.ExprList) && g.voidCanIgnore(n.Expr2)
+		}
 	case cc.ExprLAnd: // Expr "&&" Expr
-		if !g.voidCanIgnore(n.Expr) {
-			return false
+		switch {
+		case n.Expr.IsZero():
+			return g.voidCanIgnore(n.Expr)
+		case n.Expr.IsNonZero():
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+		default:
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
 		}
-
-		if n.Expr.IsZero() {
-			return true
-		}
-
-		return g.voidCanIgnore(n.Expr2)
 	case cc.ExprLOr: // Expr "||" Expr
-		if !g.voidCanIgnore(n.Expr) {
-			return false
+		switch {
+		case n.Expr.IsNonZero():
+			return g.voidCanIgnore(n.Expr)
+		case n.Expr.IsZero():
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
+		default:
+			return g.voidCanIgnore(n.Expr) && g.voidCanIgnore(n.Expr2)
 		}
-
-		if n.Expr.IsNonZero() {
-			return true
-		}
-
-		return g.voidCanIgnore(n.Expr2)
 	case
 		cc.ExprAddrof,     // '&' Expr
 		cc.ExprCpl,        // '~' Expr
@@ -2612,10 +2666,10 @@ func (g *ngen) voidCanIgnore(n *cc.Expr) bool {
 	case cc.ExprIndex: // Expr '[' ExprList ']'
 		return g.voidCanIgnore(n.Expr) && g.voidCanIgnoreExprList(n.ExprList)
 	default:
-		todo("", g.position(n), n.Case, n.Operand) // voidCanIgnore
+		todo("", g.position(n), n.Case, n.Operand)
 	}
 	panic("unreachable")
-}
+} // voidCanIgnore
 
 func (g *gen) voidCanIgnoreExprList(n *cc.ExprList) bool {
 	if n.ExprList == nil {
@@ -2632,6 +2686,10 @@ func (g *gen) voidCanIgnoreExprList(n *cc.ExprList) bool {
 }
 
 func (g *ngen) voidCanIgnoreExprList(n *cc.ExprList) bool {
+	if n == nil {
+		return true
+	}
+
 	if n.ExprList == nil {
 		return g.voidCanIgnore(n.Expr)
 	}

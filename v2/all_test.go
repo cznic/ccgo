@@ -133,20 +133,45 @@
 
 //	go version go1.11 linux/amd64
 //
-//	St zář 19 16:12:37 CEST 2018
+//	Thu Sep 20 17:51:09 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
 //	GCC Compile	cc 985 ccgo 985 build 985 ok 985 n 1708
 //	GCC Execute	cc 1076 ccgo 1076 build 1076 run 1076 ok 1076 n 1410
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.432783064s)
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (2.251022077s)
-//	--- FAIL: TestCSmith (4.73s)
-//	        cc 2 ccgo 2 build 2 run 2 ok 2 (66.67%) csmith 3 (1m0s)
-//	FAIL
-//	exit status 1
-//	FAIL	github.com/cznic/ccgo/v2	965.632s
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (1.935075433s) -s 151038493
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (3.711532428s)
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.756550887s)
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (6.588622944s)
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (8.120362015s)
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (8.940799218s)
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (11.329152829s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (12.928171312s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (15.582905145s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (16.428176459s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (18.545565965s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (20.697588895s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (22.066416408s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (29.741944146s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (31.193012107s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (32.704272059s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (34.702926107s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (36.572669074s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (39.147154831s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (41.075327253s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (43.899163299s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (45.869902217s)
+//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (48.544828861s)
+//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (50.692793189s)
+//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (52.661639984s)
+//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (53.531268602s)
+//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (55.048795754s)
+//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (57.344827139s)
+//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (1m0.0411851s)
+//	CSmith0	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (1m0.041233025s)
+//	PASS
+//	ok  	github.com/cznic/ccgo/v2	1044.539s
 
 package ccgo
 
@@ -2514,7 +2539,21 @@ out:
 	}
 }
 
-func TestCSmith(t *testing.T) { //TODO-
+func TestCSmith(t *testing.T) {
+	regressionTests := []string{
+		"--bitfields --no-const-pointers --no-consts --no-packed-struct --no-volatile-pointers --no-volatiles --paranoid -s 151038493",
+	}
+
+	defaultArgs := strings.Join([]string{
+		"--bitfields",            // --bitfields | --no-bitfields: enable | disable full-bitfields structs (disabled by default).
+		"--no-const-pointers",    // --const-pointers | --no-const-pointers: enable | disable const pointers (enabled by default).
+		"--no-consts",            // --consts | --no-consts: enable | disable const qualifier (enabled by default).
+		"--no-packed-struct",     // --packed-struct | --no-packed-struct: enable | disable packed structs by adding #pragma pack(1) before struct definition (disabled by default).
+		"--no-volatile-pointers", // --volatile-pointers | --no-volatile-pointers: enable | disable volatile pointers (enabled by default).
+		"--no-volatiles",         // --volatiles | --no-volatiles: enable | disable volatiles (enabled by default).
+		"--paranoid",             // --paranoid | --no-paranoid: enable | disable pointer-related assertions (disabled by default).
+	}, " ")
+
 	cc.FlushCache()
 	csmith, err := exec.LookPath("csmith")
 	if err != nil {
@@ -2598,25 +2637,27 @@ func TestCSmith(t *testing.T) { //TODO-
 	ch := time.After(*oCSmith)
 	var cs, cc, ccgo, build, run, ok int
 	t0 := time.Now()
+	argsHead := "-o " + mainC + " "
 out:
-	for {
-		select {
-		case <-ch:
-			break out
+	for i := 0; ; i++ {
+		extra := ""
+		args := argsHead
+		switch {
+		case i < len(regressionTests):
+			args += regressionTests[i]
+			a := strings.Split(regressionTests[i], " ")
+			extra = strings.Join(a[len(a)-2:], " ")
 		default:
+			select {
+			case <-ch:
+				break out
+			default:
+			}
+
+			args += defaultArgs
 		}
 
-		out, err := exec.Command(
-			csmith,
-			"-o", mainC,
-			"--bitfields",            // --bitfields | --no-bitfields: enable | disable full-bitfields structs (disabled by default).
-			"--no-const-pointers",    // --const-pointers | --no-const-pointers: enable | disable const pointers (enabled by default).
-			"--no-consts",            // --consts | --no-consts: enable | disable const qualifier (enabled by default).
-			"--no-packed-struct",     // --packed-struct | --no-packed-struct: enable | disable packed structs by adding #pragma pack(1) before struct definition (disabled by default).
-			"--no-volatile-pointers", // --volatile-pointers | --no-volatile-pointers: enable | disable volatile pointers (enabled by default).
-			"--no-volatiles",         // --volatiles | --no-volatiles: enable | disable volatiles (enabled by default).
-			"--paranoid",             // --paranoid | --no-paranoid: enable | disable pointer-related assertions (disabled by default).
-		).Output()
+		out, err := exec.Command(csmith, strings.Split(args, " ")...).Output()
 		if err != nil {
 			t.Fatalf("%v\n%s", err, out)
 		}
@@ -2668,7 +2709,7 @@ out:
 		if bytes.Equal(gccOut, ccgoOut) {
 			ok++
 			if *oEdit {
-				fmt.Printf("cc %v ccgo %v build %v run %v ok %v (%.2f%%) csmith %v (%v)\n", cc, ccgo, build, run, ok, 100*float64(ok)/float64(cs), cs, time.Since(t0))
+				fmt.Printf("cc %v ccgo %v build %v run %v ok %v (%.2f%%) csmith %v (%v) %s\n", cc, ccgo, build, run, ok, 100*float64(ok)/float64(cs), cs, time.Since(t0), extra)
 			}
 			continue
 		}

@@ -640,7 +640,6 @@ func (g *ngen) escapedTLD(n *cc.Declarator) {
 	switch x := cc.UnderlyingType(n.Type).(type) {
 	case *cc.ArrayType:
 		if x.Item.Kind() == cc.Char && n.Initializer.Expr.Operand.Value != nil {
-			todo("", g.position(n))
 			g.w("\nvar %s = ds + %d\n", g.mangleDeclarator(n), g.allocDS(n.Type, n.Initializer))
 			return
 		}
