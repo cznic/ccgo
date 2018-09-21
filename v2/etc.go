@@ -42,10 +42,12 @@ var (
 	idBuiltinAlloca          = dict.SID("__builtin_alloca")
 	idBuiltinTypesCompatible = dict.SID("__builtin_types_compatible__") // Implements __builtin_types_compatible_p
 	idBuiltinVaList          = dict.SID("__builtin_va_list")
+	idConst                  = dict.SID("const")
 	idFuncName               = dict.SID("__func__")
 	idGo                     = dict.SID("__GO__")
 	idLS                     = dict.SID("LS")
 	idMain                   = dict.SID("main")
+	idNoClone                = dict.SID("noclone")
 	idNoInline               = dict.SID("noinline")
 	idNoInline2              = dict.SID("__noinline__")
 	idNoReturn               = dict.SID("noreturn")

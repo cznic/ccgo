@@ -481,24 +481,11 @@ func (g *ngen) tld(n *cc.Declarator) {
 			return
 		}
 
-		switch x := t.(type) {
-		case *cc.StructType:
-			todo("", g.position(n))
-			// g.w("\nvar %s = Lb + %d", mn, g.model.Sizeof(n.Type))
+		switch t.(type) {
 		case *cc.PointerType:
 			g.w("\nvar %s uintptr\n", mn)
-		case
-			*cc.EnumType,
-			cc.TypeKind:
-
-			if x.IsArithmeticType() {
-				g.w("\nvar %s %s\n", mn, g.typ(n.Type))
-				break
-			}
-
-			todo("%v: %v", g.position(n), x)
 		default:
-			todo("%v: %s %v %T", g.position(n), dict.S(n.Name()), n.Type, x)
+			g.w("\nvar %s %s\n", mn, g.typ(n.Type))
 		}
 		return
 	}
@@ -593,6 +580,8 @@ func (g *ngen) linkInfo(n *cc.Declarator, declarationOnly bool) {
 				idAligned, //TODO? 990326-1.c
 				idPure,
 				idStdcall,
+				idConst,
+				idNoClone,
 				idNoInline,
 				idNoInline2,
 				idNoReturn,

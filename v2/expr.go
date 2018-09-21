@@ -700,9 +700,9 @@ func (g *ngen) void(n *cc.Expr) {
 	case cc.ExprStatement: // '(' CompoundStmt ')'
 		g.compoundStmt(n.CompoundStmt, nil, nil, false, nil, nil, nil, nil, false, false)
 	default:
-		todo("", g.position(n), n.Case) // void
+		todo("", g.position(n), n.Case)
 	}
-}
+} // void
 
 func (g *gen) lvalue(n *cc.Expr) {
 	g.w("&")
@@ -2427,9 +2427,9 @@ func (g *ngen) uintptr(n *cc.Expr, packedField bool) {
 	case cc.ExprString: // STRINGLITERAL
 		g.constant(n)
 	default:
-		todo("", g.position(n), n.Case) // uintptr
+		todo("", g.position(n), n.Case)
 	}
-}
+} // uintptr
 
 func (g *ngen) uintptrEscaped(n *cc.Expr) {
 	d := n.Declarator
