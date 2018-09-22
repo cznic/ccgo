@@ -994,12 +994,12 @@ func (l *Linker) genHelper(nm string, a []string) {
 	case "set%d": // eg.: [0: "set%d" 1: op "" 2: operand type "uint32"]
 		l.w("(p *%[2]s, v %[2]s) %[2]s { *p = v; return v }", a[1], a[2])
 	case "setb%d":
-		// eg.: [0: "set%db" 1: packed type "uint32" 2: lhs type "int16" 3: rhs type "char" 4: bitoff 5: bits]
-		l.w(`(p *%[1]s, v %[3]s) (r %[2]s) { 
-	r = %[2]s(v)
-	*p = (*p &^ ((1<<%[5]s - 1) << %[4]s)) | (%[1]s(r) << %[4]s & ((1<<%[5]s - 1) << %[4]s))
-	return r
-}`, a[1], a[2], a[3], a[4], a[5])
+		// eg.: [0: "set%db" 1: packed type "uint32" 2: lhs type "int16" 3: rhs type "char" 4: bitoff 5: bits 6: lhs type bits]
+		l.w(`(p *%[1]s, v %[3]s) %[2]s { 
+	w := %[1]s(v) & (1<<%[5]s-1)
+	*p = (*p &^ ((1<<%[5]s - 1) << %[4]s)) | (w << %[4]s)
+	return %[2]s(w)<<(%[6]s-%[5]s)>>(%[6]s-%[5]s)
+}`, a[1], a[2], a[3], a[4], a[5], a[6])
 
 	case "rsh%d":
 		// eg.: [0: "rsh%d" 1: op ">>" 2: lhs type "uint32" 3: promotion type]

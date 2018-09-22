@@ -3174,7 +3174,7 @@ func (g *ngen) assignmentValue(n *cc.Expr) {
 	switch op := n.Expr.Operand; {
 	case op.Bits() != 0:
 		fp := op.FieldProperties
-		g.w("%s(&", g.registerHelper("setb%d", g.typ(fp.PackedType), g.typ(op.Type), g.typ(n.Expr2.Operand.Type), fp.Bitoff, fp.Bits))
+		g.w("%s(&", g.registerHelper("setb%d", g.typ(fp.PackedType), g.typ(op.Type), g.typ(n.Expr2.Operand.Type), fp.Bitoff, fp.Bits, g.model.Sizeof(op.Type)*8))
 		g.value(n.Expr, true)
 		g.w(", ")
 		g.value(n.Expr2, false)
