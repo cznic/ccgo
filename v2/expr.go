@@ -389,7 +389,6 @@ func (g *ngen) void(n *cc.Expr) {
 	switch n.Case {
 	case cc.ExprCall: // Expr '(' ArgumentExprListOpt ')'
 		if e := n.Expr; e.Case == cc.ExprIdent && e.Token.Val == idGo {
-			//g.w("/*TODO 392 %v */", cc.PrettyString(n.ArgumentExprListOpt))
 			g.w("%s", dict.S(int(n.ArgumentExprListOpt.ArgumentExprList.Expr.Operand.Value.(*ir.StringValue).StringID)))
 			return
 		}
@@ -465,20 +464,6 @@ func (g *ngen) void(n *cc.Expr) {
 		g.w("*")
 		g.lvalue(n.Expr)
 		g.w(" = ")
-		if isVaList(n.Expr.Operand.Type) && n.Expr2.Case == cc.ExprCast {
-			if ec := n.Expr2; g.voidCanIgnore(ec) {
-				switch op := ec.Expr; {
-				case op.IsNonZero() && g.voidCanIgnore(op):
-					g.w("&%s", ap)
-					return
-				case op.IsZero() && g.voidCanIgnore(op):
-					g.w("nil")
-					return
-				}
-			}
-			todo("", g.position(n))
-		}
-
 		g.convert(n.Expr2, n.Expr.Operand.Type)
 	case
 		cc.ExprPostInc, // Expr "++"

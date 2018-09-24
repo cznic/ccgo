@@ -133,58 +133,38 @@
 
 //	go version go1.11 linux/amd64
 //
-//	Sat Sep 22 21:17:28 CEST 2018
+//	Mon Sep 24 17:42:23 CEST 2018
 //	TCC	cc 51 ccgo 51 build 51 run 51 ok 51 n 51
 //	Other	cc 34 ccgo 34 build 34 run 34 ok 34 n 34
 //	GCC Compat	cc 7 ccgo 7 build 7 run 7 ok 7 n 7
 //	GCC Compile	cc 994 ccgo 994 build 994 ok 994 n 1708
 //	GCC Execute	cc 1093 ccgo 1093 build 1093 run 1093 ok 1093 n 1413
 //	Shell	cc 1 ccgo 1 build 1 run 1 ok 1 n 1
-//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (937.669006ms) -s 1352671588
-//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (2.034165191s) -s 1322542678
-//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (2.672439301s) -s 1901462611
-//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (4.303200888s) -s 2829621573
-//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (4.730488081s) -s 576413934
-//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (5.672621465s) -s 151038493
-//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (7.068950674s)
-//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (7.495047403s)
-//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (7.907663812s)
-//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (8.342047367s)
-//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (9.935295686s)
-//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (10.783380567s)
-//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (12.339900989s)
-//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (13.856232008s)
-//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (15.097496075s)
-//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (16.768798045s)
-//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (17.492926514s)
-//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (18.343391463s)
-//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (25.142314282s)
-//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (26.871020586s)
-//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (34.187943303s)
-//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (35.117840158s)
-//	cc 23 ccgo 23 build 23 run 23 ok 23 (100.00%) csmith 23 (36.043047163s)
-//	cc 24 ccgo 24 build 24 run 24 ok 24 (100.00%) csmith 24 (36.819023814s)
-//	cc 25 ccgo 25 build 25 run 25 ok 25 (100.00%) csmith 25 (37.226046531s)
-//	cc 26 ccgo 26 build 26 run 26 ok 26 (100.00%) csmith 26 (39.006151018s)
-//	cc 27 ccgo 27 build 27 run 27 ok 27 (100.00%) csmith 27 (39.709862435s)
-//	cc 28 ccgo 28 build 28 run 28 ok 28 (100.00%) csmith 28 (40.369272507s)
-//	cc 29 ccgo 29 build 29 run 29 ok 29 (100.00%) csmith 29 (41.173140651s)
-//	cc 30 ccgo 30 build 30 run 30 ok 30 (100.00%) csmith 30 (42.253022958s)
-//	cc 31 ccgo 31 build 31 run 31 ok 31 (100.00%) csmith 31 (42.672089264s)
-//	cc 32 ccgo 32 build 32 run 32 ok 32 (100.00%) csmith 32 (50.172276684s)
-//	cc 33 ccgo 33 build 33 run 33 ok 33 (100.00%) csmith 33 (50.610535666s)
-//	cc 34 ccgo 34 build 34 run 34 ok 34 (100.00%) csmith 34 (51.902362735s)
-//	cc 35 ccgo 35 build 35 run 35 ok 35 (100.00%) csmith 35 (53.546539878s)
-//	cc 36 ccgo 36 build 36 run 36 ok 36 (100.00%) csmith 36 (54.286853115s)
-//	cc 37 ccgo 37 build 37 run 37 ok 37 (100.00%) csmith 37 (54.949706663s)
-//	cc 38 ccgo 38 build 38 run 38 ok 38 (100.00%) csmith 38 (55.774149595s)
-//	cc 39 ccgo 39 build 39 run 39 ok 39 (100.00%) csmith 39 (56.795706415s)
-//	cc 40 ccgo 40 build 40 run 40 ok 40 (100.00%) csmith 40 (57.842135839s)
-//	cc 41 ccgo 41 build 41 run 41 ok 41 (100.00%) csmith 41 (59.277811196s)
-//	cc 42 ccgo 42 build 42 run 42 ok 42 (100.00%) csmith 42 (1m0.639170522s)
-//	CSmith0	cc 42 ccgo 42 build 42 run 42 ok 42 (100.00%) csmith 42 (1m0.639184894s)
+//	cc 1 ccgo 1 build 1 run 1 ok 1 (100.00%) csmith 1 (2.08651757s) -s 1352671588
+//	cc 2 ccgo 2 build 2 run 2 ok 2 (100.00%) csmith 2 (4.173545789s) -s 1322542678
+//	cc 3 ccgo 3 build 3 run 3 ok 3 (100.00%) csmith 3 (5.371144148s) -s 1901462611
+//	cc 4 ccgo 4 build 4 run 4 ok 4 (100.00%) csmith 4 (8.315974307s) -s 2829621573
+//	cc 5 ccgo 5 build 5 run 5 ok 5 (100.00%) csmith 5 (9.143622943s) -s 576413934
+//	cc 6 ccgo 6 build 6 run 6 ok 6 (100.00%) csmith 6 (10.886051878s) -s 151038493
+//	cc 7 ccgo 7 build 7 run 7 ok 7 (100.00%) csmith 7 (11.727689288s)
+//	cc 8 ccgo 8 build 8 run 8 ok 8 (100.00%) csmith 8 (14.137041251s)
+//	cc 9 ccgo 9 build 9 run 9 ok 9 (100.00%) csmith 9 (14.966729737s)
+//	cc 10 ccgo 10 build 10 run 10 ok 10 (100.00%) csmith 10 (17.22110793s)
+//	cc 11 ccgo 11 build 11 run 11 ok 11 (100.00%) csmith 11 (19.202214047s)
+//	cc 12 ccgo 12 build 12 run 12 ok 12 (100.00%) csmith 12 (20.883166278s)
+//	cc 13 ccgo 13 build 13 run 13 ok 13 (100.00%) csmith 13 (29.201874352s)
+//	cc 14 ccgo 14 build 14 run 14 ok 14 (100.00%) csmith 14 (30.581306005s)
+//	cc 15 ccgo 15 build 15 run 15 ok 15 (100.00%) csmith 15 (32.621977201s)
+//	cc 16 ccgo 16 build 16 run 16 ok 16 (100.00%) csmith 16 (33.464416796s)
+//	cc 17 ccgo 17 build 17 run 17 ok 17 (100.00%) csmith 17 (35.971900129s)
+//	cc 18 ccgo 18 build 18 run 18 ok 18 (100.00%) csmith 18 (37.781239922s)
+//	cc 19 ccgo 19 build 19 run 19 ok 19 (100.00%) csmith 19 (41.413380779s)
+//	cc 20 ccgo 20 build 20 run 20 ok 20 (100.00%) csmith 20 (43.555631174s)
+//	cc 21 ccgo 21 build 21 run 21 ok 21 (100.00%) csmith 21 (58.112553149s)
+//	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (1m0.038386306s)
+//	CSmith0	cc 22 ccgo 22 build 22 run 22 ok 22 (100.00%) csmith 22 (1m0.038441477s)
 //	PASS
-//	ok  	github.com/cznic/ccgo/v2	472.644s
+//	ok  	github.com/cznic/ccgo/v2	1010.897s
 
 package ccgo
 
