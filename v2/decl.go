@@ -471,11 +471,6 @@ func (g *ngen) tld(n *cc.Declarator) {
 	}
 	g.w("\n\n// %s %s, escapes: %v, %v", mn, g.typeComment(n.Type), g.escaped(n), pos)
 	if g.isZeroInitializer(n.Initializer) {
-		if isVaList(n.Type) {
-			g.w("\nvar %s *[]interface{}", mn)
-			return
-		}
-
 		if g.escaped(n) {
 			g.w("\nvar %s = Lb + %d", mn, g.model.Sizeof(n.Type))
 			return

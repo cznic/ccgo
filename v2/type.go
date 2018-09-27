@@ -210,10 +210,8 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 	defer func() { g.tCache[k] = r }()
 
 	if ptr2uintptr {
-		if t.Kind() == cc.Ptr && !isVaList(t) {
-			if _, ok := t.(*cc.NamedType); !ok {
-				return "uintptr"
-			}
+		if t.Kind() == cc.Ptr {
+			return "uintptr"
 		}
 
 		if x, ok := t.(*cc.ArrayType); ok && x.Size.Value == nil {
@@ -253,14 +251,6 @@ func (g *ngen) ptyp(t cc.Type, ptr2uintptr bool, lvl int) (r string) {
 		}
 		return buf.String()
 	case *cc.NamedType:
-		if isVaList(x) {
-			if ptr2uintptr {
-				return "*[]interface{}"
-			}
-
-			return fmt.Sprintf("%s", dict.S(x.Name))
-		}
-
 		g.enqueue(x)
 		t := x.Type
 		for {

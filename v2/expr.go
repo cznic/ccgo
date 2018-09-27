@@ -137,27 +137,28 @@ func (g *gen) void(n *cc.Expr) {
 		}
 
 		if isVaList(n.Expr.Operand.Type) {
-			switch rhs := n.Expr2.Operand; {
-			case isVaList(rhs.Type): // va_copy
-				g.w("{ x := *")
-				g.value(n.Expr2, false)
-				g.w("; ")
-				g.w("*")
-				g.lvalue(n.Expr)
-				g.w(" = &x }")
-				return
-			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaStart:
-				g.w("{ x := ap; *")
-				g.lvalue(n.Expr)
-				g.w(" = &x }")
-				return
-			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaEnd:
-				g.w("*")
-				g.lvalue(n.Expr)
-				g.w(" = nil")
-				return
-			}
-			panic(fmt.Errorf("%v: %v = %v", g.position0(n), n.Expr.Operand, n.Expr2.Operand))
+			panic("TODO")
+			// switch rhs := n.Expr2.Operand; {
+			// case isVaList(rhs.Type): // va_copy
+			// 	g.w("{ x := *")
+			// 	g.value(n.Expr2, false)
+			// 	g.w("; ")
+			// 	g.w("*")
+			// 	g.lvalue(n.Expr)
+			// 	g.w(" = &x }")
+			// 	return
+			// case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaStart:
+			// 	g.w("{ x := ap; *")
+			// 	g.lvalue(n.Expr)
+			// 	g.w(" = &x }")
+			// 	return
+			// case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaEnd:
+			// 	g.w("*")
+			// 	g.lvalue(n.Expr)
+			// 	g.w(" = nil")
+			// 	return
+			// }
+			// panic(fmt.Errorf("%v: %v = %v", g.position0(n), n.Expr.Operand, n.Expr2.Operand))
 		}
 
 		g.w("*")
@@ -388,7 +389,7 @@ func (g *ngen) void(n *cc.Expr) {
 
 	switch n.Case {
 	case cc.ExprCall: // Expr '(' ArgumentExprListOpt ')'
-		if e := n.Expr; e.Case == cc.ExprIdent && e.Token.Val == idGo {
+		if e := n.Expr; e.Case == cc.ExprIdent && (e.Token.Val == idGo || e.Token.Val == idGo2) {
 			g.w("%s", dict.S(int(n.ArgumentExprListOpt.ArgumentExprList.Expr.Operand.Value.(*ir.StringValue).StringID)))
 			return
 		}
@@ -435,30 +436,6 @@ func (g *ngen) void(n *cc.Expr) {
 		if op.Bits() != 0 {
 			g.assignmentValue(n)
 			return
-		}
-
-		if isVaList(n.Expr.Operand.Type) {
-			switch rhs := n.Expr2.Operand; {
-			case isVaList(rhs.Type): // va_copy
-				g.w("{ x := *")
-				g.value(n.Expr2, false)
-				g.w("; ")
-				g.w("*")
-				g.lvalue(n.Expr)
-				g.w(" = &x }")
-				return
-			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaStart:
-				g.w("{ x := ap; *")
-				g.lvalue(n.Expr)
-				g.w(" = &x }")
-				return
-			case n.Expr2.Declarator != nil && n.Expr2.Declarator.Name() == idVaEnd:
-				g.w("*")
-				g.lvalue(n.Expr)
-				g.w(" = nil")
-				return
-			}
-			todo("%v: %v = %v", g.position(n), n.Expr.Operand, n.Expr2.Operand)
 		}
 
 		g.w("*")
@@ -1413,6 +1390,11 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 
 		g.binop(n)
 	case cc.ExprCall: // Expr '(' ArgumentExprListOpt ')'
+		if e := n.Expr; e.Case == cc.ExprIdent && e.Token.Val == idGo2 {
+			g.w("%s", dict.S(int(n.ArgumentExprListOpt.ArgumentExprList.Expr.Operand.Value.(*ir.StringValue).StringID)))
+			return
+		}
+
 		if d := n.Expr.Declarator; d != nil && d.Name() == idBuiltinAlloca {
 			g.w("%sAlloca(&allocs, int(", g.crtPrefix)
 			if n.ArgumentExprListOpt.ArgumentExprList.ArgumentExprList != nil {
@@ -1714,9 +1696,9 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 		if isVaList(op.Type) {
 			switch cc.UnderlyingType(t).(type) {
 			case *cc.StructType:
-				g.w("%sVAother(", g.crtPrefix)
+				g.w("*(*%s)(unsafe.Pointer(%sVAother(", g.typ(t), g.crtPrefix)
 				g.value0(n.Expr, false, exprCall)
-				g.w(").(%s)", g.typ(t))
+				g.w(")))")
 			default:
 				g.w("%sVA%s(", g.crtPrefix, g.typ(cc.UnderlyingType(t)))
 				g.value0(n.Expr, false, exprCall)
@@ -3514,30 +3496,30 @@ func (g *ngen) convert(n *cc.Expr, t cc.Type) {
 		return
 	}
 
-	if isVaList(n.Operand.Type) && !isVaList(t) {
-		g.w("%sVA%s(", g.crtPrefix, g.typ(cc.UnderlyingType(t)))
-		g.value(n, false)
-		g.w(")")
-		return
-	}
+	//TODO- if isVaList(n.Operand.Type) && !isVaList(t) {
+	//TODO- 	g.w("%sVA%s(", g.crtPrefix, g.typ(cc.UnderlyingType(t)))
+	//TODO- 	g.value(n, false)
+	//TODO- 	g.w(")")
+	//TODO- 	return
+	//TODO- }
 
 	if t.Kind() == cc.Ptr {
 		switch {
-		case n.Operand.Value != nil && isVaList(t):
-			g.w("%s", ap)
+		//TODO- case n.Operand.Value != nil && isVaList(t):
+		//TODO- 	g.w("%s", ap)
 		case n.Operand.Type.Kind() == cc.Ptr:
 			g.value(n, false)
-		case isVaList(t):
-			switch x := n.Operand.Value.(type) {
-			case *ir.Int64Value:
-				if x.Value == 1 {
-					g.w("%s", ap)
-					return
-				}
-			default:
-				todo("%v, %T, %v %v -> %v", g.position(n), x, n.Case, n.Operand, t)
-			}
-			todo("", g.position(n))
+		//TODO- case isVaList(t):
+		//TODO- 	switch x := n.Operand.Value.(type) {
+		//TODO- 	case *ir.Int64Value:
+		//TODO- 		if x.Value == 1 {
+		//TODO- 			g.w("%s", ap)
+		//TODO- 			return
+		//TODO- 		}
+		//TODO- 	default:
+		//TODO- 		todo("%v, %T, %v %v -> %v", g.position(n), x, n.Case, n.Operand, t)
+		//TODO- 	}
+		//TODO- 	todo("", g.position(n))
 		case n.Operand.Type.IsIntegerType():
 			if n.Operand.Value != nil && g.voidCanIgnore(n) {
 				t0 := n.Operand.Type
