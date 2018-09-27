@@ -2314,17 +2314,7 @@ func (g *ngen) uintptr(n *cc.Expr, packedField bool) {
 		}
 	case cc.ExprCompLit: // '(' TypeName ')' '{' InitializerList CommaOpt '}
 		if d := n.Declarator; d != nil {
-			switch {
-			case g.escaped(d):
-				g.w("func() uintptr { *(*%s)(unsafe.Pointer(%s)) = ", g.typ(d.Type), g.mangleDeclarator(d))
-				g.literal(d.Type, d.Initializer)
-				g.w("; return %s }()", g.mangleDeclarator(d))
-			default:
-				g.w("func() uintptr { %s = ", g.mangleDeclarator(d))
-				g.literal(d.Type, d.Initializer)
-				g.w("; return uintptr(unsafe.Pointer(&%s)) }()", g.mangleDeclarator(d))
-			}
-			break
+			todo("%v: %v TODO (*ngen).uintptr", g.position(n), n.Case)
 		}
 
 		t := n.TypeName.Type
@@ -2350,10 +2340,9 @@ func (g *ngen) uintptr(n *cc.Expr, packedField bool) {
 			g.w("%s(%s)", g.registerHelper("fp%d", g.typ(d.Type)), g.mangleDeclarator(d))
 		case arr:
 			g.w("%s ", g.mangleDeclarator(d))
-		case g.escaped(d):
-			g.w("%s ", g.mangleDeclarator(d))
 		default:
-			g.w("uintptr(unsafe.Pointer(&%s))", g.mangleDeclarator(d))
+			// 		g.w("uintptr(unsafe.Pointer(&%s))", g.mangleDeclarator(d))
+			todo("%v: %v TODO (*ngen).uintptr", g.position(n), n.Case)
 		}
 	case cc.ExprIndex: // Expr '[' ExprList ']'
 		t := n.Expr.Operand.Type
@@ -2394,7 +2383,7 @@ func (g *ngen) uintptr(n *cc.Expr, packedField bool) {
 	case cc.ExprString: // STRINGLITERAL
 		g.constant(n)
 	default:
-		todo("", g.position(n), n.Case)
+		todo("%v: %v TODO (*ngen).uintptr", g.position(n), n.Case)
 	}
 } // uintptr
 

@@ -543,6 +543,8 @@ func (o *nopt) pos(n ast.Node) token.Position {
 	return o.fset.Position(n.Pos())
 }
 
+var optTrap = []byte("uintptr(unsafe.Pointer(&")
+
 func (o *nopt) do(out io.Writer, in io.Reader, fn string) error { //TODO reuse the nopt object
 	o.fn = fn
 	o.fset = token.NewFileSet()
@@ -557,7 +559,20 @@ func (o *nopt) do(out io.Writer, in io.Reader, fn string) error { //TODO reuse t
 		return err
 	}
 
-	b := bytes.Replace(o.out.Bytes(), []byte("\n\n}"), []byte("\n}"), -1)
+	b := o.out.Bytes()
+	if i := bytes.Index(b, optTrap); i >= 0 {
+		a := bytes.LastIndex(b[:i], []byte{'\n'})
+		if a < 0 {
+			a = 0
+		}
+		z := bytes.Index(b[i:], []byte{'\n'})
+		if z < 0 {
+			z = 0
+		}
+		todo("invalid unsafe.Pointer to uintptr conversion\n%s", bytes.TrimSpace(b[a:i+z]))
+	}
+
+	b = bytes.Replace(b, []byte("\n\n}"), []byte("\n}"), -1)
 	b = bytes.Replace(b, []byte("\n\t;\n"), []byte("\n"), -1)
 	b = bytes.Replace(b, []byte("{\n\n"), []byte("{\n"), -1)
 	b = bytes.Replace(b, []byte(":\n\n"), []byte(":\n"), -1)
