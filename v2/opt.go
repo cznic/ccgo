@@ -769,6 +769,8 @@ func (o *nopt) stmt(n *ast.Stmt) {
 		o.stmt(&x.Init)
 		o.expr(&x.Tag, true)
 		o.blockStmt(x.Body, false)
+	case *ast.GoStmt:
+		o.call(x.Call)
 	default:
 		todo("%v: %T", o.pos(x), x)
 	}

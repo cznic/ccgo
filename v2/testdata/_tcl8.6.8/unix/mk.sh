@@ -3,8 +3,8 @@ rm -f log-ccgo
 make clean || true
 make distclean || true
 ./configure CC=ccgo \
-	CFLAGS='--ccgo-full-paths --ccgo-struct-checks --ccgo-use-import exec.ErrNotFound,os.DevNull -D_GNU_SOURCE' \
-	LDFLAGS='--warn-unresolved-libs --warn-go-build --ccgo-go --ccgo-import os,os/exec'
+	CFLAGS='--ccgo-full-paths --ccgo-struct-checks --ccgo-use-import io.EOF,exec.ErrNotFound,os.DevNull,sync.Map{} -D_GNU_SOURCE' \
+	LDFLAGS='--warn-unresolved-libs --warn-go-build --ccgo-go --ccgo-import io,os,os/exec,sync'
 make binaries
 make test
 date

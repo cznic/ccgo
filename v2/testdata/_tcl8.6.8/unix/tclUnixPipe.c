@@ -13,6 +13,8 @@
 
 #include "tclInt.h"
 
+void __log(char*, ...);
+
 #ifdef USE_VFORK
 #define fork vfork
 #endif
@@ -597,8 +599,11 @@ TclpCreateProcess(
     int pid, i;
     int fail = 0;
     __GO__(
-	"var argv []string\n"
-	"var cmd *exec.Cmd\n"
+	"var err error\n"
+	"var proc *os.Process\n"
+	"var wg sync.WaitGroup\n"
+        "var argv []string\n"
+        "var rde, wre *os.File\n"
     );
 
     errPipeIn = NULL;
@@ -649,23 +654,27 @@ TclpCreateProcess(
 #endif
 
     __GO__(
-	"if _inputFile == 0 || _outputFile == 0 || _errorFile == 0 { panic(`TODO`) }\n"
-	"for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
-	"	q := *(*uintptr)(unsafe.Pointer(p))\n"
-	"	if q == 0 {\n"
-	"		break\n"
-	"	}\n"
-	"	argv = append(argv, crt.GoString(q))\n"
-	"}\n"
-	"cmd = exec.Command(argv[0], argv[1:]...)\n"
-	"cmd.Stdin = os.NewFile(uintptr(_inputFile-1), `inputFile`)\n"
-	"cmd.Stdout = os.NewFile(uintptr(_outputFile-1), `ouputFile`)\n"
-	"cmd.Stderr = os.NewFile(uintptr(_errorFile-1), `errorFile`)\n"
-	"if err := cmd.Start(); err != nil {\n"
-	"	_fail = 1\n"
-	"} else {\n"
-	"	_pid = int32(cmd.Process.Pid)\n"
-	"}\n"
+        "if _inputFile == 0 || _outputFile == 0 || _errorFile == 0 || _errorFile == _outputFile { panic(`TODO`) }\n"
+        "for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
+        "	q := *(*uintptr)(unsafe.Pointer(p))\n"
+        "	if q == 0 {\n"
+        "		break\n"
+        "	}\n"
+        "	argv = append(argv, crt.GoString(q))\n"
+        "}\n"
+	"wg.Add(1)\n"
+	"rde, wre, _ = os.Pipe()\n"
+	"go func() { defer wg.Done(); io.Copy(os.NewFile(uintptr(_errorFile-1), `errorFile`), rde) }()\n"
+	"if proc, err = os.StartProcess(argv[0], argv, &os.ProcAttr{Files: []*os.File{\n"
+	"	os.NewFile(uintptr(_inputFile-1), `inputFile`),\n"
+	"	os.NewFile(uintptr(_outputFile-1), `outputFile`),\n"
+	"	wre,\n"
+	"}}); err != nil {\n"	    
+        "	_fail = 1\n"
+        "} else {\n"
+        "	_pid = int32(proc.Pid)\n"
+        "	crt.AddPid(uintptr(proc.Pid), &wg, wre)\n"
+        "}\n"
     );
     if (fail) {
 	size_t len;
@@ -676,6 +685,8 @@ TclpCreateProcess(
 	    Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
 	}
     }
+
+    __log("%s:%i.%s: pid %i(0x%x) inputFile %i, outputFile %i, errorFile %i", __FILE__, __LINE__, __func__, pid, (unsigned)pid, inputFile, outputFile, errorFile);
 
     /*
      * Free the mem we used for the fork
@@ -1406,6 +1417,8 @@ Tcl_WaitPid(
     while (1) {
 	result = (int) waitpid(real_pid, statPtr, options);
 	if ((result != -1) || (errno != EINTR)) {
+
+	    __GO__("crt.WaitPid(uintptr(_real_pid))");
 	    return (Tcl_Pid) INT2PTR(result);
 	}
     }
