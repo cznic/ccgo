@@ -1696,9 +1696,9 @@ func (g *ngen) value0(n *cc.Expr, packedField bool, exprCall bool) {
 		if isVaList(op.Type) {
 			switch cc.UnderlyingType(t).(type) {
 			case *cc.StructType:
-				g.w("*(*%s)(unsafe.Pointer(%sVAother(", g.typ(t), g.crtPrefix)
+				g.w("%sVAother(", g.crtPrefix)
 				g.value0(n.Expr, false, exprCall)
-				g.w(")))")
+				g.w(").(%s)", g.typ(t))
 			default:
 				g.w("%sVA%s(", g.crtPrefix, g.typ(cc.UnderlyingType(t)))
 				g.value0(n.Expr, false, exprCall)
