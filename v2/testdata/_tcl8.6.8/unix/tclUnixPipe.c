@@ -602,6 +602,7 @@ TclpCreateProcess(
 	"var err error\n"
 	"var proc *os.Process\n"
         "var argv []string\n"
+        "var stdin, stdout, stderr *os.File\n"
     );
 
     errPipeIn = NULL;
@@ -652,32 +653,31 @@ TclpCreateProcess(
 #endif
 
     __GO__(
-        "if _inputFile == 0 || _outputFile == 0 || _errorFile == 0 || _errorFile == _outputFile { panic(`TODO`) }\n"
-        "for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
-        "	q := *(*uintptr)(unsafe.Pointer(p))\n"
-        "	if q == 0 {\n"
-        "		break\n"
-        "	}\n"
-        "	argv = append(argv, crt.GoString(q))\n"
-        "}\n"
-	"if proc, err = os.StartProcess(argv[0], argv, &os.ProcAttr{Files: []*os.File{\n"
-	"	os.NewFile(uintptr(_inputFile-1), `inputFile`),\n"
-	"	os.NewFile(uintptr(_outputFile-1), `outputFile`),\n"
-	"	os.NewFile(uintptr(_errorFile-1), `errorFile`),\n"
-	"}}); err != nil {\n"	    
-        "	_fail = 1\n"
-        "} else {\n"
-        "	_pid = int32(proc.Pid)\n"
-        "}\n"
+	"if _inputFile != 0 { stdin =  os.NewFile(uintptr(_inputFile-1), `inputFile`) }\n"
+	"if _outputFile != 0 { stdout =  os.NewFile(uintptr(_outputFile-1), `outputFile`) }\n"
+	"if _errorFile != 0 { if _errorFile == _outputFile { stderr = stdout } else { stderr =  os.NewFile(uintptr(_errorFile-1), `errorFile`) }}\n"
+	"for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
+	"	q := *(*uintptr)(unsafe.Pointer(p))\n"
+	"	if q == 0 {\n"
+	"		break\n"
+	"	}\n"
+	"	argv = append(argv, crt.GoString(q))\n"
+	"}\n"
+	"if s, err := exec.LookPath(argv[0]); err == nil { argv[0] = s }\n"
+	"if proc, err = os.StartProcess(argv[0], argv, &os.ProcAttr{Files: []*os.File{stdin, stdout, stderr}}); err != nil {\n"
+	"	_fail = 1\n"
+	"	if os.IsNotExist(err) { _fail = -crt.DENOENT}\n"
+	"} else {\n"
+	"	_pid = int32(proc.Pid)\n"
+	"	crt.RegisterProcess(proc)\n"
+	"}\n"
     );
     if (fail) {
-	size_t len;
-	fd = GetFd(errPipeOut);
-	sprintf(errSpace, "couldn't execute \"%.150s\"", argv[0]);
-	len = strlen(errSpace);
-	if (len != (size_t) write(fd, errSpace, len)) {
-	    Tcl_Panic("TclpCreateProcess: unable to write to errPipeOut");
+	if (fail < 0) {
+		errno = -fail;
 	}
+	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+		"couldn't execute \"%.150s\": %s", argv[0], Tcl_PosixError(interp)));
     }
 
     __log("%s:%i.%s: pid %i(0x%x) inputFile %i, outputFile %i, errorFile %i", __FILE__, __LINE__, __func__, pid, (unsigned)pid, inputFile, outputFile, errorFile);
@@ -693,8 +693,10 @@ TclpCreateProcess(
     TclStackFree(interp, dsArray);
 
     if (pid == -1) {
-	Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		"couldn't fork child process: %s", Tcl_PosixError(interp)));
+	if (!fail) {
+		Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+			"couldn't fork child process: %s", Tcl_PosixError(interp)));
+	}
 	goto error;
     }
 
@@ -1407,6 +1409,10 @@ Tcl_WaitPid(
 {
     int result;
     pid_t real_pid = (pid_t) PTR2INT(pid);
+
+    if (real_pid > 0) {
+	    __GO__("crt.RemoveProcess(int(_real_pid))");
+    }
 
     while (1) {
 	result = (int) waitpid(real_pid, statPtr, options);
