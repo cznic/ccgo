@@ -669,7 +669,7 @@ TclpCreateProcess(
 	"	if os.IsNotExist(err) { _fail = -crt.DENOENT}\n"
 	"} else {\n"
 	"	_pid = int32(proc.Pid)\n"
-	"	crt.RegisterProcess(proc)\n"
+	"	crt.PreserveFiles(proc.Pid, stdin, stdout, stderr)\n"
 	"}\n"
     );
     if (fail) {
@@ -1409,10 +1409,6 @@ Tcl_WaitPid(
 {
     int result;
     pid_t real_pid = (pid_t) PTR2INT(pid);
-
-    if (real_pid > 0) {
-	    __GO__("crt.RemoveProcess(int(_real_pid))");
-    }
 
     while (1) {
 	result = (int) waitpid(real_pid, statPtr, options);
