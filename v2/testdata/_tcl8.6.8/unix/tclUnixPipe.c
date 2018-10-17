@@ -653,9 +653,9 @@ TclpCreateProcess(
 #endif
 
     __GO__(
-	"if _inputFile != 0 { stdin =  os.NewFile(uintptr(_inputFile-1), `inputFile`) }\n"
-	"if _outputFile != 0 { stdout =  os.NewFile(uintptr(_outputFile-1), `outputFile`) }\n"
-	"if _errorFile != 0 { if _errorFile == _outputFile { stderr = stdout } else { stderr =  os.NewFile(uintptr(_errorFile-1), `errorFile`) }}\n"
+	"stdin = crt.File(uintptr(_inputFile-1))\n"
+	"stdout = crt.File(uintptr(_outputFile-1))\n"
+	"stderr = crt.File(uintptr(_errorFile-1))\n"
 	"for p := _newArgv; ; p += unsafe.Sizeof(uintptr(0)) {\n"
 	"	q := *(*uintptr)(unsafe.Pointer(p))\n"
 	"	if q == 0 {\n"
@@ -669,7 +669,6 @@ TclpCreateProcess(
 	"	if os.IsNotExist(err) { _fail = -crt.DENOENT}\n"
 	"} else {\n"
 	"	_pid = int32(proc.Pid)\n"
-	"	crt.PreserveFiles(proc.Pid, stdin, stdout, stderr)\n"
 	"}\n"
     );
     if (fail) {

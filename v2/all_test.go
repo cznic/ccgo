@@ -728,7 +728,7 @@ func TestOther(t *testing.T) {
 
 		build++
 		if out, err = exec.Command(testBin).CombinedOutput(); err != nil {
-			t.Logf("%s\n%v", out, err)
+			t.Logf("%s: %s\n%v", pth, out, err)
 			continue
 		}
 

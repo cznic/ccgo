@@ -737,6 +737,10 @@ func (o *nopt) stmt(n *ast.Stmt) {
 		o.blockStmt(x.Body, false)
 		o.stmt(&x.Else)
 		if len(x.Body.List) == 0 {
+			// Turn
+			//	if cond {} else { stmtList }
+			// into
+			//	if !cond { stmtList }
 			x.Cond = o.not(x.Cond)
 			switch y := x.Else.(type) {
 			case *ast.BlockStmt:
@@ -957,39 +961,28 @@ func (o *nopt) not(n ast.Expr) ast.Expr {
 	switch x := n.(type) {
 	case *ast.BinaryExpr:
 		switch x.Op {
-		case token.LEQ:
-			x.Op = token.GTR
-			return x
-		case token.LSS:
-			x.Op = token.GEQ
-			return x
-		case token.EQL:
-			x.Op = token.NEQ
-			return x
-		case token.NEQ:
-			x.Op = token.EQL
-			return x
-		case token.GEQ:
-			x.Op = token.LSS
-			return x
-		case token.LAND:
-			x.X = o.not(x.X)
-			x.Op = token.LOR
-			x.Y = o.not(x.Y)
-			return x
-		case token.LOR:
-			x.X = o.not(x.X)
-			x.Op = token.LAND
-			x.Y = o.not(x.Y)
-			return x
-		case token.GTR:
-			x.Op = token.LEQ
-			return x
+		case
+			token.LEQ,
+			token.LSS,
+			token.EQL,
+			token.NEQ,
+			token.GEQ,
+			token.LAND,
+			token.LOR,
+			token.GTR:
+			return &ast.UnaryExpr{Op: token.NOT, X: &ast.ParenExpr{X: x}}
 		default:
 			todo("%v: %v", o.pos(n), x.Op)
 		}
 	case *ast.ParenExpr:
-		return o.not(x.X)
+		return &ast.UnaryExpr{Op: token.NOT, X: x.X}
+	case *ast.UnaryExpr:
+		switch x.Op {
+		case token.NOT:
+			return x.X
+		default:
+			todo("%v: %T %s", o.pos(n), x, o.fn)
+		}
 	default:
 		todo("%v: %T %s", o.pos(n), x, o.fn)
 	}
